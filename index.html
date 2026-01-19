@@ -14,14 +14,17 @@
           extend: {
             colors: {
               bet: {
-                950: '#03050a',
-                900: '#0a0d1a',
-                800: '#121629',
-                700: '#1d233d',
-                accent: '#facc15',
-                primary: '#2563eb',
-                success: '#10b981',
-                danger: '#ef4444'
+                950: '#070314', // Deepest Purple
+                900: '#110a2b', // Rich Indigo
+                800: '#1d1145', // Electric Violet
+                700: '#2d1b6b', // Deep Luminous Purple
+                accent: '#fbbf24', // Luminous Gold
+                primary: '#06b6d4', // Electric Cyan
+                secondary: '#ec4899', // Hot Pink
+                success: '#22c55e', // Vibrant Green
+                danger: '#f43f5e', // Neon Rose
+                saffron: '#ff6b00', // Flaming Saffron
+                chakra: '#3b82f6' // Royal Blue
               }
             },
             animation: {
@@ -29,6 +32,8 @@
               'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'spin-slow': 'spin 15s linear infinite',
               'fade-in': 'fadeIn 0.3s ease-out forwards',
+              'glimmer': 'glimmer 3s ease-in-out infinite',
+              'float': 'float 6s ease-in-out infinite',
             },
             keyframes: {
               marquee: {
@@ -38,6 +43,14 @@
               fadeIn: {
                 '0%': { opacity: '0', transform: 'translateY(10px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' }
+              },
+              glimmer: {
+                '0%, 100%': { opacity: '0.4' },
+                '50%': { opacity: '0.8' }
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-20px)' }
               }
             }
           }
@@ -45,7 +58,7 @@
       }
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@700&family=Teko:wght@400;600;700&display=swap');
       
       :root {
         --app-height: 100dvh;
@@ -58,15 +71,21 @@
       }
 
       body {
-        background: #03050a;
+        background: #070314;
         color: #f8fafc;
-        font-family: 'Inter', sans-serif;
+        font-family: 'Plus Jakarta Sans', sans-serif;
         margin: 0;
         padding: 0;
         height: var(--app-height);
         width: 100vw;
         overflow: hidden;
-        position: fixed; /* Prevent rubber-banding on iOS */
+        position: fixed;
+      }
+
+      .bazar-font {
+        font-family: 'Teko', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
       }
 
       #root {
@@ -74,36 +93,45 @@
         width: 100%;
         display: flex;
         flex-direction: column;
+        background-image: 
+          radial-gradient(circle at 50% 10%, rgba(6, 182, 212, 0.15) 0%, transparent 40%),
+          radial-gradient(circle at 10% 90%, rgba(236, 72, 153, 0.1) 0%, transparent 30%),
+          url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M9 15c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm51 30c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm42 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zM24 84c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm60-12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z' fill='%23ec4899' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
       }
 
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
       .gold-text {
-        background: linear-gradient(to bottom, #facc15, #ca8a04);
+        background: linear-gradient(to bottom, #fde047, #fbbf24, #b45309);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.5));
       }
 
-      input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+      .saffron-gradient {
+        background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
+      }
       
-      /* Smooth touch interactions */
+      .neon-border {
+        box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+      }
+
+      .card-glass {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
       button, a {
-        transition: transform 0.1s ease, filter 0.2s ease;
+        transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       button:active, a:active {
-        transform: scale(0.96);
+        transform: scale(0.92);
       }
 
       .safe-top { padding-top: env(safe-area-inset-top); }
       .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-
-      /* Responsive Canvas */
-      canvas {
-        max-width: 100%;
-        height: auto !important;
-      }
     </style>
     <script type="importmap">
 {
