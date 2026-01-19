@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Stake.IND Pro | India's #1 Matka Engine</title>
+    <title>Stake.IND | India's #1 Matka & Casino Simulation</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -13,78 +12,81 @@
           extend: {
             colors: {
               casino: {
-                950: '#020305',
-                900: '#07080a',
-                800: '#0f1116',
-                700: '#1a1d23',
-                600: '#21262d',
+                950: '#07080a',
+                900: '#0f1116',
+                800: '#1a1d23',
+                700: '#21262d',
+                600: '#3c444d',
                 accent: '#00e701',
-                gold: '#ffb800',
-                danger: '#ff0033'
+                win: '#00e701',
+                loss: '#ff0033',
+                gold: '#ffb800'
               }
             },
-            boxShadow: {
-              'neon-green': '0 0 20px rgba(0, 231, 1, 0.2)',
-              'neon-gold': '0 0 30px rgba(255, 184, 0, 0.15)',
-            },
             animation: {
-              'glitch': 'glitch 1s infinite linear alternate-reverse',
-              'float': 'float 3s ease-in-out infinite',
-              'scanline': 'scanline 8s linear infinite',
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'bounce-short': 'bounce 0.5s ease-in-out infinite',
+              'fade-in': 'fade-in 0.4s ease-out forwards',
+              'fade-in-up': 'fade-in-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards'
             }
           }
         }
       }
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Syne:wght@800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap');
       
+      :root {
+        --casino-bg: #07080a;
+      }
+
       body {
-        background-color: #020305;
-        color: #94a3b8;
-        font-family: 'Space Grotesk', sans-serif;
+        background-color: var(--casino-bg);
+        color: #b1b5c3;
+        font-family: 'Inter', sans-serif;
         overflow-x: hidden;
         -webkit-font-smoothing: antialiased;
+        margin: 0;
+        font-size: 14px;
       }
 
-      h1, h2, h3, .heading-font { font-family: 'Syne', sans-serif; letter-spacing: -0.05em; }
-      .mono { font-family: 'JetBrains Mono', monospace; }
-
-      .glass-card {
-        background: rgba(15, 17, 22, 0.7);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.03);
+      #root {
+        min-height: 100vh;
       }
 
-      .cyber-button {
-        transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-        text-transform: uppercase;
-        font-weight: 900;
-        letter-spacing: 0.1em;
+      h1, h2, h3, .heading-font {
+        font-family: 'Syne', sans-serif;
       }
 
-      .cyber-button:hover {
-        transform: translateY(-2px);
-        filter: brightness(1.2);
-      }
-
-      @keyframes float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
-
-      @keyframes scanline {
-        from { transform: translateY(-100%); }
-        to { transform: translateY(100%); }
-      }
-
-      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-      .custom-scrollbar::-webkit-scrollbar-thumb { background: #1a1d23; border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #1a1d23; border-radius: 20px; border: 1px solid #2d333b; }
       
-      .gradient-text {
-        background: linear-gradient(to bottom right, #fff, #00e701);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+      @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes fade-in-up {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      input[type=number]::-webkit-inner-spin-button, 
+      input[type=number]::-webkit-outer-spin-button { 
+        -webkit-appearance: none; 
+        margin: 0; 
+      }
+
+      .matka-card {
+        transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .matka-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+        border-color: #00e701;
+      }
+
+      .glass {
+        background: rgba(15, 17, 22, 0.85);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       }
     </style>
   <script type="importmap">

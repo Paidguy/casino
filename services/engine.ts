@@ -2,34 +2,34 @@
 import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction, LeaderboardEntry } from '../types';
 
 const DAILY_ALLOWANCE = 10000;
-const STORAGE_KEY = 'stake_ind_v10_pro';
+const STORAGE_KEY = 'stake_ind_v9_pro';
 
-// High-fidelity bots with personality profiles
 const BOTS: LeaderboardEntry[] = [
-  { username: 'Crore_Pathi', wagered: 8940000, maxMultiplier: 4500.0 },
-  { username: 'Matka_Wizard', wagered: 1200000, maxMultiplier: 890.5 },
-  { username: 'Bombay_Whale', wagered: 5450000, maxMultiplier: 12.0 },
-  { username: 'Satoshi_Ji', wagered: 2640000, maxMultiplier: 9999.0 },
-  { username: 'Luck_Is_Fake', wagered: 45000, maxMultiplier: 2.5 },
+  { username: 'Lakhpati_Raj', wagered: 1540000, maxMultiplier: 1250.0 },
+  { username: 'Matka_King_007', wagered: 920000, maxMultiplier: 450.5 },
+  { username: 'MumbaiHighRoller', wagered: 2450000, maxMultiplier: 84.0 },
+  { username: 'Satoshi_Bhai', wagered: 640000, maxMultiplier: 5000.0 },
+  { username: 'PaisaDouble', wagered: 120000, maxMultiplier: 12.5 },
+  { username: 'DelhiWhale', wagered: 3200000, maxMultiplier: 2.1 },
+  { username: 'JackpotJi', wagered: 95000, maxMultiplier: 99.0 },
+  { username: 'DesiGambler', wagered: 450000, maxMultiplier: 54.4 },
+  { username: 'NoLossZone', wagered: 5000, maxMultiplier: 1.5 },
+  { username: 'PunterPro', wagered: 12000, maxMultiplier: 1000.0 },
 ];
 
-/**
- * NEW: Cryptographically Secure Randomness using HMAC-SHA256 Simulation
- */
-class CryptoFairness {
-  static async generateResult(serverSeed: string, clientSeed: string, nonce: number): Promise<number> {
-    const message = `${clientSeed}:${nonce}`;
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(serverSeed);
-    const msgData = encoder.encode(message);
-
-    const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-    const signature = await crypto.subtle.sign('HMAC', key, msgData);
-    const hashArray = Array.from(new Uint8Array(signature));
-    
-    // Convert first 4 bytes to a float [0, 1)
-    const val = (hashArray[0] << 24 | hashArray[1] << 16 | hashArray[2] << 8 | hashArray[3]) >>> 0;
-    return val / 4294967296;
+class LCG {
+  private seed: number;
+  constructor(seedStr: string) {
+    let hash = 0;
+    for (let i = 0; i < seedStr.length; i++) {
+      hash = ((hash << 5) - hash) + seedStr.charCodeAt(i);
+      hash |= 0; 
+    }
+    this.seed = Math.abs(hash) || 1;
+  }
+  next(): number {
+    this.seed = (this.seed * 1664525 + 1013904223) % 4294967296;
+    return this.seed / 4294967296;
   }
 }
 
@@ -87,137 +87,87 @@ export class SimulationEngine {
     return { ...this.session };
   }
 
-  // Pure mathematical result generators (Sync for UI, but backed by Async logic in placeBet)
-  public getCrashPoint(r: number): number {
-    const edge = 0.01; // 1% house edge
-    if (r < edge) return 1.00;
-    return Math.max(1.00, Math.floor(((1 - edge) / (1 - r)) * 100) / 100);
-  }
-
-  // Add missing calculateDiceResult for Dice game
-  public calculateDiceResult(r: number, target: number, condition: 'over' | 'under') {
-    const roll = r * 100;
-    const won = condition === 'over' ? roll > target : roll < target;
-    return { roll, won };
-  }
-
-  // Add missing calculateRouletteResult for Roulette game
-  public calculateRouletteResult(r: number) {
-    return Math.floor(r * 37);
-  }
-
-  // Add missing calculateSlotsResult for Slots game
-  public calculateSlotsResult(r: number) {
-    const symbols = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
-    const s1 = symbols[Math.floor((r * 12345) % 1 * 5)];
-    const s2 = symbols[Math.floor((r * 23456) % 1 * 5)];
-    const s3 = symbols[Math.floor((r * 34567) % 1 * 5)];
-    let multiplier = 0;
-    if (s1 === s2 && s2 === s3) {
-      if (s1 === '7️⃣') multiplier = 50;
-      else if (s1 === '💎') multiplier = 20;
-      else multiplier = 10;
-    } else if (s1 === s2 || s2 === s3 || s1 === s3) {
-      multiplier = 2;
-    }
-    return { symbols: [s1, s2, s3], multiplier };
-  }
-
-  // Update calculatePlinkoResult to include the path for UI animation
-  public calculatePlinkoResult(r: number, rows: number) {
-    // Normal distribution simulation for Plinko
-    let bin = 0;
-    let tempR = r;
-    const path = [];
-    for (let i = 0; i < rows; i++) {
-      tempR = (tempR * 16807) % 2147483647; // Simple fast LCG for internal path
-      const step = (tempR / 2147483647 > 0.5) ? 1 : 0;
-      path.push(step);
-      bin += step;
-    }
-    // High-risk multipliers for 16 rows
-    const mults = [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000];
-    return { multiplier: mults[bin] || 0.2, path };
-  }
-
-  // Add missing generateMinesGrid for Mines game
-  public generateMinesGrid(r: number, minesCount: number) {
-    const grid = Array(25).fill(false);
-    let count = 0;
-    let tempR = r;
-    while (count < minesCount) {
-        tempR = (tempR * 16807) % 2147483647;
-        const idx = Math.floor((tempR / 2147483647) * 25);
-        if (!grid[idx]) {
-            grid[idx] = true;
-            count++;
-        }
-    }
-    return grid;
-  }
-
-  // Add missing calculateTeenPatti for TeenPatti game
-  public calculateTeenPatti(r: number) {
-    const hands = ["Trail", "Pure Sequence", "Sequence", "Color", "Pair", "High Card"];
-    const won = r > 0.525; // 52.5% dealer bias
-    const handIdx = Math.floor(r * 6);
-    return { won, hand: hands[handIdx] };
-  }
-
-  // Add missing getSattaMatkaResult for Matka game
-  public getSattaMatkaResult(r: number) {
-    const c1 = Math.floor((r * 1000) % 10);
-    const c2 = Math.floor((r * 10000) % 10);
-    const c3 = Math.floor((r * 100000) % 10);
-    const single = (c1 + c2 + c3) % 10;
-    return { cards: `${c1}${c2}${c3}`, single };
-  }
-
-  // Add missing peekNextRandom for UI preview of randomness
-  public peekNextRandom() {
-    const combined = this.session.serverSeed + this.session.clientSeed + this.session.nonce;
-    let hash = 0;
-    for (let i = 0; i < combined.length; i++) {
-        hash = ((hash << 5) - hash) + combined.charCodeAt(i);
-        hash |= 0;
-    }
-    return Math.abs(hash % 1000000) / 1000000;
-  }
-
-  // Add missing setClientSeed for Fairness page
   public setClientSeed(seed: string) {
     this.session.clientSeed = seed;
-    this.session.nonce = 0;
+    this.session.nonce = 0; // Standard practice to reset nonce when seed changes
     this.saveSession(this.session);
   }
 
-  // Add missing updateAdminSettings for Admin control
-  public updateAdminSettings(s: Partial<AdminSettings>) {
-    this.session.settings = { ...this.session.settings, ...s };
-    this.saveSession(this.session);
+  public peekNextRandom(): number {
+    const rng = new LCG(this.session.serverSeed + this.session.clientSeed + this.session.nonce);
+    let r = rng.next();
+    // Simulate biased results for Rigged mode
+    if (this.session.settings.isRigged && Math.random() > this.session.settings.forcedRTP) {
+       r = r * 0.1; // Skews results toward lower outcomes
+    }
+    return r;
   }
 
-  // Add missing resetBalance for Admin control
-  public resetBalance() {
-    this.session.balance = DAILY_ALLOWANCE;
-    this.saveSession(this.session);
+  public getLeaderboard(): LeaderboardEntry[] {
+    const playerEntry: LeaderboardEntry = {
+      username: this.session.username,
+      wagered: this.session.totalWagered,
+      maxMultiplier: this.session.maxMultiplier,
+      isPlayer: true
+    };
+    return [...BOTS, playerEntry];
   }
 
-  public async placeBet(game: GameType, amount: number, logic: (r: number) => { multiplier: number; outcome: string }): Promise<BetResult> {
-    if (amount > this.session.balance) throw new Error("Insufficient Balance");
+  public deposit(amount: number, method: string): Transaction {
+    const tx: Transaction = {
+      id: Math.random().toString(36).substring(7),
+      type: 'DEPOSIT',
+      amount,
+      timestamp: Date.now(),
+      status: 'COMPLETED',
+      method
+    };
+    this.session.balance += amount;
+    this.session.transactions = [tx, ...this.session.transactions].slice(0, 50);
+    this.saveSession(this.session);
+    return tx;
+  }
+
+  public withdraw(amount: number, method: string): Transaction {
+    if (amount > this.session.balance) throw new Error("Insufficient funds");
+    const tx: Transaction = {
+      id: Math.random().toString(36).substring(7),
+      type: 'WITHDRAW',
+      amount,
+      timestamp: Date.now(),
+      status: 'COMPLETED',
+      method
+    };
+    this.session.balance -= amount;
+    this.session.transactions = [tx, ...this.session.transactions].slice(0, 50);
+    this.saveSession(this.session);
+    return tx;
+  }
+
+  public claimRakeback(): number {
+    const amount = this.session.rakebackBalance;
+    if (amount <= 0) return 0;
+    this.session.balance += amount;
+    this.session.rakebackBalance = 0;
+    this.saveSession(this.session);
+    return amount;
+  }
+
+  public placeBet(game: GameType, amount: number, resultCallback: (rawRandom: number) => { multiplier: number; outcome: string }): BetResult {
+    if (amount > this.session.balance) throw new Error("Insufficient funds");
     
-    // Generate actual provably fair random number
-    const r = await CryptoFairness.generateResult(this.session.serverSeed, this.session.clientSeed, this.session.nonce);
-    
-    const { multiplier, outcome } = logic(r);
+    const r = this.peekNextRandom();
+    const { multiplier, outcome } = resultCallback(r);
     const payout = amount * multiplier;
     
     this.session.balance = this.session.balance - amount + payout;
     this.session.totalBets += 1;
     this.session.totalWagered += amount;
     this.session.nonce += 1;
+    this.session.settings.globalProfit += (amount - payout);
     
     if (multiplier > this.session.maxMultiplier) this.session.maxMultiplier = multiplier;
+
     const edge = HOUSE_EDGES[game] || 0.01;
     this.session.rakebackBalance += (amount * edge * 0.1);
 
@@ -232,7 +182,7 @@ export class SimulationEngine {
       balanceAfter: this.session.balance,
       nonce: this.session.nonce - 1,
       clientSeed: this.session.clientSeed,
-      serverSeedHash: 'sha256_verified_' + this.session.serverSeed.substring(0, 6),
+      serverSeedHash: 'sha256_' + this.session.serverSeed.substring(0, 8),
       resultInput: r
     };
 
@@ -241,30 +191,94 @@ export class SimulationEngine {
     return record;
   }
 
-  public getLeaderboard(): LeaderboardEntry[] {
-    const playerEntry: LeaderboardEntry = {
-      username: this.session.username,
-      wagered: this.session.totalWagered,
-      maxMultiplier: this.session.maxMultiplier,
-      isPlayer: true
-    };
-    return [...BOTS, playerEntry].sort((a,b) => b.wagered - a.wagered);
+  public calculateTeenPatti(r: number) {
+    // Real Teen Patti Ranking Probabilities:
+    // Trail: ~0.24%, Pure Seq: ~0.22%, Seq: ~3.26%, Color: ~4.96%, Pair: ~16.9%, High Card: ~74.4%
+    const won = r > 0.525; // Adjusted for house edge (Approx 47.5% win rate)
+    const hands = ['High Card', 'Pair', 'Color', 'Sequence', 'Pure Sequence', 'Trail'];
+    
+    // Weighted selection for visual flavor
+    let handIdx = 0;
+    if (r > 0.997) handIdx = 5;      // Trail
+    else if (r > 0.994) handIdx = 4; // Pure Seq
+    else if (r > 0.96) handIdx = 3;  // Seq
+    else if (r > 0.91) handIdx = 2;  // Color
+    else if (r > 0.74) handIdx = 1;  // Pair
+    else handIdx = 0;               // High Card
+    
+    return { won, hand: hands[handIdx], mult: won ? 1.95 : 0 };
+  }
+
+  public getSattaMatkaResult(r: number) {
+    // Traditional Satta Matka logic: Kalyan Open/Close style
+    // Drawing 3 cards (Pana) and sum (Single)
+    const rng = new LCG(r.toString());
+    const cards = [
+      Math.floor(rng.next() * 10),
+      Math.floor(rng.next() * 10),
+      Math.floor(rng.next() * 10)
+    ].sort((a, b) => a - b);
+    const sum = cards.reduce((a, b) => a + b, 0) % 10;
+    return { cards: cards.join(''), single: sum };
+  }
+
+  public getCrashPoint(r: number): number {
+    const edge = 0.01;
+    if (r < edge) return 1.00;
+    return Math.max(1.00, Math.floor(((1 - edge) / (1 - r)) * 100) / 100);
+  }
+
+  public calculateDiceResult(r: number, target: number, condition: 'over' | 'under') {
+    const roll = r * 100;
+    const won = condition === 'over' ? roll > target : roll < target;
+    return { roll, won };
+  }
+
+  public calculateRouletteResult(r: number): number {
+    return Math.floor(r * 37);
+  }
+
+  public calculateSlotsResult(r: number): { symbols: string[], multiplier: number } {
+    const symbols = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
+    const rng = new LCG(r.toString());
+    const res = [
+      symbols[Math.floor(rng.next() * symbols.length)],
+      symbols[Math.floor(rng.next() * symbols.length)],
+      symbols[Math.floor(rng.next() * symbols.length)]
+    ];
+    let mult = 0;
+    if (res[0] === res[1] && res[1] === res[2]) {
+      mult = res[0] === '7️⃣' ? 50 : res[0] === '💎' ? 25 : 10;
+    } else if (res[0] === res[1] || res[1] === res[2] || res[0] === res[2]) {
+      mult = 2;
+    }
+    return { symbols: res, multiplier: mult };
+  }
+
+  public calculatePlinkoResult(r: number, rows: number) {
+    const rng = new LCG(r.toString());
+    const path: number[] = [];
+    for (let i = 0; i < rows; i++) path.push(rng.next() > 0.5 ? 1 : 0);
+    const bin = path.reduce((a, b) => a + b, 0);
+    const mults = [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000];
+    return { path, multiplier: mults[bin] };
+  }
+
+  public generateMinesGrid(r: number, minesCount: number): boolean[] {
+    const grid = Array(25).fill(false);
+    let placed = 0;
+    const rng = new LCG(r.toString());
+    while (placed < minesCount) {
+      const idx = Math.floor(rng.next() * 25);
+      if (!grid[idx]) { grid[idx] = true; placed++; }
+    }
+    return grid;
   }
 
   public updateBalance(a: number) { this.session.balance += a; this.saveSession(this.session); }
-  public claimRakeback() {
-    const amt = this.session.rakebackBalance;
-    this.session.balance += amt;
-    this.session.rakebackBalance = 0;
-    this.saveSession(this.session);
-    return amt;
-  }
+  public resetBalance() { this.session.balance = DAILY_ALLOWANCE; this.saveSession(this.session); }
   public toggleAdmin() { this.session.isAdmin = !this.session.isAdmin; this.saveSession(this.session); }
-  public deposit(a: number, m: string) {
-     this.session.balance += a;
-     this.session.transactions = [{ id: Math.random().toString(36), type: 'DEPOSIT', amount: a, timestamp: Date.now(), status: 'COMPLETED', method: m }, ...this.session.transactions];
-     this.saveSession(this.session);
-  }
+  public updateAdminSettings(s: Partial<AdminSettings>) { this.session.settings = { ...this.session.settings, ...s }; this.saveSession(this.session); }
 }
 
 export const engine = new SimulationEngine();
