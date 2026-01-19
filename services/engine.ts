@@ -93,7 +93,7 @@ export class SimulationEngine {
     }
 
     const payout = amount * multiplier;
-    this.session.balance = this.session.balance - amount + payout;
+    this.session.balance = this.session.balance - (amount > 0 ? amount : 0) + payout;
     this.session.totalWagered += amount;
     this.session.totalBets += 1;
     this.session.rakebackBalance += amount * 0.005;
@@ -153,7 +153,7 @@ export class SimulationEngine {
   }
 
   public getCrashPoint(r: number): number {
-    const houseEdge = 0.03; // 3%
+    const houseEdge = 0.03; 
     if (r < houseEdge) return 1.00;
     return Math.max(1, +( (1 - houseEdge) / (1 - r) ).toFixed(2));
   }
@@ -230,7 +230,7 @@ export class SimulationEngine {
   }
 
   public calculateTeenPatti(r: number) {
-    const won = r > 0.55; // 55% House Bias
+    const won = r > 0.55; 
     const hands = ['Trail', 'Pure Sequence', 'Sequence', 'Color', 'Pair', 'High Card'];
     const hand = hands[Math.floor(Math.random() * hands.length)];
     return { won, hand };
