@@ -15,19 +15,19 @@ export const MarketingOverlay = () => {
                 setShowWelcome(true);
                 audio.playWin(); 
             }
-        }, 2000);
+        }, 1500);
 
         const glitchTimer = setInterval(() => {
-            if (Math.random() > 0.95) {
+            if (Math.random() > 0.96) {
                 setSystemGlitch('ERROR');
                 audio.playLoss();
                 setTimeout(() => {
                     setSystemGlitch('RESOLVED');
                     audio.playWin();
-                    setTimeout(() => setSystemGlitch('NONE'), 4000);
-                }, 3000);
+                    setTimeout(() => setSystemGlitch('NONE'), 3000);
+                }, 2500);
             }
-        }, 60000);
+        }, 50000);
 
         const rakebackInterval = setInterval(() => {
             setRakebackAmount(engine.getSession().rakebackBalance);
@@ -50,74 +50,77 @@ export const MarketingOverlay = () => {
 
     return (
         <>
+            {/* System Status Alerts */}
             {systemGlitch !== 'NONE' && (
-                <div className="fixed top-24 right-8 z-[200] w-80 lg:w-96 animate-fade-in">
+                <div className="fixed top-28 right-8 z-[200] w-80 lg:w-96 animate-fade-in">
                     {systemGlitch === 'ERROR' ? (
-                        <div className="bg-rose-950/95 border-2 border-rose-500 p-6 rounded-3xl shadow-[0_0_50px_rgba(255,0,0,0.3)] backdrop-blur-xl flex items-center gap-5">
-                            <div className="animate-ping text-3xl">⚠</div>
+                        <div className="bg-rose-950/95 border-2 border-bet-danger p-6 rounded-3xl shadow-[0_0_40px_rgba(239,68,68,0.4)] backdrop-blur-3xl flex items-center gap-5">
+                            <div className="animate-ping text-3xl">🚫</div>
                             <div>
-                                <h4 className="font-black text-white uppercase text-sm italic bazar-font">Server Load...</h4>
-                                <p className="text-[10px] text-rose-200 font-bold opacity-80 uppercase tracking-widest">Matka Nodes Overloaded.</p>
+                                <h4 className="font-black text-white uppercase text-sm italic bazar-font">Node Jammed</h4>
+                                <p className="text-[10px] text-rose-300 font-bold uppercase tracking-widest">Market load high. Please wait.</p>
                             </div>
                         </div>
                     ) : (
-                        <div className="bg-emerald-950/95 border-2 border-bet-success p-6 rounded-3xl shadow-[0_0_50px_rgba(16,185,129,0.3)] backdrop-blur-xl flex items-center gap-5 cursor-pointer hover:scale-105 transition-transform">
-                            <div className="text-3xl">💎</div>
+                        <div className="bg-emerald-950/95 border-2 border-bet-success p-6 rounded-3xl shadow-[0_0_40px_rgba(34,197,94,0.4)] backdrop-blur-3xl flex items-center gap-5 cursor-pointer">
+                            <div className="text-3xl">✅</div>
                             <div>
-                                <h4 className="font-black text-white uppercase text-sm italic tracking-widest bazar-font">Dhamaka Reward</h4>
-                                <p className="text-[9px] text-bet-success font-black uppercase tracking-tighter">Connection stable. Free chips added.</p>
+                                <h4 className="font-black text-white uppercase text-sm italic bazar-font tracking-widest">All Clear</h4>
+                                <p className="text-[10px] text-bet-success font-black uppercase tracking-widest">Bazar connection stable. Play on.</p>
                             </div>
                         </div>
                     )}
                 </div>
             )}
 
+            {/* Sticky Rakeback Bar */}
             {showRakebackBar && (
-                <div className="fixed bottom-0 left-0 right-0 z-[60] bg-gradient-to-r from-bet-chakra via-bet-chakra to-bet- chakra p-3 flex flex-col md:flex-row items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-white/10">
-                    <div className="flex items-center gap-4 px-4 lg:px-10 mb-2 md:mb-0">
-                         <div className="w-8 h-8 lg:w-10 lg:h-10 bg-white/5 rounded-full flex items-center justify-center text-lg animate-bounce">🎁</div>
+                <div className="fixed bottom-0 left-0 right-0 z-[60] bg-gradient-to-r from-bet-950 via-bet-900 to-bet-950 p-4 lg:p-5 flex flex-col md:flex-row items-center justify-between shadow-[0_-20px_50px_rgba(0,0,0,0.8)] border-t border-white/10">
+                    <div className="flex items-center gap-5 px-6 lg:px-12 mb-3 md:mb-0">
+                         <div className="w-10 h-10 bg-bet-primary/10 rounded-full flex items-center justify-center text-xl animate-bounce shadow-inner">🎁</div>
                          <div className="flex flex-col">
-                            <span className="font-black text-white text-sm lg:text-lg italic uppercase -skew-x-12 leading-none bazar-font">PUNTER RAKEBACK DHAMAKA</span>
-                            <span className="text-[7px] lg:text-[8px] font-black text-white/40 uppercase tracking-widest">Wager credits to build your instant cashback</span>
+                            <span className="font-black text-white text-base lg:text-xl italic uppercase -skew-x-12 leading-none bazar-font">DHAMAKA CASHBACK</span>
+                            <span className="text-[8px] lg:text-[10px] font-black text-slate-500 uppercase tracking-widest">Play more to unlock your instant profit back</span>
                          </div>
                     </div>
-                    <div className="flex items-center gap-4 lg:gap-8 px-4 lg:px-10">
-                        <div className="flex items-center gap-3">
-                            <span className="text-[8px] lg:text-[9px] font-black text-white/40 uppercase">Pending:</span>
-                            <span className="text-lg lg:text-xl font-black text-bet-accent tabular-nums tracking-tighter">₹{rakebackAmount.toFixed(2)}</span>
+                    <div className="flex items-center gap-6 lg:gap-12 px-6 lg:px-12">
+                        <div className="flex items-center gap-4">
+                            <span className="text-[9px] lg:text-[11px] font-black text-slate-500 uppercase">Your Bonus:</span>
+                            <span className="text-xl lg:text-3xl font-black text-bet-primary tabular-nums tracking-tighter drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">₹{rakebackAmount.toFixed(2)}</span>
                         </div>
                         <button 
                             onClick={claimRakeback} 
                             disabled={rakebackAmount <= 0}
-                            className={`px-8 py-2 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${rakebackAmount > 0 ? 'bg-bet-accent text-black hover:scale-110 active:scale-95' : 'bg-white/5 text-slate-600 cursor-not-allowed'}`}
+                            className={`px-10 py-3 rounded-xl font-black uppercase text-[12px] tracking-widest transition-all ${rakebackAmount > 0 ? 'bg-bet-primary text-bet-950 hover:scale-110 active:scale-95 shadow-xl cyan-glow' : 'bg-white/5 text-slate-700 cursor-not-allowed'}`}
                         >
                             Claim
                         </button>
-                        <button onClick={() => setShowRakebackBar(false)} className="text-white/20 hover:text-white transition-colors font-black text-sm ml-2">✕</button>
+                        <button onClick={() => setShowRakebackBar(false)} className="text-white/20 hover:text-white transition-colors font-black text-lg ml-4">✕</button>
                     </div>
                 </div>
             )}
 
+            {/* Welcome Punter Modal */}
             {showWelcome && (
                 <div className="fixed inset-0 z-[300] flex items-center justify-center p-8 bg-black/98 backdrop-blur-3xl animate-fade-in">
-                    <div className="bg-bet-900 w-full max-w-xl rounded-[3rem] lg:rounded-[4rem] border-2 border-bet-saffron shadow-[0_0_150px_rgba(255,153,51,0.2)] relative overflow-hidden group">
-                        <div className="absolute top-0 w-full h-48 bg-gradient-to-b from-bet-saffron/20 to-transparent"></div>
-                        <div className="p-10 lg:p-16 text-center relative z-10">
-                            <div className="w-20 h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-bet-saffron to-bet-accent rounded-[1.5rem] lg:rounded-[2rem] flex items-center justify-center mx-auto mb-8 lg:mb-10 text-4xl lg:text-5xl shadow-2xl animate-pulse rotate-12 transition-transform">
-                                👑
+                    <div className="bg-bet-900 w-full max-w-2xl rounded-[4rem] border-2 border-bet-primary shadow-[0_0_120px_rgba(34,211,238,0.25)] relative overflow-hidden">
+                        <div className="absolute top-0 w-full h-64 bg-gradient-to-b from-bet-primary/15 to-transparent"></div>
+                        <div className="p-14 lg:p-20 text-center relative z-10">
+                            <div className="w-24 h-24 lg:w-32 lg:h-32 bg-gradient-to-br from-bet-primary to-bet-secondary rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 text-5xl lg:text-7xl shadow-2xl animate-pulse cyan-glow">
+                                🏮
                             </div>
-                            <h2 className="text-4xl lg:text-5xl font-black text-white italic mb-4 uppercase transform -skew-x-12 tracking-tighter bazar-font">
-                                PUNTER'S <span className="text-bet-saffron">DHAMAKA</span>
+                            <h2 className="text-5xl lg:text-7xl font-black text-white italic mb-6 uppercase transform -skew-x-12 tracking-tighter bazar-font leading-none">
+                                NAMASTE <span className="text-bet-primary">PUNTER!</span>
                             </h2>
-                            <p className="text-slate-400 mb-10 lg:mb-12 font-bold uppercase tracking-widest leading-relaxed opacity-80 text-xs lg:text-sm">
-                                Swagat hai, Punter! Claim your <span className="text-bet-saffron">₹1,00,000</span> virtual Satta bonus <br/> and start dominating the Kalyan tables.
+                            <p className="text-slate-300 mb-12 font-bold uppercase tracking-[0.15em] leading-relaxed opacity-90 text-sm lg:text-lg">
+                                Ready for Bhaari Profit? Your <span className="text-bet-primary">₹1,00,000</span> virtual Satta bonus <br/> is waiting. Kalyan draw starts soon!
                             </p>
-                            <div className="space-y-4">
-                                <button onClick={closeWelcome} className="w-full py-5 lg:py-6 bg-bet-saffron text-black font-black text-xl rounded-[1.5rem] lg:rounded-[2rem] shadow-xl uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all bazar-font">
-                                    Claim Now
+                            <div className="space-y-5">
+                                <button onClick={closeWelcome} className="w-full py-7 lg:py-10 bg-bet-primary text-bet-950 font-black text-2xl lg:text-4xl rounded-[2.5rem] lg:rounded-[3rem] shadow-2xl uppercase tracking-[0.3em] hover:scale-105 active:scale-95 transition-all bazar-font cyan-glow">
+                                    Start Playing
                                 </button>
-                                <button onClick={() => setShowWelcome(false)} className="text-slate-700 text-[8px] lg:text-[9px] font-black hover:text-white transition-colors uppercase tracking-widest mt-4">
-                                    I am already a Satta King
+                                <button onClick={() => setShowWelcome(false)} className="text-slate-600 text-[11px] lg:text-[13px] font-black hover:text-white transition-colors uppercase tracking-widest mt-6">
+                                    Continue as Satta Expert
                                 </button>
                             </div>
                         </div>
