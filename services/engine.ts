@@ -1,3 +1,4 @@
+
 import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction, LeaderboardEntry } from '../types';
 
 const DAILY_ALLOWANCE = 10000;
@@ -86,10 +87,19 @@ export class SimulationEngine {
     return { ...this.session };
   }
 
+  public setClientSeed(seed: string) {
+    this.session.clientSeed = seed;
+    this.session.nonce = 0; // Standard practice to reset nonce when seed changes
+    this.saveSession(this.session);
+  }
+
   public peekNextRandom(): number {
     const rng = new LCG(this.session.serverSeed + this.session.clientSeed + this.session.nonce);
     let r = rng.next();
-    if (this.session.settings.isRigged && Math.random() > this.session.settings.forcedRTP) r = 0.001;
+    // Simulate biased results for Rigged mode
+    if (this.session.settings.isRigged && Math.random() > this.session.settings.forcedRTP) {
+       r = r * 0.1; // Skews results toward lower outcomes
+    }
     return r;
   }
 
@@ -182,10 +192,34 @@ export class SimulationEngine {
   }
 
   public calculateTeenPatti(r: number) {
-    const won = r > 0.52; // House edge built-in
+    // Real Teen Patti Ranking Probabilities:
+    // Trail: ~0.24%, Pure Seq: ~0.22%, Seq: ~3.26%, Color: ~4.96%, Pair: ~16.9%, High Card: ~74.4%
+    const won = r > 0.525; // Adjusted for house edge (Approx 47.5% win rate)
     const hands = ['High Card', 'Pair', 'Color', 'Sequence', 'Pure Sequence', 'Trail'];
-    const handStr = Math.floor(r * 10);
-    return { won, hand: hands[handStr % 6], mult: won ? 1.95 : 0 };
+    
+    // Weighted selection for visual flavor
+    let handIdx = 0;
+    if (r > 0.997) handIdx = 5;      // Trail
+    else if (r > 0.994) handIdx = 4; // Pure Seq
+    else if (r > 0.96) handIdx = 3;  // Seq
+    else if (r > 0.91) handIdx = 2;  // Color
+    else if (r > 0.74) handIdx = 1;  // Pair
+    else handIdx = 0;               // High Card
+    
+    return { won, hand: hands[handIdx], mult: won ? 1.95 : 0 };
+  }
+
+  public getSattaMatkaResult(r: number) {
+    // Traditional Satta Matka logic: Kalyan Open/Close style
+    // Drawing 3 cards (Pana) and sum (Single)
+    const rng = new LCG(r.toString());
+    const cards = [
+      Math.floor(rng.next() * 10),
+      Math.floor(rng.next() * 10),
+      Math.floor(rng.next() * 10)
+    ].sort((a, b) => a - b);
+    const sum = cards.reduce((a, b) => a + b, 0) % 10;
+    return { cards: cards.join(''), single: sum };
   }
 
   public getCrashPoint(r: number): number {
