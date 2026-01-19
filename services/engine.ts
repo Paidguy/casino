@@ -65,21 +65,19 @@ export class SimulationEngine {
     return { ...this.session };
   }
 
-  // Fix: Added setClientSeed method to allow users to update their seed and reset nonce
   public setClientSeed(seed: string) {
     this.session.clientSeed = seed;
     this.session.nonce = 0;
     this.saveSession(this.session);
   }
 
-  // Fix: Added peekNextRandom method to provide a lookahead value for deterministic UI display
   public peekNextRandom(): number {
     return Math.random();
   }
 
   public placeBet(game: GameType, amount: number, multiplierOrResolver: number | ((r: number) => { multiplier: number, outcome: string }), outcomeStr?: string): BetResult {
     const currentSession = this.getSession();
-    if (amount > currentSession.balance) throw new Error("Insufficient Balance");
+    if (amount > currentSession.balance && amount > 0) throw new Error("Insufficient Balance");
     
     let multiplier: number;
     let outcome: string;
@@ -98,7 +96,7 @@ export class SimulationEngine {
     this.session.balance = this.session.balance - amount + payout;
     this.session.totalWagered += amount;
     this.session.totalBets += 1;
-    this.session.rakebackBalance += amount * 0.005; // 0.5% Rakeback for VIP feel
+    this.session.rakebackBalance += amount * 0.005;
     
     if (multiplier > this.session.maxMultiplier) this.session.maxMultiplier = multiplier;
 
@@ -154,9 +152,15 @@ export class SimulationEngine {
       .sort((a,b) => b.wagered - a.wagered);
   }
 
+  /**
+   * Industry standard Crash formula:
+   * 3% Instant Crash at 1.00x.
+   * Otherwise: 0.97 / (1 - r)
+   */
   public getCrashPoint(r: number): number {
-    if (r < 0.015) return 1.00; // 1.5% Instant Crash
-    return Math.max(1, +(0.985 / (1 - r)).toFixed(2));
+    const houseEdge = 0.03; // 3%
+    if (r < houseEdge) return 1.00;
+    return Math.max(1, +( (1 - houseEdge) / (1 - r) ).toFixed(2));
   }
 
   public getSattaMatkaResult(r: number) {
