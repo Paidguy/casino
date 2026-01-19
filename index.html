@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stake.Sim | Premium Casino Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              casino: {
+                950: '#0f1116', // Darker background
+                900: '#1a1d23', // Primary panel
+                800: '#21262d', // Sidebar/Hover
+                700: '#2d333b', // Borders
+                600: '#3c444d',
+                accent: '#5865f2', // Brand blue
+                win: '#00e701',   // Positive
+                loss: '#ff0033',  // Negative
+                gold: '#ffb800'   // VIP
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
+      
+      body {
+        background-color: #0f1116;
+        color: #b1b5c3;
+        font-family: 'Inter', sans-serif;
+        overflow: hidden;
+      }
+
+      .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #2d333b; border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3c444d; }
+
+      .bet-input {
+        background: #0f1116;
+        border: 2px solid #2d333b;
+        transition: all 0.2s;
+      }
+      .bet-input:focus {
+        border-color: #5865f2;
+        background: #1a1d23;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(88, 101, 242, 0.1);
+      }
+
+      @keyframes bounce-short {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+      .animate-bounce-short { animation: bounce-short 0.5s ease-in-out infinite; }
+
+      @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+
+      .perspective-1000 { perspective: 1000px; }
+
+      /* Modern Range Slider Styling */
+      input[type=range] {
+        -webkit-appearance: none;
+        background: transparent;
+      }
+      input[type=range]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 8px;
+        background: #1a1d23;
+        border-radius: 4px;
+        border: 1px solid #2d333b;
+      }
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 20px;
+        width: 20px;
+        border-radius: 50%;
+        background: #5865f2;
+        cursor: pointer;
+        margin-top: -7px;
+        box-shadow: 0 0 10px rgba(88, 101, 242, 0.3);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>
