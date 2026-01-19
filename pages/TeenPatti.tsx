@@ -54,7 +54,7 @@ export default function TeenPatti() {
     }, 1500);
   };
 
-  const CardView = ({ card, hidden }: { card: Card, hidden?: boolean }) => (
+  const CardView: React.FC<{ card: Card, hidden?: boolean }> = ({ card, hidden }) => (
     <div className={`w-24 h-36 lg:w-32 lg:h-48 bg-white rounded-[1.5rem] border border-slate-300 flex flex-col items-center justify-center relative shadow-3xl transform transition-all hover:-translate-y-4 duration-300 ${hidden ? 'bg-bet-900 border-white/5' : ''}`}>
       {!hidden ? (
         <>

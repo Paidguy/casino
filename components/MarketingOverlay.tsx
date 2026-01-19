@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { audio } from '../services/audio';
-import { engine } from '../services/engine';
 
 export const MarketingOverlay = () => {
     const [showWelcome, setShowWelcome] = useState(false);
-    const [showRakebackBar, setShowRakebackBar] = useState(true);
     const [systemGlitch, setSystemGlitch] = useState<'NONE' | 'ERROR' | 'RESOLVED'>('NONE');
-    const [rakebackAmount, setRakebackAmount] = useState(0);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -29,23 +26,13 @@ export const MarketingOverlay = () => {
             }
         }, 50000);
 
-        const rakebackInterval = setInterval(() => {
-            setRakebackAmount(engine.getSession().rakebackBalance);
-        }, 1000);
-
-        return () => { clearTimeout(timer); clearInterval(glitchTimer); clearInterval(rakebackInterval); }
+        return () => { clearTimeout(timer); clearInterval(glitchTimer); }
     }, []);
 
     const closeWelcome = () => {
         setShowWelcome(false);
         localStorage.setItem('stake_welcome_v1', 'true');
         audio.playClick();
-    };
-
-    const claimRakeback = () => {
-        if (rakebackAmount <= 0) return;
-        engine.claimRakeback();
-        audio.playWin();
     };
 
     return (
@@ -70,33 +57,6 @@ export const MarketingOverlay = () => {
                             </div>
                         </div>
                     )}
-                </div>
-            )}
-
-            {/* Sticky Rakeback Bar */}
-            {showRakebackBar && (
-                <div className="fixed bottom-0 left-0 right-0 z-[60] bg-gradient-to-r from-bet-950 via-bet-900 to-bet-950 p-4 lg:p-5 flex flex-col md:flex-row items-center justify-between shadow-[0_-20px_50px_rgba(0,0,0,0.8)] border-t border-white/10">
-                    <div className="flex items-center gap-5 px-6 lg:px-12 mb-3 md:mb-0">
-                         <div className="w-10 h-10 bg-bet-primary/10 rounded-full flex items-center justify-center text-xl animate-bounce shadow-inner">🎁</div>
-                         <div className="flex flex-col">
-                            <span className="font-black text-white text-base lg:text-xl italic uppercase -skew-x-12 leading-none bazar-font">DHAMAKA CASHBACK</span>
-                            <span className="text-[8px] lg:text-[10px] font-black text-slate-500 uppercase tracking-widest">Play more to unlock your instant profit back</span>
-                         </div>
-                    </div>
-                    <div className="flex items-center gap-6 lg:gap-12 px-6 lg:px-12">
-                        <div className="flex items-center gap-4">
-                            <span className="text-[9px] lg:text-[11px] font-black text-slate-500 uppercase">Your Bonus:</span>
-                            <span className="text-xl lg:text-3xl font-black text-bet-primary tabular-nums tracking-tighter drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">₹{rakebackAmount.toFixed(2)}</span>
-                        </div>
-                        <button 
-                            onClick={claimRakeback} 
-                            disabled={rakebackAmount <= 0}
-                            className={`px-10 py-3 rounded-xl font-black uppercase text-[12px] tracking-widest transition-all ${rakebackAmount > 0 ? 'bg-bet-primary text-bet-950 hover:scale-110 active:scale-95 shadow-xl cyan-glow' : 'bg-white/5 text-slate-700 cursor-not-allowed'}`}
-                        >
-                            Claim
-                        </button>
-                        <button onClick={() => setShowRakebackBar(false)} className="text-white/20 hover:text-white transition-colors font-black text-lg ml-4">✕</button>
-                    </div>
                 </div>
             )}
 

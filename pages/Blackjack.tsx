@@ -130,7 +130,7 @@ export default function Blackjack() {
       engine.placeBet(GameType.BLACKJACK, finalBet, mult, `BJ: ${txt}`);
   };
 
-  const CardView = ({ card, hidden }: { card: Card, hidden?: boolean }) => (
+  const CardView: React.FC<{ card: Card, hidden?: boolean }> = ({ card, hidden }) => (
      <div className={`w-20 h-32 lg:w-28 lg:h-44 bg-white rounded-2xl shadow-2xl border border-slate-300 flex flex-col items-center justify-center relative select-none transform transition-transform hover:-translate-y-4 duration-300 ${hidden ? 'bg-bet-800 border-bet-700' : ''}`}>
         {!hidden ? (
             <>
