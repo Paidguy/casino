@@ -1,14 +1,14 @@
-
 import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction, LeaderboardEntry } from '../types';
 
 const DAILY_ALLOWANCE = 100000;
 const STORAGE_KEY = 'satking_pro_v2';
 
 const BOTS: LeaderboardEntry[] = [
-  { username: 'Rahul_Satta', wagered: 850000, maxMultiplier: 45.0 },
-  { username: 'Mumbai_Kingpin', wagered: 2200000, maxMultiplier: 120.0 },
-  { username: 'Delhi_Don_77', wagered: 1400000, maxMultiplier: 9.0 },
-  { username: 'Gully_Sniper', wagered: 95000, maxMultiplier: 22.0 },
+  { username: 'Rahul_Satta_King', wagered: 850000, maxMultiplier: 45.0 },
+  { username: 'Mumbai_Khaiwal', wagered: 2200000, maxMultiplier: 120.0 },
+  { username: 'Delhi_Tiger_786', wagered: 1400000, maxMultiplier: 9.0 },
+  { username: 'Gully_Sniper_Boss', wagered: 95000, maxMultiplier: 22.0 },
+  { username: 'Kalyan_Expert_Punter', wagered: 3500000, maxMultiplier: 100.0 },
 ];
 
 export class SimulationEngine {
@@ -152,11 +152,6 @@ export class SimulationEngine {
       .sort((a,b) => b.wagered - a.wagered);
   }
 
-  /**
-   * Industry standard Crash formula:
-   * 3% Instant Crash at 1.00x.
-   * Otherwise: 0.97 / (1 - r)
-   */
   public getCrashPoint(r: number): number {
     const houseEdge = 0.03; // 3%
     if (r < houseEdge) return 1.00;

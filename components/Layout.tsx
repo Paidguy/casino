@@ -7,11 +7,11 @@ import { LiveFeed } from './LiveFeed';
 import { MarketingOverlay } from './MarketingOverlay';
 
 const LiveTicker = () => (
-  <div className="h-9 lg:h-11 bg-bet-950 border-b border-white/10 overflow-hidden flex items-center shrink-0 z-[100] relative">
+  <div className="h-10 lg:h-12 bg-black border-b border-bet-accent/30 overflow-hidden flex items-center shrink-0 z-[100] relative">
     <div className="flex animate-marquee whitespace-nowrap py-1">
       {[...Array(6)].map((_, i) => (
-        <span key={i} className="mx-16 text-[11px] lg:text-[13px] font-bold uppercase tracking-[0.3em] text-bet-primary">
-          🔥 BAZAR DHAMAKA: KALYAN FIX JODI RELEASED • BIG WIN: PUNTER_SAHIL WON ₹7,20,000 • WITHDRAWAL SPEED: 2 MINS • 
+        <span key={i} className="mx-16 text-[11px] lg:text-[14px] font-black uppercase tracking-[0.2em] text-bet-accent">
+          💎 SATTA DHAMAKA: KALYAN FIX PANNA OUT NOW • WITHDRAWAL SPEED: 30 SECONDS • DIRECT OFFICE RESULT 100% GUARANTEE • 
         </span>
       ))}
     </div>
@@ -30,52 +30,47 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }, []);
 
   const menu = [
-    { label: 'Bazar Lobby', to: '/', icon: '🏮' },
+    { label: 'Matka Lobby', to: '/', icon: '🏰' },
     { label: 'Kalyan Bazar', to: '/matka', icon: '🏺' },
-    { label: 'Udaan (Aviator)', to: '/crash', icon: '✈️' },
-    { label: '3-Patti (Royal)', to: '/teenpatti', icon: '🃏' },
-    { label: 'Maha Slots', to: '/slots', icon: '🎰' },
-    { label: 'Chakra Wheel', to: '/wheel', icon: '🎡' },
+    { label: 'Udaan Aviator', to: '/crash', icon: '🚀' },
+    { label: 'Teen Patti', to: '/teenpatti', icon: '🃏' },
+    { label: 'Royal Slots', to: '/slots', icon: '🎰' },
+    { label: 'Shubh Chakra', to: '/wheel', icon: '🎡' },
     { label: 'Kanchas (Mines)', to: '/mines', icon: '🧨' },
-    { label: 'Pit Boss (Admin)', to: '/admin', icon: '👤' },
+    { label: 'Admin Panel', to: '/admin', icon: '👑' },
   ];
 
   const markets = [
-    { name: 'Kalyan', time: '04:00 PM', status: 'OPEN', color: 'text-bet-success' },
-    { name: 'Milan Day', time: '02:30 PM', status: 'OPEN', color: 'text-bet-success' },
-    { name: 'Main Bazar', time: '09:00 PM', status: 'CLOSED', color: 'text-slate-500' },
+    { name: 'Kalyan Open', status: 'LIVE', color: 'text-bet-success' },
+    { name: 'Milan Day', status: 'FIXED', color: 'text-bet-accent' },
+    { name: 'Rajdhani', status: 'CLOSED', color: 'text-slate-500' },
   ];
 
   return (
-    <div className="flex flex-col h-full w-full bg-bet-950 text-slate-100 overflow-hidden font-jakarta">
+    <div className="flex flex-col h-full w-full bg-bet-950 text-white overflow-hidden font-jakarta">
       <LiveTicker />
       <MarketingOverlay />
       
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/95 backdrop-blur-md z-[490] lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[490] lg:hidden" onClick={() => setSidebarOpen(false)} />
         )}
 
-        {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 w-72 bg-bet-900 border-r border-white/5 transition-transform duration-300 z-[500] flex flex-col shrink-0`}>
-          <div className="h-16 lg:h-20 flex items-center px-8 border-b border-white/5 shrink-0 bg-bet-950/40">
-             <Link to="/" className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-bet-primary to-bet-secondary rounded-xl flex items-center justify-center text-white font-black text-2xl shadow-lg cyan-glow">S</div>
-                <div className="text-white font-black text-xl tracking-tighter uppercase italic bazar-font">SATTA<span className="text-bet-primary">KING</span></div>
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 w-72 bg-bet-900 border-r border-bet-accent/10 transition-transform duration-300 z-[500] flex flex-col shrink-0`}>
+          <div className="h-16 lg:h-24 flex items-center px-8 border-b border-bet-accent/10 shrink-0 bg-black/20">
+             <Link to="/" className="flex items-center gap-3">
+                <div className="w-12 h-12 gold-gradient rounded-full flex items-center justify-center text-black font-black text-3xl shadow-xl">S</div>
+                <div className="text-white font-black text-2xl tracking-tighter uppercase italic bazar-font">SATTA<span className="text-bet-accent">BOSS</span></div>
              </Link>
           </div>
           
           <div className="p-6">
-             <div className="bg-bet-950/50 rounded-2xl p-5 border border-white/10 space-y-4 shadow-xl">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Market Radar</p>
+             <div className="bg-black/40 rounded-3xl p-5 border border-bet-accent/20 space-y-4 shadow-xl">
+                <p className="text-[10px] font-black text-bet-accent uppercase tracking-widest px-1">Market Radar</p>
                 {markets.map(m => (
-                  <div key={m.name} className="flex justify-between items-center text-[11px] font-bold">
+                  <div key={m.name} className="flex justify-between items-center text-[12px] font-bold">
                     <span className="text-slate-300">{m.name}</span>
-                    <span className={`${m.color} drop-shadow-[0_0_8px_currentColor]`}>{m.status}</span>
+                    <span className={`${m.color} animate-pulse`}>{m.status}</span>
                   </div>
                 ))}
              </div>
@@ -86,45 +81,44 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                <Link 
                  key={item.to} to={item.to} 
                  onClick={() => { audio.playClick(); if(window.innerWidth < 1024) setSidebarOpen(false); }}
-                 className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-[12px] transition-all group ${location.pathname === item.to ? 'bg-bet-primary text-bet-950 shadow-xl cyan-glow scale-[1.02]' : 'text-slate-500 hover:bg-white/[0.05] hover:text-white'}`}
+                 className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-[13px] transition-all group ${location.pathname === item.to ? 'bg-bet-accent text-black shadow-xl scale-105' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
                >
-                  <span className="text-xl group-hover:scale-110 transition-transform">{item.icon}</span>
+                  <span className="text-2xl group-hover:scale-125 transition-transform">{item.icon}</span>
                   <span className="bazar-font tracking-widest">{item.label}</span>
                </Link>
              ))}
           </nav>
           
-          <div className="p-6 border-t border-white/5 bg-bet-950 shrink-0">
-             <button onClick={() => engine.resetBalance()} className="w-full py-4 bg-bet-800 rounded-2xl text-[11px] font-black uppercase text-slate-400 hover:bg-bet-700 hover:text-white transition-all">Clear Session</button>
+          <div className="p-6 border-t border-bet-accent/10 bg-black/20 shrink-0">
+             <button onClick={() => engine.resetBalance()} className="w-full py-4 bg-bet-800 rounded-2xl text-[12px] font-black uppercase text-bet-accent border border-bet-accent/20 hover:bg-bet-accent hover:text-black transition-all">Clear Session</button>
           </div>
         </aside>
 
-        {/* Main Interface */}
         <div className="flex-1 flex flex-col min-w-0 relative h-full">
-           <header className="h-16 lg:h-22 bg-bet-950/80 backdrop-blur-3xl border-b border-white/5 flex items-center justify-between px-6 lg:px-12 shrink-0 sticky top-0 z-[50]">
+           <header className="h-16 lg:h-24 bg-bet-900/90 backdrop-blur-2xl border-b border-bet-accent/10 flex items-center justify-between px-6 lg:px-16 shrink-0 sticky top-0 z-[50]">
               <div className="flex items-center gap-5 lg:hidden">
-                 <button onClick={() => setSidebarOpen(true)} className="w-12 h-12 flex items-center justify-center text-3xl bg-white/[0.08] rounded-xl border border-white/10 text-bet-primary">☰</button>
-                 <span className="text-bet-primary font-black italic text-xl bazar-font">BHARAT</span>
+                 <button onClick={() => setSidebarOpen(true)} className="w-12 h-12 flex items-center justify-center text-3xl bg-bet-accent text-black rounded-xl">☰</button>
+                 <span className="text-bet-accent font-black italic text-xl bazar-font">SATTA BOSS</span>
               </div>
 
               <div className="hidden md:flex items-center gap-6">
-                 <div className="bg-bet-primary/5 px-5 py-3 rounded-full border border-bet-primary/20 flex items-center gap-3">
-                    <span className="w-2.5 h-2.5 bg-bet-success animate-pulse rounded-full shadow-[0_0_12px_#22c55e]"></span>
-                    <span className="text-[11px] font-black text-bet-primary uppercase tracking-widest">Kalyan Server: Secure</span>
+                 <div className="bg-bet-success/10 px-5 py-3 rounded-full border border-bet-success/20 flex items-center gap-3">
+                    <span className="w-2.5 h-2.5 bg-bet-success animate-pulse rounded-full shadow-[0_0_12px_#16a34a]"></span>
+                    <span className="text-[12px] font-black text-bet-success uppercase tracking-widest">Kalyan Server: Secure & Direct</span>
                  </div>
               </div>
 
-              <div className="flex items-center gap-4 lg:gap-8">
-                 <div className="bg-bet-900 px-6 lg:px-8 py-3 rounded-[1.5rem] border border-white/10 flex items-center gap-6 lg:gap-10 shadow-2xl">
+              <div className="flex items-center gap-4 lg:gap-10">
+                 <div className="bg-black/60 px-6 lg:px-10 py-4 rounded-[2rem] border-2 border-bet-accent/20 flex items-center gap-6 lg:gap-12 shadow-2xl">
                     <div className="flex flex-col text-right">
-                       <span className="text-[9px] lg:text-[10px] font-black text-slate-500 uppercase leading-none mb-1.5">Punter Pot</span>
-                       <span className="text-base lg:text-2xl font-black text-white tabular-nums tracking-tighter">₹{Math.floor(session.balance).toLocaleString()}</span>
+                       <span className="text-[10px] lg:text-[11px] font-black text-bet-accent uppercase leading-none mb-1.5 tracking-tighter">Your Wallet</span>
+                       <span className="text-lg lg:text-3xl font-black text-white tabular-nums tracking-tighter">₹{Math.floor(session.balance).toLocaleString()}</span>
                     </div>
                     <button 
                       onClick={() => { setShowDeposit(true); audio.playClick(); }} 
-                      className="bg-bet-primary text-bet-950 px-6 lg:px-10 py-3.5 rounded-xl text-[11px] lg:text-[13px] font-black uppercase tracking-[0.15em] hover:scale-105 shadow-xl cyan-glow"
+                      className="gold-gradient text-black px-8 lg:px-12 py-4 rounded-xl text-[12px] lg:text-[14px] font-black uppercase tracking-[0.1em] hover:scale-110 shadow-xl"
                     >
-                      Add Cash
+                      Deposit
                     </button>
                  </div>
               </div>
@@ -140,29 +134,28 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <LiveFeed />
       </div>
 
-      {/* Deposit Modal */}
       {showDeposit && (
         <div className="fixed inset-0 z-[2000] bg-black/98 backdrop-blur-3xl flex items-center justify-center p-6">
-           <div className="bg-bet-900 w-full max-w-md rounded-[3rem] overflow-hidden border border-bet-primary/20 shadow-2xl relative animate-fade-in">
-              <div className="p-10 lg:p-14 border-b border-white/5 flex justify-between items-center bg-bet-950/80">
+           <div className="bg-bet-900 w-full max-w-md rounded-[3rem] overflow-hidden border-4 border-bet-accent shadow-2xl relative animate-fade-in">
+              <div className="p-10 lg:p-14 border-b border-bet-accent/20 flex justify-between items-center bg-black/40">
                  <div>
-                   <h2 className="text-3xl lg:text-4xl font-black text-white italic tracking-tighter uppercase leading-none bazar-font">Instant <span className="text-bet-primary">Cash-In</span></h2>
-                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-3">Direct UPI To Bazar Node</p>
+                   <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-none bazar-font">Instant <span className="text-bet-accent">Cash</span></h2>
+                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-3">Direct UPI Deposit (No Middleman)</p>
                  </div>
-                 <button onClick={() => setShowDeposit(false)} className="w-12 h-12 bg-white/[0.08] rounded-full text-white text-2xl flex items-center justify-center border border-white/10 hover:bg-bet-danger transition-colors">✕</button>
+                 <button onClick={() => setShowDeposit(false)} className="w-12 h-12 bg-bet-accent rounded-full text-black text-2xl flex items-center justify-center hover:bg-white transition-colors">✕</button>
               </div>
               <div className="p-10 lg:p-14 space-y-6">
                  <div className="grid grid-cols-2 gap-5">
                     {[10000, 50000, 100000, 500000].map(amt => (
-                       <button key={amt} onClick={() => { engine.deposit(amt, 'UPI'); setShowDeposit(false); audio.playWin(); }} className="py-8 bg-bet-800 hover:bg-bet-primary hover:text-bet-950 border border-white/10 rounded-[2.5rem] text-lg font-black text-white transition-all shadow-xl active:scale-95">₹{amt.toLocaleString()}</button>
+                       <button key={amt} onClick={() => { engine.deposit(amt, 'UPI'); setShowDeposit(false); audio.playWin(); }} className="py-8 bg-bet-800 hover:bg-bet-accent hover:text-black border-2 border-bet-accent/30 rounded-[2.5rem] text-xl font-black text-white transition-all shadow-xl active:scale-95">₹{amt.toLocaleString()}</button>
                     ))}
                  </div>
                  <div className="mt-12 flex flex-col items-center gap-6">
-                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest opacity-60">Matka Certified Terminals</p>
-                    <div className="flex gap-8 opacity-40 hover:opacity-100 transition-opacity">
-                       <div className="w-16 h-10 bg-[#6739B7] rounded-xl flex items-center justify-center text-[9px] font-black text-white shadow-lg">PhonePe</div>
-                       <div className="w-16 h-10 bg-[#00B9F1] rounded-xl flex items-center justify-center text-[9px] font-black text-white shadow-lg">Paytm</div>
-                       <div className="w-16 h-10 bg-white rounded-xl flex items-center justify-center text-[9px] font-black text-indigo-700 shadow-lg">G-Pay</div>
+                    <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest">Khaiwal Trusted Terminals</p>
+                    <div className="flex gap-8 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all">
+                       <div className="w-16 h-10 bg-[#6739B7] rounded-xl flex items-center justify-center text-[10px] font-black text-white">PhonePe</div>
+                       <div className="w-16 h-10 bg-[#00B9F1] rounded-xl flex items-center justify-center text-[10px] font-black text-white">Paytm</div>
+                       <div className="w-16 h-10 bg-white rounded-xl flex items-center justify-center text-[10px] font-black text-blue-600">GooglePay</div>
                     </div>
                  </div>
               </div>
