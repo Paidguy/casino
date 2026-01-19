@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
@@ -30,6 +31,7 @@ export default function TeenPatti() {
     audio.playBet();
 
     setTimeout(() => {
+      // Providing empty string as the 4th argument
       engine.placeBet(GameType.TEENPATTI, betAmount, (r) => {
         const { won, hand } = engine.calculateTeenPatti(r);
         const pHand = [getRandomCard(), getRandomCard(), getRandomCard()];
@@ -50,7 +52,7 @@ export default function TeenPatti() {
           setPayout(0);
           return { multiplier: 0, outcome: `TeenPatti: Dealer Stronger` };
         }
-      });
+      }, '');
     }, 1200);
   };
 

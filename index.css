@@ -1,18 +1,20 @@
-/* Base styles to prevent layout shifts */
-html, body {
-  background-color: #07080a;
-  color: #b1b5c3;
-  margin: 0;
-  padding: 0;
-}
-
+/* Minimal reset to ensure React fills the container */
 #root {
   display: flex;
-  min-height: 100vh;
+  flex-direction: column;
+  height: 100%;
   width: 100%;
 }
 
-/* Ensure fixed and absolute elements have a starting context */
-.fixed { position: fixed; }
-.absolute { position: absolute; }
-.relative { position: relative; }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}

@@ -20,6 +20,7 @@ export default function Coinflip() {
      audio.playSpin();
 
      setTimeout(() => {
+        // Providing empty string as the 4th argument
         engine.placeBet(GameType.COINFLIP, betAmount, (r) => {
            const isHeads = r > 0.5;
            const outcomeSide = isHeads ? 'HEADS' : 'TAILS';
@@ -32,7 +33,7 @@ export default function Coinflip() {
            if (won) audio.playWin(); else audio.playLoss();
            
            return { multiplier: mult, outcome: `Coinflip: ${outcomeSide}` };
-        });
+        }, '');
      }, 1000);
   };
 

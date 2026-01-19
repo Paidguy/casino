@@ -29,7 +29,8 @@ export default function Plinko() {
     const r = engine.peekNextRandom();
     const { path, multiplier } = engine.calculatePlinkoResult(r, rows);
     
-    engine.placeBet(GameType.PLINKO, betAmount, () => ({ multiplier, outcome: `Plinko @ ${multiplier}x` }));
+    // Providing empty string as the 4th argument
+    engine.placeBet(GameType.PLINKO, betAmount, () => ({ multiplier, outcome: `Plinko @ ${multiplier}x` }), '');
     
     setBalls(prev => [...prev, { id: Math.random(), path, step: 0, progress: 0 }]);
   };

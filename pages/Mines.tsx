@@ -44,7 +44,8 @@ export default function Mines() {
       setWin(false);
       setIsPlaying(false);
       audio.playLoss();
-      engine.placeBet(GameType.MINES, 0, () => ({ multiplier: 0, outcome: `Mines: Hit mine on step ${revealedCount + 1}` }));
+      // Providing empty string as the 4th argument
+      engine.placeBet(GameType.MINES, 0, () => ({ multiplier: 0, outcome: `Mines: Hit mine on step ${revealedCount + 1}` }), '');
     } else {
       audio.playClick();
       if (revealedCount + 1 === 25 - minesCount) cashOut(newRevealed);
@@ -56,7 +57,8 @@ export default function Mines() {
     const mult = getMultiplier(count);
     audio.playWin();
     engine.updateBalance(betAmount); // Add stake back for the engine.placeBet to deduct and payout correctly
-    engine.placeBet(GameType.MINES, betAmount, () => ({ multiplier: mult, outcome: `Mines: Win @ ${mult.toFixed(2)}x` }));
+    // Providing empty string as the 4th argument
+    engine.placeBet(GameType.MINES, betAmount, () => ({ multiplier: mult, outcome: `Mines: Win @ ${mult.toFixed(2)}x` }), '');
     setIsPlaying(false);
     setGameOver(true);
     setWin(true);

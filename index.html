@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -12,29 +12,25 @@
           extend: {
             colors: {
               bet: {
-                950: '#050810',
-                900: '#0d1321',
-                800: '#161e31',
-                700: '#232e48',
-                accent: '#fbbf24', // Amber-400 for better visibility
-                primary: '#3b82f6', // Blue-500
-                success: '#22c55e',
+                950: '#03050a',
+                900: '#0a0d1a',
+                800: '#121629',
+                700: '#1d233d',
+                accent: '#facc15',
+                primary: '#2563eb',
+                success: '#10b981',
                 danger: '#ef4444'
               }
             },
             animation: {
               'marquee': 'marquee 40s linear infinite',
-              'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'float': 'float 6s ease-in-out infinite',
+              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'spin-slow': 'spin 10s linear infinite',
             },
             keyframes: {
               marquee: {
                 '0%': { transform: 'translateX(0)' },
                 '100%': { transform: 'translateX(-50%)' }
-              },
-              float: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-20px)' },
               }
             }
           }
@@ -42,7 +38,7 @@
       }
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
       
       :root {
         --app-height: 100dvh;
@@ -51,13 +47,11 @@
       * {
         -webkit-tap-highlight-color: transparent;
         box-sizing: border-box;
-        scrollbar-width: none;
       }
 
-      *::-webkit-scrollbar { display: none; }
-
       body {
-        background-color: #050810;
+        background: #03050a;
+        background-attachment: fixed;
         color: #f8fafc;
         font-family: 'Inter', sans-serif;
         margin: 0;
@@ -65,49 +59,23 @@
         height: var(--app-height);
         width: 100vw;
         overflow: hidden;
-        -webkit-font-smoothing: antialiased;
       }
 
       #root {
         height: 100%;
         width: 100%;
-        position: relative;
-        z-index: 10;
+        display: flex;
+        flex-direction: column;
       }
 
-      /* Dynamic Glow Background instead of noise overlay */
-      .bg-glow {
-        position: fixed;
-        inset: 0;
-        background: radial-gradient(circle at 50% -20%, #1e293b 0%, #050810 100%);
-        z-index: 0;
-      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
       .gold-text {
-        background: linear-gradient(to bottom, #fbbf24, #d97706);
+        background: linear-gradient(to bottom, #facc15, #ca8a04);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 900;
-      }
-
-      .game-viewport {
-        aspect-ratio: 16/9;
-        width: 100%;
-        background: #0d1321;
-        border: 1px solid rgba(255,255,255,0.05);
-        border-radius: 2rem;
-        position: relative;
-        overflow: hidden;
-      }
-
-      @media (max-width: 1024px) {
-        .game-viewport { aspect-ratio: 1/1; }
-      }
-
-      .glass-card {
-        background: rgba(13, 19, 33, 0.7);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
       }
 
       input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
@@ -115,7 +83,7 @@
       .safe-top { padding-top: env(safe-area-inset-top); }
       .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     </style>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.3",
@@ -128,9 +96,8 @@
   }
 }
 </script>
-</head>
+  </head>
   <body>
-    <div class="bg-glow"></div>
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>

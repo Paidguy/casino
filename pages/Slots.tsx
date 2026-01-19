@@ -28,6 +28,7 @@ export default function Slots() {
     }, 100);
     setTimeout(() => {
       clearInterval(interval);
+      // Providing empty string as the 4th argument (outcome) which is ignored when a resolver is used
       engine.placeBet(GameType.SLOTS, betAmount, (r) => {
          const result = engine.calculateSlotsResult(r);
          setReels(result.symbols);
@@ -36,7 +37,7 @@ export default function Slots() {
          setMessage(isWin ? `WIN ${result.multiplier}x` : 'Try Again');
          if (isWin) audio.playWin(); else audio.playLoss();
          return { multiplier: result.multiplier, outcome: `Slots: ${result.symbols.join(' ')}` };
-      });
+      }, '');
     }, 2000);
   };
 

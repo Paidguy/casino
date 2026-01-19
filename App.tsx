@@ -14,6 +14,9 @@ import Fairness from './pages/Fairness';
 import TeenPatti from './pages/TeenPatti';
 import Matka from './pages/Matka';
 import Admin from './pages/Admin';
+import Wheel from './pages/Wheel';
+import Baccarat from './pages/Baccarat';
+import Keno from './pages/Keno';
 
 const App: React.FC = () => {
   return (
@@ -32,6 +35,9 @@ const App: React.FC = () => {
         <Route path="/teenpatti" element={<TeenPatti />} />
         <Route path="/matka" element={<Matka />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/wheel" element={<Wheel />} />
+        <Route path="/baccarat" element={<Baccarat />} />
+        <Route path="/keno" element={<Keno />} />
       </Routes>
     </HashRouter>
   );

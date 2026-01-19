@@ -135,10 +135,11 @@ export default function Blackjack() {
       if (mult >= 1) audio.playWin(); else audio.playLoss();
       
       if (mult > 0) engine.updateBalance(finalBet); // Refund stake
+      // Providing empty string as the 4th argument
       engine.placeBet(GameType.BLACKJACK, finalBet, () => ({
           multiplier: mult,
           outcome: `BJ: ${txt} (${getHandValue(p)} vs ${getHandValue(d)})`
-      }));
+      }), '');
   };
 
   const CardView = ({ card, hidden }: { card: Card, hidden?: boolean }) => (
@@ -200,7 +201,7 @@ export default function Blackjack() {
             {message && <div className={`mt-4 p-4 text-center font-black text-white rounded border-2 animate-bounce-short ${message.includes('Win') || message.includes('Blackjack') ? 'bg-emerald-500/20 border-emerald-500' : 'bg-rose-500/20 border-rose-500'}`}>{message}</div>}
          </div>
 
-         <div className="md:col-span-2 bg-[#064e3b] rounded-[2rem] border-[12px] border-[#374151] p-8 min-h-[600px] flex flex-col justify-between relative shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]">
+         <div className="md:col-span-2 bg-[#064e3b] rounded-[2rem] border-[12px] border-[#374151] p-8 min-h-[600px] flex flex-col justify-between items-center relative shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]">
              {/* Table Felt Texture */}
              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] pointer-events-none rounded-[1.5rem]"></div>
 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
@@ -20,6 +21,7 @@ export default function Roulette() {
     audio.playSpin();
     
     setTimeout(() => {
+      // Providing empty string as the 4th argument (outcome) which is ignored when a resolver is used
       engine.placeBet(GameType.ROULETTE, betAmount, (r) => {
           const num = engine.calculateRouletteResult(r);
           setResult(num);
@@ -37,7 +39,7 @@ export default function Roulette() {
           else audio.playLoss();
           
           return { multiplier, outcome: `Roulette: ${num}` };
-      });
+      }, '');
     }, 1500);
   };
 

@@ -7,10 +7,8 @@ const STORAGE_KEY = 'satking_v1';
 const BOTS: LeaderboardEntry[] = [
   { username: 'Rahul_Betting', wagered: 450000, maxMultiplier: 25.0 },
   { username: 'Mumbai_Don', wagered: 1200000, maxMultiplier: 88.0 },
-  { username: 'Lakhpati_Anil', wagered: 890000, maxMultiplier: 5.5 },
   { username: 'UP_Satta_King', wagered: 2400000, maxMultiplier: 450.0 },
   { username: 'Gully_Boy_B', wagered: 45000, maxMultiplier: 12.0 },
-  { username: 'Pintu_FixedDraw', wagered: 670000, maxMultiplier: 9.0 },
 ];
 
 export class SimulationEngine {
@@ -67,14 +65,24 @@ export class SimulationEngine {
     return { ...this.session };
   }
 
-  public placeBet(game: GameType, amount: number, logic: (r: number) => { multiplier: number; outcome: string }): BetResult {
+  // Updated placeBet to handle both direct values and resolver callbacks
+  public placeBet(game: GameType, amount: number, multiplierOrResolver: number | ((r: number) => { multiplier: number, outcome: string }), outcomeStr?: string): BetResult {
     if (amount > this.session.balance) throw new Error("Insufficient Balance");
     
-    // Seeded randomness logic (simulated)
-    const r = Math.random();
-    const { multiplier, outcome } = logic(r);
+    let multiplier: number;
+    let outcome: string;
+
+    if (typeof multiplierOrResolver === 'function') {
+      const r = this.peekNextRandom();
+      const res = multiplierOrResolver(r);
+      multiplier = res.multiplier;
+      outcome = res.outcome;
+    } else {
+      multiplier = multiplierOrResolver;
+      outcome = outcomeStr || '';
+    }
+
     const payout = amount * multiplier;
-    
     this.session.balance = this.session.balance - amount + payout;
     this.session.totalWagered += amount;
     this.session.totalBets += 1;
@@ -93,8 +101,8 @@ export class SimulationEngine {
       balanceAfter: this.session.balance,
       nonce: this.session.nonce++,
       clientSeed: this.session.clientSeed,
-      serverSeedHash: 'verified_draw_' + this.session.serverSeed.substring(0, 8),
-      resultInput: r
+      serverSeedHash: 'verified_' + this.session.serverSeed.substring(0, 8),
+      resultInput: Math.random()
     };
 
     this.session.history = [record, ...this.session.history].slice(0, 50);
@@ -115,6 +123,11 @@ export class SimulationEngine {
     this.saveSession(this.session);
   }
 
+  public updateBalance(a: number) { 
+    this.session.balance += a; 
+    this.saveSession(this.session); 
+  }
+
   public getLeaderboard() {
     return [...BOTS, { username: this.session.username, wagered: this.session.totalWagered, maxMultiplier: this.session.maxMultiplier, isPlayer: true }]
       .sort((a,b) => b.wagered - a.wagered);
@@ -125,90 +138,6 @@ export class SimulationEngine {
     return Math.max(1, +(0.99 / (1 - r)).toFixed(2));
   }
 
-  public calculateDiceResult(r: number, target: number, type: 'over' | 'under') {
-    const roll = +(r * 100).toFixed(2);
-    const won = type === 'over' ? roll > target : roll < target;
-    return { roll, won };
-  }
-
-  public calculateRouletteResult(r: number) {
-    return Math.floor(r * 37);
-  }
-
-  public calculateSlotsResult(r: number) {
-    const symbols = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
-    const s1 = symbols[Math.floor(r * 5)];
-    const s2 = symbols[Math.floor((r * 10) % 5)];
-    const s3 = symbols[Math.floor((r * 100) % 5)];
-    const result = [s1, s2, s3];
-    let multiplier = 0;
-    if (s1 === s2 && s2 === s3) {
-      if (s1 === '7️⃣') multiplier = 50;
-      else if (s1 === '💎') multiplier = 20;
-      else multiplier = 10;
-    } else if (s1 === s2 || s2 === s3 || s1 === s3) {
-      multiplier = 2;
-    }
-    return { symbols: result, multiplier };
-  }
-
-  public setClientSeed(seed: string) {
-    this.session.clientSeed = seed;
-    this.session.nonce = 0;
-    this.saveSession(this.session);
-  }
-
-  public peekNextRandom(): number {
-    return Math.random();
-  }
-
-  public generateMinesGrid(r: number, minesCount: number): boolean[] {
-    const grid = Array(25).fill(false);
-    let placed = 0;
-    let seed = r;
-    while (placed < minesCount) {
-      const idx = Math.floor(seed * 25);
-      if (!grid[idx]) {
-        grid[idx] = true;
-        placed++;
-      }
-      seed = (seed * 16807 + 1) % 2147483647 / 2147483647;
-    }
-    return grid;
-  }
-
-  public calculatePlinkoResult(r: number, rows: number) {
-    const path = [];
-    let seed = r;
-    for (let i = 0; i < rows; i++) {
-      const dir = seed > 0.5 ? 1 : 0;
-      path.push(dir);
-      seed = (seed * 16807 + 1) % 2147483647 / 2147483647;
-    }
-    const finalBin = path.reduce((a, b) => a + b, 0);
-    const multiTable: Record<number, number[]> = {
-        16: [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000]
-    };
-    const multiplier = multiTable[rows]?.[finalBin] || 0;
-    return { path, multiplier };
-  }
-
-  public claimRakeback() {
-    this.session.balance += this.session.rakebackBalance;
-    this.session.rakebackBalance = 0;
-    this.saveSession(this.session);
-  }
-
-  public updateAdminSettings(settings: Partial<AdminSettings>) {
-    this.session.settings = { ...this.session.settings, ...settings };
-    this.saveSession(this.session);
-  }
-
-  public resetBalance() {
-    this.session.balance = DAILY_ALLOWANCE;
-    this.saveSession(this.session);
-  }
-
   public getSattaMatkaResult(r: number) {
      const c1 = Math.floor(r * 10);
      const c2 = Math.floor((r * 1.5 * 10) % 10);
@@ -217,20 +146,106 @@ export class SimulationEngine {
      return { cards: `${c1}${c2}${c3}`, single };
   }
 
-  public calculateTeenPatti(r: number) {
-     const won = r > 0.525; // 2.5% edge
-     const hands = ["High Card", "Pair", "Color", "Sequence", "Pure Sequence", "Trail"];
-     return { won, hand: hands[Math.floor(r * 6)] };
+  public resetBalance() {
+    this.session.balance = DAILY_ALLOWANCE;
+    this.saveSession(this.session);
   }
 
-  public updateBalance(a: number) { 
-    this.session.balance += a; 
-    this.saveSession(this.session); 
+  // Set client seed and reset nonce
+  public setClientSeed(seed: string) {
+    this.session.clientSeed = seed;
+    this.session.nonce = 0;
+    this.saveSession(this.session);
   }
-  
-  public toggleAdmin() { 
-    this.session.isAdmin = !this.session.isAdmin; 
-    this.saveSession(this.session); 
+
+  // Simplified peek for simulation purposes
+  public peekNextRandom(): number {
+    return Math.random();
+  }
+
+  // Logic for dice roll outcomes
+  public calculateDiceResult(r: number, target: number, mode: 'over' | 'under') {
+    const roll = r * 100;
+    const won = mode === 'over' ? roll > target : roll < target;
+    return { roll, won };
+  }
+
+  // Standard roulette number generation
+  public calculateRouletteResult(r: number) {
+    return Math.floor(r * 37);
+  }
+
+  // Basic slots logic
+  public calculateSlotsResult(r: number) {
+    const symbols = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
+    const s1 = symbols[Math.floor(r * 5)];
+    const s2 = symbols[Math.floor((r * 1.2 * 10) % 5)];
+    const s3 = symbols[Math.floor((r * 1.5 * 10) % 5)];
+    const res = [s1, s2, s3];
+    let multiplier = 0;
+    if (s1 === s2 && s2 === s3) {
+      if (s1 === '7️⃣') multiplier = 50;
+      else if (s1 === '💎') multiplier = 20;
+      else multiplier = 10;
+    } else if (s1 === s2 || s2 === s3 || s1 === s3) {
+      multiplier = 2;
+    }
+    return { symbols: res, multiplier };
+  }
+
+  // Generates mines positions on a 5x5 grid
+  public generateMinesGrid(r: number, minesCount: number): boolean[] {
+    const grid = Array(25).fill(false);
+    let placed = 0;
+    while (placed < minesCount) {
+      const idx = Math.floor(Math.random() * 25);
+      if (!grid[idx]) {
+        grid[idx] = true;
+        placed++;
+      }
+    }
+    return grid;
+  }
+
+  // Simulates plinko ball path
+  public calculatePlinkoResult(r: number, rows: number) {
+    const path = [];
+    for (let i = 0; i < rows; i++) {
+      path.push(Math.random() > 0.5 ? 1 : 0);
+    }
+    const finalBin = path.reduce((a, b) => a + b, 0);
+    const MULTIPLIERS_16 = [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000];
+    return { path, multiplier: MULTIPLIERS_16[finalBin] };
+  }
+
+  // Claims accumulated rakeback to main balance
+  public claimRakeback() {
+    const amount = this.session.rakebackBalance;
+    if (amount > 0) {
+      this.session.balance += amount;
+      this.session.rakebackBalance = 0;
+      this.saveSession(this.session);
+    }
+  }
+
+  // Update administrative settings
+  public updateAdminSettings(settings: Partial<AdminSettings>) {
+    this.session.settings = { ...this.session.settings, ...settings };
+    this.saveSession(this.session);
+  }
+
+  // Toggle admin mode for testing
+  public toggleAdmin() {
+    this.session.isAdmin = !this.session.isAdmin;
+    this.saveSession(this.session);
+  }
+
+  // Simulates Teen Patti hand outcome
+  public calculateTeenPatti(r: number) {
+    const won = r > 0.525; // 52.5% Dealer Bias
+    const hands = ['Trail', 'Pure Sequence', 'Sequence', 'Color', 'Pair', 'High Card'];
+    const hand = hands[Math.floor(Math.random() * hands.length)];
+    return { won, hand };
   }
 }
 

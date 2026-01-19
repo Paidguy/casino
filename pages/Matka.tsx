@@ -20,6 +20,7 @@ export default function Matka() {
     audio.playBet();
 
     setTimeout(() => {
+      // Providing empty string as the 4th argument
       engine.placeBet(GameType.MATKA, betAmount, (r) => {
         const res = engine.getSattaMatkaResult(r);
         setResult(res);
@@ -33,7 +34,7 @@ export default function Matka() {
           setMessage('Try Again');
           return { multiplier: 0, outcome: `Matka Draw: ${res.single}` };
         }
-      });
+      }, '');
     }, 2000);
   };
 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
@@ -17,6 +18,7 @@ export default function Dice() {
   const handleRoll = () => {
     if (betAmount > engine.getSession().balance || betAmount <= 0) return;
     audio.playBet();
+    // Providing empty string as the 4th argument (outcome) which is ignored when a resolver is used
     engine.placeBet(GameType.DICE, betAmount, (r) => {
         const { roll, won } = engine.calculateDiceResult(r, target, rollOver ? 'over' : 'under');
         setLastRoll(roll);
@@ -24,7 +26,7 @@ export default function Dice() {
         if (won) audio.playWin();
         else audio.playLoss();
         return { multiplier: won ? multiplier : 0, outcome: `Rolled ${roll.toFixed(2)}` };
-    });
+    }, '');
   };
 
   return (
