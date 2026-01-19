@@ -9,6 +9,7 @@ export enum GameType {
   BLACKJACK = 'BLACKJACK',
   COINFLIP = 'COINFLIP',
   TEENPATTI = 'TEENPATTI',
+  MATKA = 'MATKA',
 }
 
 export interface BetResult {
@@ -80,4 +81,5 @@ export const HOUSE_EDGES: Record<GameType, number> = {
   [GameType.BLACKJACK]: 0.005,
   [GameType.COINFLIP]: 0.019,
   [GameType.TEENPATTI]: 0.025,
+  [GameType.MATKA]: 0.05,
 };

@@ -70,6 +70,7 @@ export class SimulationEngine {
   public placeBet(game: GameType, amount: number, logic: (r: number) => { multiplier: number; outcome: string }): BetResult {
     if (amount > this.session.balance) throw new Error("Insufficient Balance");
     
+    // Seeded randomness logic (simulated)
     const r = Math.random();
     const { multiplier, outcome } = logic(r);
     const payout = amount * multiplier;
@@ -77,7 +78,6 @@ export class SimulationEngine {
     this.session.balance = this.session.balance - amount + payout;
     this.session.totalWagered += amount;
     this.session.totalBets += 1;
-    // Add 0.1% rakeback for every bet placed
     this.session.rakebackBalance += amount * 0.001;
     
     if (multiplier > this.session.maxMultiplier) this.session.maxMultiplier = multiplier;
@@ -92,8 +92,8 @@ export class SimulationEngine {
       outcome,
       balanceAfter: this.session.balance,
       nonce: this.session.nonce++,
-      clientSeed: 'n/a',
-      serverSeedHash: 'verified_draw',
+      clientSeed: this.session.clientSeed,
+      serverSeedHash: 'verified_draw_' + this.session.serverSeed.substring(0, 8),
       resultInput: r
     };
 
@@ -120,25 +120,21 @@ export class SimulationEngine {
       .sort((a,b) => b.wagered - a.wagered);
   }
 
-  // Fix: Added missing method for Crash game logic
   public getCrashPoint(r: number): number {
-    if (r < 0.01) return 1.00; // 1% instant bust
+    if (r < 0.01) return 1.00; 
     return Math.max(1, +(0.99 / (1 - r)).toFixed(2));
   }
 
-  // Fix: Added missing method for Dice game logic
   public calculateDiceResult(r: number, target: number, type: 'over' | 'under') {
-    const roll = r * 100;
+    const roll = +(r * 100).toFixed(2);
     const won = type === 'over' ? roll > target : roll < target;
     return { roll, won };
   }
 
-  // Fix: Added missing method for Roulette game logic
   public calculateRouletteResult(r: number) {
     return Math.floor(r * 37);
   }
 
-  // Fix: Added missing method for Slots game logic
   public calculateSlotsResult(r: number) {
     const symbols = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
     const s1 = symbols[Math.floor(r * 5)];
@@ -156,19 +152,16 @@ export class SimulationEngine {
     return { symbols: result, multiplier };
   }
 
-  // Fix: Added missing method to update provably fair client seed
   public setClientSeed(seed: string) {
     this.session.clientSeed = seed;
     this.session.nonce = 0;
     this.saveSession(this.session);
   }
 
-  // Fix: Added missing method to peek next random input for fairness verification
   public peekNextRandom(): number {
     return Math.random();
   }
 
-  // Fix: Added missing method to generate Mines game grid
   public generateMinesGrid(r: number, minesCount: number): boolean[] {
     const grid = Array(25).fill(false);
     let placed = 0;
@@ -184,7 +177,6 @@ export class SimulationEngine {
     return grid;
   }
 
-  // Fix: Added missing method to calculate Plinko ball path and multiplier
   public calculatePlinkoResult(r: number, rows: number) {
     const path = [];
     let seed = r;
@@ -201,20 +193,17 @@ export class SimulationEngine {
     return { path, multiplier };
   }
 
-  // Fix: Added missing method to claim VIP rakeback
   public claimRakeback() {
     this.session.balance += this.session.rakebackBalance;
     this.session.rakebackBalance = 0;
     this.saveSession(this.session);
   }
 
-  // Fix: Added missing method to update admin oversight settings
   public updateAdminSettings(settings: Partial<AdminSettings>) {
     this.session.settings = { ...this.session.settings, ...settings };
     this.saveSession(this.session);
   }
 
-  // Fix: Added missing method to reset player balance from admin panel
   public resetBalance() {
     this.session.balance = DAILY_ALLOWANCE;
     this.saveSession(this.session);
@@ -222,20 +211,27 @@ export class SimulationEngine {
 
   public getSattaMatkaResult(r: number) {
      const c1 = Math.floor(r * 10);
-     const c2 = Math.floor((r * 100) % 10);
-     const c3 = Math.floor((r * 1000) % 10);
+     const c2 = Math.floor((r * 1.5 * 10) % 10);
+     const c3 = Math.floor((r * 2.2 * 10) % 10);
      const single = (c1 + c2 + c3) % 10;
      return { cards: `${c1}${c2}${c3}`, single };
   }
 
   public calculateTeenPatti(r: number) {
-     const won = r > 0.52;
+     const won = r > 0.525; // 2.5% edge
      const hands = ["High Card", "Pair", "Color", "Sequence", "Pure Sequence", "Trail"];
      return { won, hand: hands[Math.floor(r * 6)] };
   }
 
-  public updateBalance(a: number) { this.session.balance += a; this.saveSession(this.session); }
-  public toggleAdmin() { this.session.isAdmin = !this.session.isAdmin; this.saveSession(this.session); }
+  public updateBalance(a: number) { 
+    this.session.balance += a; 
+    this.saveSession(this.session); 
+  }
+  
+  public toggleAdmin() { 
+    this.session.isAdmin = !this.session.isAdmin; 
+    this.saveSession(this.session); 
+  }
 }
 
 export const engine = new SimulationEngine();

@@ -12,7 +12,7 @@
           extend: {
             colors: {
               bet: {
-                950: '#04080f',
+                950: '#02040a',
                 900: '#0a101d',
                 800: '#141c2d',
                 700: '#1d2a44',
@@ -21,9 +21,8 @@
                 success: '#00c805',
                 danger: '#ff3b30'
               },
-              // Alias casino colors to bet theme for compatibility
               casino: {
-                950: '#04080f',
+                950: '#02040a',
                 900: '#0a101d',
                 800: '#141c2d',
                 700: '#1d2a44',
@@ -34,9 +33,10 @@
               }
             },
             animation: {
-              'marquee': 'marquee 25s linear infinite',
+              'marquee': 'marquee 30s linear infinite',
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'bounce-short': 'bounce 0.5s ease-in-out 2'
+              'bounce-short': 'bounce 0.5s ease-in-out 2',
+              'spin-slow': 'spin 8s linear infinite',
             },
             keyframes: {
               marquee: {
@@ -52,44 +52,42 @@
       @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@700&display=swap');
       
       :root {
-        --fluid-text-xs: clamp(0.7rem, 0.6rem + 0.3vw, 0.9rem);
-        --fluid-text-sm: clamp(0.8rem, 0.7rem + 0.4vw, 1rem);
-        --fluid-text-base: clamp(0.9rem, 0.8rem + 0.5vw, 1.2rem);
-        --fluid-text-lg: clamp(1.1rem, 1rem + 0.6vw, 1.5rem);
-        --fluid-text-xl: clamp(1.5rem, 1.2rem + 1vw, 2.5rem);
+        --fluid-text-xs: clamp(0.65rem, 0.6rem + 0.2vw, 0.85rem);
+        --fluid-text-sm: clamp(0.75rem, 0.7rem + 0.3vw, 1rem);
+        --fluid-text-base: clamp(0.85rem, 0.8rem + 0.4vw, 1.15rem);
+        --fluid-text-lg: clamp(1rem, 0.9rem + 0.5vw, 1.4rem);
+        --fluid-text-xl: clamp(1.25rem, 1.1rem + 0.8vw, 2.2rem);
+      }
+
+      * {
+        -webkit-tap-highlight-color: transparent;
+        box-sizing: border-box;
       }
 
       body {
-        background-color: #04080f;
+        background-color: #02040a;
         color: #e2e8f0;
         font-family: 'Inter', sans-serif;
         margin: 0;
         padding: 0;
         -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
-        height: 100dvh; /* Dynamic viewport height */
+        height: 100dvh;
         width: 100vw;
+      }
+
+      #root {
+        height: 100%;
+        width: 100%;
       }
 
       .noise-overlay {
         position: fixed;
         inset: 0;
         background-image: url('https://www.transparenttextures.com/patterns/asfalt-dark.png');
-        opacity: 0.05;
+        opacity: 0.03;
         pointer-events: none;
         z-index: 9999;
-      }
-
-      .bet-card {
-        background: #0a101d;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        transition: all 0.2s ease;
-      }
-
-      .bet-card:hover {
-        border-color: rgba(250, 204, 21, 0.2);
-        background: #141c2d;
       }
 
       .gold-text {
@@ -105,17 +103,51 @@
       .game-viewport {
         aspect-ratio: 16/9;
         width: 100%;
-        max-height: 60vh;
+        max-width: 100%;
+        height: auto;
       }
 
       @media (max-width: 1024px) {
         .game-viewport {
           aspect-ratio: 1/1;
-          max-height: 50vh;
+          max-height: 60vh;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .game-viewport {
+          aspect-ratio: 1/1.1;
         }
       }
 
       .perspective-1000 { perspective: 1000px; }
+      
+      .safe-top { padding-top: env(safe-area-inset-top); }
+      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+      /* Custom Range Slider Styling */
+      input[type=range] {
+        -webkit-appearance: none;
+        background: transparent;
+      }
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 24px;
+        width: 24px;
+        border-radius: 50%;
+        background: #facc15;
+        cursor: pointer;
+        margin-top: -8px;
+        box-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
+      }
+      input[type=range]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 8px;
+        cursor: pointer;
+        background: #0a101d;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
     </style>
     <script type="importmap">
 {
@@ -131,7 +163,7 @@
 }
 </script>
   </head>
-  <body class="noise-overlay">
+  <body class="noise-overlay overflow-hidden">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
