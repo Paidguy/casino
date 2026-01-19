@@ -38,42 +38,26 @@ export default function Lobby() {
            <div className="relative z-10 space-y-12">
               <div className="inline-flex items-center gap-4 bg-white/5 px-6 py-2 rounded-full border border-white/10 backdrop-blur-xl">
                  <span className="w-3 h-3 bg-bet-primary rounded-full animate-pulse shadow-[0_0_15px_#22d3ee]"></span>
-                 <span className="text-[12px] lg:text-[14px] font-black uppercase tracking-[0.4em] text-bet-primary">BHARAT KA NO. 1 TRUSTED KHAIWAL</span>
+                 <span className="text-[12px] lg:text-[14px] font-black uppercase tracking-[0.4em] text-bet-primary leading-none">INDIA'S NO. 1 TRUSTED KHAIWAL</span>
               </div>
               <h1 className="text-6xl lg:text-[12rem] font-black text-white italic -skew-x-12 uppercase leading-[0.75] tracking-tighter bazar-font drop-shadow-3xl">
-                 BHAARI <br/> <span className="gold-text">PROFIT</span> <br/> DHAMAKA
+                 BHAARI <br/> <span className="gold-text">PROFIT</span>
               </h1>
               <p className="text-lg lg:text-3xl font-bold text-slate-300 uppercase tracking-[0.1em] max-w-4xl leading-relaxed opacity-95">
-                 Kalyan Main Draw • 100% Direct Result • High-Speed Virtual Payouts. Pure Satta, Pure Passion.
+                 Powered by **@paidguy** • Real-Time Matka Nodes • Verified Results.
               </p>
               <div className="flex flex-wrap gap-8 pt-12">
-                 <Link to="/matka" className="bg-bet-primary text-bet-950 px-20 py-8 lg:px-32 lg:py-10 rounded-[3rem] font-black uppercase text-xl lg:text-2xl tracking-[0.2em] shadow-2xl hover:scale-110 active:scale-95 transition-all bazar-font cyan-glow">Bet Lagao</Link>
-                 <Link to="/fairness" className="bg-white/10 text-white px-20 py-8 lg:px-32 lg:py-10 rounded-[3rem] font-black uppercase text-xl lg:text-2xl tracking-[0.2em] border border-white/10 hover:bg-white/20 transition-all bazar-font">Check Record</Link>
+                 <Link to="/matka" className="bg-bet-primary text-bet-950 px-20 py-8 lg:px-32 lg:py-10 rounded-[3rem] font-black uppercase text-xl lg:text-2xl tracking-[0.2em] shadow-2xl hover:scale-110 active:scale-95 transition-all bazar-font cyan-glow leading-none">Bet Lagao</Link>
+                 <Link to="/fairness" className="bg-white/10 text-white px-20 py-8 lg:px-32 lg:py-10 rounded-[3rem] font-black uppercase text-xl lg:text-2xl tracking-[0.2em] border border-white/10 hover:bg-white/20 transition-all bazar-font leading-none">Record Audit</Link>
               </div>
            </div>
         </section>
-
-        {/* Live Market Results */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-           {markets.map(res => (
-             <div key={res.name} className="bg-bet-900/60 border border-white/10 p-12 rounded-[3rem] flex justify-between items-center group hover:border-bet-primary transition-all shadow-2xl backdrop-blur-3xl card-glass">
-                <div>
-                   <p className="text-[12px] font-black text-slate-500 uppercase mb-4 tracking-widest">{res.name}</p>
-                   <p className={`text-6xl font-black ${res.color} bazar-font tracking-[0.15em] drop-shadow-[0_0_10px_currentColor]`}>{res.result}</p>
-                </div>
-                <div className="text-right">
-                   <p className="text-[12px] font-black text-bet-accent uppercase mb-4 tracking-widest">{res.type}</p>
-                   <div className="w-5 h-5 rounded-full bg-bet-success ml-auto animate-pulse shadow-[0_0_20px_#22c55e]"></div>
-                </div>
-             </div>
-           ))}
-        </div>
 
         {/* Bazar Selection */}
         <section className="space-y-16">
            <div className="flex items-end justify-between px-6">
               <div>
-                 <h2 className="text-5xl lg:text-8xl font-black text-white italic -skew-x-6 uppercase tracking-tighter bazar-font leading-none">Live <span className="text-bet-primary">Markets</span></h2>
+                 <h2 className="text-5xl lg:text-8xl font-black text-white italic -skew-x-6 uppercase tracking-tighter bazar-font leading-none">Live <span className="text-bet-primary">Bazar</span></h2>
                  <p className="text-[14px] font-black text-slate-600 uppercase tracking-[0.8em] mt-6 leading-none">Matka • Udaan • Patti • Slots</p>
               </div>
            </div>

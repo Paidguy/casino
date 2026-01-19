@@ -87,7 +87,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                  className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-[13px] transition-all group ${location.pathname === item.to ? 'bg-bet-primary text-bet-950 shadow-xl cyan-glow scale-[1.02]' : 'text-slate-500 hover:bg-white/5 hover:text-white'}`}
                >
                   <span className="text-2xl group-hover:rotate-12 transition-transform">{item.icon}</span>
-                  <span className="bazar-font tracking-widest">{item.label}</span>
+                  <span className="bazar-font tracking-widest leading-none">{item.label}</span>
                </Link>
              ))}
           </nav>
@@ -108,7 +108,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <div className="hidden md:flex items-center gap-6">
                  <div className="bg-bet-primary/5 px-6 py-3 rounded-full border border-bet-primary/20 flex items-center gap-3">
                     <span className="w-2.5 h-2.5 bg-bet-success animate-pulse rounded-full shadow-[0_0_12px_#22c55e]"></span>
-                    <span className="text-[12px] font-black text-bet-primary uppercase tracking-widest">Kalyan Server: Secure Node</span>
+                    <span className="text-[12px] font-black text-bet-primary uppercase tracking-widest leading-none">Welfare Server: Secure Node</span>
                  </div>
               </div>
 
@@ -154,14 +154,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     {[10000, 50000, 100000, 500000].map(amt => (
                        <button key={amt} onClick={() => { engine.deposit(amt, 'UPI'); setShowDeposit(false); audio.playWin(); }} className="py-8 bg-bet-800 hover:bg-bet-primary hover:text-bet-950 border border-white/10 rounded-[2.5rem] text-xl font-black text-white transition-all shadow-xl active:scale-95">₹{amt.toLocaleString()}</button>
                     ))}
-                 </div>
-                 <div className="mt-12 flex flex-col items-center gap-8">
-                    <p className="text-[11px] text-slate-600 font-black uppercase tracking-widest opacity-80">Trusted Khaiwal Gateways</p>
-                    <div className="flex gap-8 grayscale hover:grayscale-0 opacity-40 hover:opacity-100 transition-all">
-                       <div className="w-16 h-10 bg-[#6739B7] rounded-xl flex items-center justify-center text-[10px] font-black text-white shadow-xl">PhonePe</div>
-                       <div className="w-16 h-10 bg-[#00B9F1] rounded-xl flex items-center justify-center text-[10px] font-black text-white shadow-xl">Paytm</div>
-                       <div className="w-16 h-10 bg-white rounded-xl flex items-center justify-center text-[10px] font-black text-indigo-700 shadow-xl">G-Pay</div>
-                    </div>
                  </div>
               </div>
            </div>

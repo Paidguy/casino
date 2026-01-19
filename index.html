@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>SattaKing.IND | No. 1 Trusted Satta Bazar</title>
+    <title>SattaKing.IND | @paidguy Pro Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -20,6 +20,7 @@
                 primary: '#22d3ee', // Cyan Neon
                 secondary: '#d946ef', // Magenta Laser
                 accent: '#fbbf24', // Kalyan Gold
+                saffron: '#f97316', // Blaze Orange
                 success: '#22c55e', // Matrix Green
                 danger: '#f43f5e', // Neon Rose
               }
@@ -29,7 +30,6 @@
               'pulse-neon': 'pulseNeon 2s ease-in-out infinite',
               'fade-in': 'fadeIn 0.3s ease-out forwards',
               'spin-slow': 'spin 12s linear infinite',
-              'bounce-soft': 'bounceSoft 3s ease-in-out infinite',
             },
             keyframes: {
               marquee: {
@@ -43,10 +43,6 @@
               fadeIn: {
                 '0%': { opacity: '0', transform: 'scale(0.98) translateY(10px)' },
                 '100%': { opacity: '1', transform: 'scale(1) translateY(0)' }
-              },
-              bounceSoft: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-10px)' }
               }
             }
           }
@@ -79,19 +75,8 @@
         display: flex;
         flex-direction: column;
         background-image: 
-          radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.15) 0%, transparent 60%),
-          radial-gradient(circle at 100% 100%, rgba(217, 70, 239, 0.12) 0%, transparent 40%);
-        background-attachment: fixed;
-      }
-
-      .silk-shadow { box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.7); }
-      .cyan-glow { filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.6)); }
-      .magenta-glow { filter: drop-shadow(0 0 10px rgba(217, 70, 239, 0.6)); }
-
-      .card-glass {
-        background: rgba(15, 23, 42, 0.7);
-        backdrop-filter: blur(25px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+          radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.15) 0%, transparent 50%),
+          radial-gradient(circle at 100% 100%, rgba(217, 70, 239, 0.1) 0%, transparent 40%);
       }
 
       .gold-text {
@@ -100,26 +85,33 @@
         -webkit-text-fill-color: transparent;
       }
 
-      button, a { transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+      .card-glass {
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+      }
+
+      button, a { transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
       button:active, a:active { transform: scale(0.94) translateY(2px); }
 
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
-    "recharts": "https://esm.sh/recharts@^3.6.0",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
-  }
-}
-</script>
-</head>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.2.3",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+        "react/": "https://esm.sh/react@^19.2.3/",
+        "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+        "recharts": "https://esm.sh/recharts@^3.6.0",
+        "vite": "https://esm.sh/vite@^7.3.1",
+        "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+      }
+    }
+    </script>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
