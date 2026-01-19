@@ -2,16 +2,16 @@
 import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction } from '../types';
 
 const DAILY_ALLOWANCE = 10000;
-const STORAGE_KEY = 'stake_ind_v3_premium';
+const STORAGE_KEY = 'stake_ind_v5_pro';
 
 const SARCASTIC_BAILOUTS = [
-  "Back for more punishment? Here's 10k. Try not to lose it in 5 minutes this time.",
-  "Your wallet is as empty as your betting strategy. Re-upping your balance...",
+  "Back for more punishment? Here's ₹10,000. Try to last more than 5 minutes this time.",
+  "Your wallet is as empty as your betting strategy. Re-upping your balance for the house's sake.",
   "Watching you play is our staff's favorite comedy. Take some credits, the show must go on.",
-  "A gold fish has a higher win rate than you. Here's a pity deposit.",
-  "Is this a hobby or a cry for help? Either way, take the money and go.",
-  "The 'Bookie' is feeling generous today. Don't tell your financial advisor.",
-  "You're single-handedly funding our next yacht. Here, keep the donations coming."
+  "A gold fish has a higher win rate than you. Here's a pity deposit. Don't spend it all in one spin.",
+  "Is this a hobby or a cry for help? Either way, take the money and get back to the tables.",
+  "The Bookie is feeling generous. Don't tell your family where this money came from.",
+  "You're single-handedly funding our next office expansion. Here, keep the donations coming."
 ];
 
 class LCG {
@@ -50,6 +50,7 @@ export class SimulationEngine {
       id: Math.random().toString(36).substring(7),
       username: 'Punter_' + Math.floor(Math.random() * 10000),
       balance: DAILY_ALLOWANCE,
+      rakebackBalance: 0,
       isAdmin: false,
       startBalance: DAILY_ALLOWANCE,
       startTime: Date.now(),
@@ -113,8 +114,27 @@ export class SimulationEngine {
     return tx;
   }
 
+  public claimRakeback(): number {
+    const amount = this.session.rakebackBalance;
+    if (amount <= 0) return 0;
+    
+    const tx: Transaction = {
+      id: Math.random().toString(36).substring(7),
+      type: 'RAKEBACK',
+      amount,
+      timestamp: Date.now(),
+      status: 'COMPLETED',
+      method: 'VIP Bonus'
+    };
+    this.session.balance += amount;
+    this.session.rakebackBalance = 0;
+    this.session.transactions = [tx, ...this.session.transactions].slice(0, 50);
+    this.saveSession(this.session);
+    return amount;
+  }
+
   public requestBailout(): string {
-    if (this.session.balance > 10) return "You still have cash. Go lose that first.";
+    if (this.session.balance > 10) return "You still have ₹. Go lose that first, then beg.";
     const amount = DAILY_ALLOWANCE;
     this.session.balance = amount;
     const tx: Transaction = {
@@ -123,7 +143,7 @@ export class SimulationEngine {
       amount,
       timestamp: Date.now(),
       status: 'COMPLETED',
-      method: 'System Charity'
+      method: 'Broke Bailout'
     };
     this.session.transactions = [tx, ...this.session.transactions].slice(0, 50);
     this.saveSession(this.session);
@@ -147,6 +167,7 @@ export class SimulationEngine {
 
   public resetBalance() {
     this.session.balance = DAILY_ALLOWANCE;
+    this.session.rakebackBalance = 0;
     this.session.transactions = [];
     this.saveSession(this.session);
   }
@@ -162,6 +183,7 @@ export class SimulationEngine {
     const rng = new LCG(this.session.serverSeed + this.session.clientSeed + this.session.nonce);
     let rawRandom = rng.next();
 
+    // Educational rigging logic
     if (this.session.settings.isRigged && Math.random() > this.session.settings.forcedRTP) {
       rawRandom = 0.0001; 
     }
@@ -175,6 +197,10 @@ export class SimulationEngine {
     this.session.nonce += 1;
     this.session.settings.globalProfit += (amount - payout);
     
+    // Rakeback logic: 10% of house edge on every bet
+    const edge = HOUSE_EDGES[game];
+    this.session.rakebackBalance += (amount * edge * 0.1);
+
     if (payout > amount) this.session.totalWins += 1;
     else if (amount > 0) this.session.totalLosses += 1;
 

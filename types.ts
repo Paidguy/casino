@@ -28,7 +28,7 @@ export interface BetResult {
 
 export interface Transaction {
   id: string;
-  type: 'DEPOSIT' | 'WITHDRAW' | 'BAILOUT';
+  type: 'DEPOSIT' | 'WITHDRAW' | 'BAILOUT' | 'RAKEBACK';
   amount: number;
   timestamp: number;
   status: 'COMPLETED' | 'PENDING';
@@ -46,6 +46,7 @@ export interface UserSession {
   id: string;
   username: string;
   balance: number;
+  rakebackBalance: number;
   isAdmin: boolean;
   startBalance: number;
   startTime: number;
