@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
@@ -13,27 +12,25 @@ export default function Matka() {
   const [message, setMessage] = useState('');
 
   const play = () => {
-    if (betAmount > engine.getSession().balance || betAmount <= 0 || selectedNum === null) return;
-    
+    if (betAmount > engine.getSession().balance || selectedNum === null) return;
     setIsDrawing(true);
     setResult(null);
     setMessage('');
     audio.playBet();
 
     setTimeout(() => {
-      engine.placeBet(GameType.ROULETTE, betAmount, (r) => { // Using Roulette house edge
+      engine.placeBet(GameType.ROULETTE, betAmount, (r) => {
         const res = engine.getSattaMatkaResult(r);
         setResult(res);
         setIsDrawing(false);
-
         if (res.single === selectedNum) {
           audio.playWin();
-          setMessage('JACKPOT! 9x WIN');
-          return { multiplier: 9, outcome: `Satta Matka: Single ${res.single} (Pana ${res.cards})` };
+          setMessage('JACKPOT WIN!');
+          return { multiplier: 9, outcome: `Matka Draw: ${res.single}` };
         } else {
           audio.playLoss();
-          setMessage('Better luck next draw');
-          return { multiplier: 0, outcome: `Satta Matka: Single ${res.single}` };
+          setMessage('Try Again');
+          return { multiplier: 0, outcome: `Matka Draw: ${res.single}` };
         }
       });
     }, 2000);
@@ -41,87 +38,58 @@ export default function Matka() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12 animate-fade-in">
-        <div className="bg-[#0f1116] p-10 rounded-[3rem] border border-white/5 h-fit shadow-2xl space-y-10 order-2 lg:order-1">
-          <div className="space-y-6">
-            <h2 className="text-2xl font-black text-white italic -skew-x-12 uppercase tracking-tighter">Matka Terminal</h2>
-            <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 block">Wager Amount (₹)</label>
-              <input 
-                type="number" 
-                value={betAmount} 
-                onChange={(e) => setBetAmount(Number(e.target.value))} 
-                className="w-full bg-black border border-white/10 rounded-2xl px-6 py-4 text-white font-mono font-black text-xl" 
-              />
-            </div>
-            
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 block">Select Single Number (0-9)</label>
-              <div className="grid grid-cols-5 gap-2">
-                {[...Array(10)].map((_, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => setSelectedNum(i)}
-                    className={`py-4 rounded-xl font-black text-lg transition-all ${selectedNum === i ? 'bg-casino-accent text-black shadow-lg scale-105' : 'bg-white/5 text-slate-500 hover:text-white'}`}
-                  >
-                    {i}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button 
-              onClick={play} 
-              disabled={isDrawing || selectedNum === null}
-              className="w-full py-6 bg-casino-accent text-black font-black text-2xl rounded-3xl shadow-[0_20px_60px_rgba(0,231,1,0.2)] hover:scale-105 active:scale-95 transition-all uppercase tracking-widest disabled:opacity-50"
-            >
-              {isDrawing ? 'Drawing...' : 'Place Bet'}
-            </button>
-          </div>
-        </div>
-
-        <div className="lg:col-span-2 bg-[#1a1d23] rounded-[4rem] p-12 lg:p-20 border border-white/5 flex flex-col items-center justify-center relative shadow-inner overflow-hidden order-1 lg:order-2">
-           <div className="absolute inset-0 bg-gradient-to-br from-casino-accent/5 via-transparent to-transparent pointer-events-none"></div>
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="bg-bet-900 border border-white/5 rounded p-6">
+           <h1 className="text-xl font-black text-white uppercase italic mb-6">Kalyan Main <span className="text-bet-accent">Bazar</span></h1>
            
-           <div className="text-center space-y-12 relative z-10">
-              <div className="flex flex-col items-center">
-                 <div className="text-[11px] font-black text-slate-600 uppercase tracking-[0.8em] mb-10 italic">Diamond Matka Results</div>
-                 <div className="flex gap-4">
-                    {isDrawing ? (
-                       [0,1,2].map(i => (
-                         <div key={i} className="w-20 h-28 bg-black rounded-3xl border-2 border-white/10 flex items-center justify-center text-5xl animate-pulse">?</div>
-                       ))
-                    ) : result ? (
-                       result.cards.split('').map((c, i) => (
-                         <div key={i} className="w-20 h-28 bg-white text-black rounded-3xl flex items-center justify-center text-5xl font-black shadow-2xl animate-fade-in-up" style={{ animationDelay: `${i * 150}ms` }}>{c}</div>
-                       ))
-                    ) : (
-                       [0,1,2].map(i => (
-                         <div key={i} className="w-20 h-28 bg-black/40 rounded-3xl border-2 border-white/5 flex items-center justify-center text-4xl text-slate-800">0</div>
-                       ))
-                    )}
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Left Column: Number Grid */}
+              <div className="md:col-span-2">
+                 <div className="text-[10px] font-bold text-slate-500 uppercase mb-4">Select Single Digits (0-9)</div>
+                 <div className="grid grid-cols-5 gap-2">
+                    {[...Array(10)].map((_, i) => (
+                      <button 
+                        key={i} onClick={() => setSelectedNum(i)}
+                        className={`p-6 rounded font-black text-xl transition-all ${selectedNum === i ? 'bg-bet-accent text-black' : 'bg-bet-800 text-white border border-white/5'}`}
+                      >
+                        {i}
+                      </button>
+                    ))}
                  </div>
               </div>
 
-              <div className="py-10">
-                 {isDrawing ? (
-                   <div className="w-32 h-32 rounded-full border-4 border-dashed border-casino-accent animate-spin mx-auto opacity-30"></div>
-                 ) : result ? (
-                   <div className="space-y-4">
-                      <div className="text-8xl font-black text-white italic transform -skew-x-12 animate-bounce">{result.single}</div>
-                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Single Draw Result</div>
-                   </div>
-                 ) : (
-                   <div className="w-32 h-32 rounded-full border-4 border-white/5 flex items-center justify-center text-white/5 text-5xl font-black italic -skew-x-12">?</div>
-                 )}
+              {/* Right Column: Bet Controls */}
+              <div className="space-y-4">
+                 <div className="bg-bet-800 p-4 rounded border border-white/5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Bet Amount (₹)</label>
+                    <input type="number" value={betAmount} onChange={e => setBetAmount(Number(e.target.value))} className="w-full bg-bet-950 border border-white/10 p-2 text-white font-black" />
+                    <div className="text-[10px] text-success mt-2 font-bold">Estimated Payout: ₹{betAmount * 9}</div>
+                 </div>
+                 <button onClick={play} disabled={isDrawing || selectedNum === null} className="w-full py-4 btn-primary rounded disabled:opacity-50">
+                    {isDrawing ? 'Drawing...' : 'Place Bet'}
+                 </button>
               </div>
-
-              {message && (
-                <div className={`text-4xl lg:text-5xl font-black uppercase italic -skew-x-12 animate-fade-in-up ${result?.single === selectedNum ? 'text-casino-accent' : 'text-rose-500'}`}>
-                   {message}
-                </div>
-              )}
            </div>
+        </div>
+
+        {/* Draw Display */}
+        <div className="bg-bet-900 border border-white/5 rounded-lg p-10 flex flex-col items-center justify-center min-h-[300px]">
+           {isDrawing ? (
+              <div className="text-4xl animate-bounce">🏺</div>
+           ) : result ? (
+              <div className="text-center">
+                 <div className="text-xs font-bold text-slate-500 uppercase mb-2">Draw Outcome</div>
+                 <div className="flex gap-2 justify-center mb-4">
+                    {result.cards.split('').map((c, i) => (
+                      <span key={i} className="w-12 h-16 bg-white text-black flex items-center justify-center text-3xl font-black rounded">{c}</span>
+                    ))}
+                 </div>
+                 <div className="text-6xl font-black text-bet-accent">{result.single}</div>
+                 <div className={`mt-4 font-black uppercase text-xl ${result.single === selectedNum ? 'text-success' : 'text-danger'}`}>{message}</div>
+              </div>
+           ) : (
+              <div className="text-slate-700 font-black text-4xl uppercase opacity-20 italic">Place your bet to start draw</div>
+           )}
         </div>
       </div>
     </Layout>

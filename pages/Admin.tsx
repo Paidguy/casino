@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect } from 'react';
-// Fix: Layout is a named export, not a default export.
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
 import { GameType } from '../types';
@@ -20,89 +18,86 @@ export default function Admin() {
 
   return (
     <Layout>
-      <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
-        <header className="flex justify-between items-center border-b border-casino-800 pb-6">
+      <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-20">
+        <header className="flex flex-col md:flex-row justify-between items-center gap-6 border-b border-white/5 pb-10">
           <div>
-            <h1 className="text-4xl font-black text-white italic transform -skew-x-6 tracking-tighter">
-              PIT <span className="text-casino-accent">BOSS</span> COMMAND
+            <h1 className="text-4xl font-black text-white italic transform -skew-x-12 tracking-tighter uppercase leading-none">
+              PIT <span className="text-bet-accent">BOSS</span> COMMAND
             </h1>
-            <p className="text-casino-600 font-bold uppercase text-[10px] tracking-[0.3em]">Operational Oversight • Reality Manipulation</p>
+            <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.4em] mt-3">Operational Oversight • Reality Manipulation</p>
           </div>
-          <div className="flex gap-4">
-            <button onClick={() => engine.resetBalance()} className="bg-casino-800 hover:bg-casino-700 px-4 py-2 rounded-lg font-bold text-xs text-white border border-casino-700 transition-all">Emergency Reset</button>
-            <button onClick={() => engine.toggleAdmin()} className="bg-casino-loss text-white px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest shadow-lg">Logout</button>
+          <div className="flex gap-4 w-full md:w-auto">
+            <button onClick={() => engine.resetBalance()} className="flex-1 md:flex-none bg-bet-800 hover:bg-bet-700 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest text-white border border-white/5 transition-all">Emergency Reset</button>
+            <button onClick={() => engine.toggleAdmin()} className="flex-1 md:flex-none bg-bet-danger text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg">Logout</button>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
            {[
-             { label: 'Site Net Profit', val: `$${session.settings.globalProfit.toLocaleString()}`, color: 'text-casino-win' },
+             { label: 'Site Net Profit', val: `₹${Math.floor(session.settings.globalProfit).toLocaleString()}`, color: 'text-bet-success' },
              { label: 'Active Nonce', val: session.nonce, color: 'text-white' },
-             { label: 'User Retention', val: '98.2%', color: 'text-casino-accent' },
-             { label: 'RNG Entropy', val: 'MAX', color: 'text-casino-gold' }
+             { label: 'User Retention', val: '98.2%', color: 'text-bet-accent' },
+             { label: 'RNG Entropy', val: 'MAX', color: 'gold-text' }
            ].map((stat, i) => (
-             <div key={i} className="bg-casino-900 p-6 rounded-2xl border border-casino-800 shadow-xl group hover:border-casino-accent transition-colors">
-                <div className="text-[10px] font-bold text-casino-600 uppercase tracking-widest mb-2 group-hover:text-casino-accent">{stat.label}</div>
-                <div className={`text-3xl font-black tabular-nums ${stat.color}`}>{stat.val}</div>
+             <div key={i} className="bg-bet-900 p-6 lg:p-8 rounded-[2rem] border border-white/5 shadow-xl group hover:border-bet-accent transition-colors">
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 group-hover:text-bet-accent">{stat.label}</div>
+                <div className={`text-xl lg:text-3xl font-black tabular-nums tracking-tighter ${stat.color}`}>{stat.val}</div>
              </div>
            ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <section className="bg-casino-900 rounded-3xl border border-casino-800 p-8 space-y-8 shadow-2xl">
-            <h2 className="text-xl font-black text-white flex items-center gap-3">
-              <span className="w-2 h-2 rounded-full bg-casino-accent animate-ping"></span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+          <section className="bg-bet-900 rounded-[3rem] border border-white/5 p-8 lg:p-12 space-y-10 shadow-2xl">
+            <h2 className="text-2xl font-black text-white uppercase italic -skew-x-6 flex items-center gap-4">
+              <span className="w-3 h-3 rounded-full bg-bet-accent animate-ping"></span>
               RNG Override Filters
             </h2>
 
-            <div className="flex items-center justify-between p-6 bg-casino-800 rounded-2xl border border-casino-700 hover:border-casino-accent transition-all group">
+            <div className="flex items-center justify-between p-8 bg-black/40 rounded-3xl border border-white/5 hover:border-bet-accent transition-all group cursor-pointer" onClick={() => update('isRigged', !session.settings.isRigged)}>
                <div>
-                 <div className="font-black text-white group-hover:text-casino-accent transition-colors">ENHANCED VARIANCE</div>
-                 <div className="text-[10px] text-casino-600 font-bold uppercase tracking-widest mt-1">Simulates "unlucky" streaks to preserve house profit.</div>
+                 <div className="font-black text-white group-hover:text-bet-accent transition-colors uppercase tracking-tight">ENHANCED VARIANCE</div>
+                 <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Simulates "unlucky" streaks for retention analysis.</div>
                </div>
-               <button 
-                  onClick={() => update('isRigged', !session.settings.isRigged)}
-                  className={`w-16 h-8 rounded-full transition-all relative ${session.settings.isRigged ? 'bg-casino-loss shadow-[0_0_15px_rgba(255,0,51,0.4)]' : 'bg-casino-950 border border-casino-700'}`}
-               >
+               <div className={`w-16 h-8 rounded-full transition-all relative ${session.settings.isRigged ? 'bg-bet-danger shadow-[0_0_15px_rgba(255,59,48,0.4)]' : 'bg-bet-950 border border-white/5'}`}>
                   <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-md ${session.settings.isRigged ? 'left-9' : 'left-1'}`}></div>
-               </button>
+               </div>
             </div>
 
-            <div className="space-y-4 bg-casino-800 p-6 rounded-2xl border border-casino-700">
+            <div className="space-y-6 bg-black/40 p-8 rounded-3xl border border-white/5">
                <div className="flex justify-between items-end">
-                  <label className="text-[10px] font-black text-casino-600 uppercase tracking-widest">Global Payout Limit (RTP)</label>
-                  <span className="text-2xl font-black text-white">{Math.floor(session.settings.forcedRTP * 100)}%</span>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Global Payout Limit (RTP)</label>
+                  <span className="text-3xl font-black text-white tabular-nums leading-none">{Math.floor(session.settings.forcedRTP * 100)}%</span>
                </div>
                <input 
                   type="range" min="0" max="1" step="0.01" 
                   value={session.settings.forcedRTP} 
                   onChange={(e) => update('forcedRTP', Number(e.target.value))}
-                  className="w-full h-2 bg-casino-950 rounded-lg appearance-none cursor-pointer accent-casino-accent"
+                  className="w-full h-3 bg-bet-950 rounded-full appearance-none cursor-pointer accent-bet-accent"
                />
-               <div className="flex justify-between text-[10px] font-bold text-casino-600 uppercase">
+               <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase tracking-widest">
                   <span>House Wins All</span>
                   <span>Pure Fairness</span>
                </div>
             </div>
           </section>
 
-          <section className="bg-casino-900 rounded-3xl border border-casino-800 overflow-hidden shadow-2xl">
-             <div className="p-6 bg-casino-800 border-b border-casino-700">
-                <h2 className="text-xl font-black text-white uppercase italic transform -skew-x-6">Game Edge Table</h2>
+          <section className="bg-bet-900 rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl flex flex-col">
+             <div className="p-8 bg-bet-800 border-b border-white/5 shrink-0">
+                <h2 className="text-2xl font-black text-white uppercase italic transform -skew-x-12 tracking-tighter">Software Module Edges</h2>
              </div>
-             <div className="overflow-y-auto max-h-[400px] custom-scrollbar">
+             <div className="flex-1 overflow-y-auto no-scrollbar">
                <table className="w-full text-left">
-                  <thead className="bg-casino-950/50 text-[10px] font-bold text-casino-600 uppercase tracking-widest">
+                  <thead className="bg-black/20 text-[10px] font-black text-slate-600 uppercase tracking-widest">
                      <tr>
-                        <th className="px-6 py-4">Software Module</th>
-                        <th className="px-6 py-4 text-right">Edge Config</th>
+                        <th className="px-10 py-5">Module ID</th>
+                        <th className="px-10 py-5 text-right">House Edge</th>
                      </tr>
                   </thead>
-                  <tbody className="divide-y divide-casino-800">
+                  <tbody className="divide-y divide-white/5">
                      {Object.values(GameType).map(type => (
-                       <tr key={type} className="hover:bg-casino-800/50 transition-colors group">
-                          <td className="px-6 py-4 font-black text-white group-hover:text-casino-accent">{type}</td>
-                          <td className="px-6 py-4 text-right font-mono font-bold text-casino-win">
+                       <tr key={type} className="hover:bg-white/[0.02] transition-colors group">
+                          <td className="px-10 py-5 font-black text-white group-hover:text-bet-accent uppercase italic text-sm tracking-tight">{type}</td>
+                          <td className="px-10 py-5 text-right font-mono font-black text-bet-success text-sm tabular-nums">
                              {(session.settings.houseEdgeOverrides[type] * 100).toFixed(2)}%
                           </td>
                        </tr>

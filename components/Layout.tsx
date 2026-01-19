@@ -3,208 +3,196 @@ import { Link, useLocation } from 'react-router-dom';
 import { UserSession } from '../types';
 import { engine } from '../services/engine';
 import { audio } from '../services/audio';
-import { MarketingOverlay } from './MarketingOverlay';
-import { LiveFeed } from './LiveFeed';
+
+const JackpotTicker = () => (
+  <div className="h-8 bg-bet-950 border-b border-white/5 overflow-hidden flex items-center shrink-0">
+    <div className="flex animate-marquee whitespace-nowrap py-1">
+      {[...Array(10)].map((_, i) => (
+        <span key={i} className="mx-8 text-[9px] font-bold uppercase tracking-wider text-bet-accent">
+          🔥 JACKPOT WIN: USER_4421 won ₹12,40,290 on KALYAN NIGHT • INSTANT WITHDRAWAL SUCCESSFUL VIA UPI • WELCOME BONUS 500% ACTIVE • 
+        </span>
+      ))}
+    </div>
+  </div>
+);
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<UserSession>(engine.getSession());
-  const [showWallet, setShowWallet] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [walletTab, setWalletTab] = useState<'DEPOSIT' | 'WITHDRAW' | 'HISTORY'>('DEPOSIT');
-  const [amountInput, setAmountInput] = useState('1000');
+  const [showDeposit, setShowDeposit] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
-    const interval = setInterval(() => setSession(engine.getSession()), 500);
-    return () => clearInterval(interval);
+    const itv = setInterval(() => setSession(engine.getSession()), 1000);
+    return () => clearInterval(itv);
   }, []);
 
   const menu = [
-    { label: 'Lobby', to: '/', icon: '🎰' },
-    { label: 'Satta Matka', to: '/matka', icon: '🏺' },
-    { label: 'Teen Patti', to: '/teenpatti', icon: '🎴' },
-    { label: 'Matka Crash', to: '/crash', icon: '🚀' },
-    { label: 'Plinko', to: '/plinko', icon: '🟢' },
-    { label: 'Mines', to: '/mines', icon: '💣' },
-    { label: 'Blackjack', to: '/blackjack', icon: '🃏' },
-    { label: 'Roulette', to: '/roulette', icon: '🎡' },
-    { label: 'Dice', to: '/dice', icon: '🎲' },
-    { label: 'Coinflip', to: '/coinflip', icon: '🪙' },
+    { label: 'Home', to: '/', icon: '🏠' },
+    { label: 'Satta Bazar', to: '/matka', icon: '🏺' },
+    { label: 'Teen Patti', to: '/teenpatti', icon: '🃏' },
+    { label: 'Aviator', to: '/crash', icon: '✈️' },
+    { label: 'Mines', to: '/mines', icon: '🧨' },
+    { label: 'Fairness', to: '/fairness', icon: '⚖️' },
+    { label: 'Account', to: '/admin', icon: '👤' },
   ];
 
-  const deposit = () => {
-    const amount = parseFloat(amountInput);
-    if (!isNaN(amount) && amount > 0) {
-      engine.deposit(amount, 'UPI Transfer (Mock)');
-      audio.playWin();
-      setAmountInput('');
-      setWalletTab('HISTORY');
-    }
-  };
-
-  const withdraw = () => {
-    const amount = parseFloat(amountInput);
-    if (!isNaN(amount) && amount > 0) {
-      try {
-        engine.withdraw(amount, 'Bank Payout (Mock)');
-        audio.playLoss();
-        setAmountInput('');
-        setWalletTab('HISTORY');
-      } catch (e: any) { alert(e.message); }
-    }
-  };
-
   return (
-    <div className="flex h-screen bg-[#07080a] text-slate-400 font-sans overflow-hidden">
-      <MarketingOverlay />
+    <div className="flex h-[100dvh] bg-bet-950 text-slate-300 overflow-hidden flex-col">
+      <JackpotTicker />
       
-      {/* Sidebar - Desktop */}
-      <aside className={`fixed inset-y-0 left-0 w-60 bg-[#0f1116] border-r border-white/5 flex flex-col z-[100] transition-transform duration-300 lg:relative lg:translate-x-0 ${showSidebar ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-casino-accent rounded-xl flex items-center justify-center text-black font-black text-xl shadow-[0_0_15px_rgba(0,231,1,0.3)]">S</div>
-             <div className="flex flex-col leading-none">
-               <span className="text-white font-black text-xl italic uppercase -skew-x-12 tracking-tighter">STAKE<span className="text-casino-accent">.IND</span></span>
-               <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em] mt-1">Diamond Matka</span>
-             </div>
-          </Link>
-          <button className="lg:hidden text-white bg-white/5 p-2 rounded-lg" onClick={() => setShowSidebar(false)}>✕</button>
-        </div>
-
-        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto custom-scrollbar">
-          <div className="px-4 py-3 text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">Original Games</div>
-          {menu.map(item => (
-            <Link key={item.to} to={item.to} onClick={() => { audio.playClick(); setShowSidebar(false); }} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${location.pathname === item.to ? 'bg-white/5 text-white shadow-inner border border-white/5' : 'hover:bg-white/[0.02] hover:text-white'}`}>
-              <span className={`text-lg ${location.pathname === item.to ? 'opacity-100 scale-110' : 'opacity-40'} transition-transform`}>{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
-          <div className="h-px bg-white/5 my-6 mx-4" />
-          <Link to="/fairness" onClick={() => setShowSidebar(false)} className="flex items-center gap-4 px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">⚖️ Fairness</Link>
-          {session.isAdmin && (
-            <Link to="/admin" onClick={() => setShowSidebar(false)} className="flex items-center gap-4 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-casino-accent hover:text-white transition-colors animate-pulse">🛠 Admin</Link>
-          )}
-        </nav>
-
-        <div className="p-4 bg-black/10 border-t border-white/5">
-           <div className="bg-[#1a1d23] p-3 rounded-xl border border-white/5 space-y-2">
-              <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase tracking-tighter">
-                 <span>VIP PROGRESS</span>
-                 <span className="text-casino-accent">LV. 3</span>
-              </div>
-              <div className="h-1 bg-black rounded-full overflow-hidden border border-white/5">
-                 <div className="h-full bg-casino-accent shadow-[0_0_8px_rgba(0,231,1,0.5)]" style={{ width: '68%' }}></div>
-              </div>
-           </div>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col relative min-w-0 lg:pr-72">
-        <header className="h-16 lg:h-20 glass flex items-center justify-between px-6 lg:px-10 z-[60]">
-           <div className="flex items-center gap-4">
-              <button className="lg:hidden text-white bg-white/5 p-2 rounded-lg" onClick={() => setShowSidebar(true)}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile Sidebar Overlay */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <div 
+              className="w-72 h-full bg-bet-900 border-r border-white/10 p-6 flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-bet-accent font-black text-2xl italic mb-10 tracking-tighter">SATTAKING</div>
+              <nav className="flex-1 space-y-2">
+                {menu.map(m => (
+                  <Link 
+                    key={m.to} to={m.to} 
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-4 p-4 rounded-xl font-bold transition-all ${location.pathname === m.to ? 'bg-bet-primary text-white shadow-lg' : 'hover:bg-bet-800'}`}
+                  >
+                    <span className="text-xl">{m.icon}</span> {m.label}
+                  </Link>
+                ))}
+              </nav>
+              <button 
+                onClick={() => setSidebarOpen(false)}
+                className="mt-10 py-4 bg-bet-800 rounded-xl font-black text-xs uppercase"
+              >
+                Close Menu
               </button>
-              <div className="bg-[#07080a] pl-4 pr-1.5 py-1.5 rounded-xl border border-white/10 flex items-center gap-4 lg:gap-8 shadow-xl">
-                 <div className="flex items-center gap-2">
-                    <span className="text-casino-accent font-black text-sm">₹</span>
-                    <span className="text-white font-mono font-black text-sm lg:text-base tabular-nums tracking-tighter">
-                       {session.balance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                 </div>
-                 <button onClick={() => setShowWallet(true)} className="bg-casino-accent text-black px-4 lg:px-8 py-2 rounded-lg text-[9px] font-black uppercase transition-all shadow-md active:scale-95 tracking-widest hover:bg-white">Wallet</button>
-              </div>
-           </div>
-           
-           <div className="flex items-center gap-3 lg:gap-4">
-              <div className="text-right hidden sm:block leading-tight">
-                 <div className="text-xs font-black text-white italic uppercase -skew-x-6">{session.username}</div>
-                 <div className="text-[9px] font-bold text-casino-accent uppercase tracking-widest mt-0.5">High Roller</div>
-              </div>
-              <div className="w-9 h-9 lg:w-11 lg:h-11 rounded-xl bg-[#1a1d23] border border-white/10 flex items-center justify-center text-white font-black cursor-pointer hover:border-casino-accent transition-all shadow-lg active:scale-90" onClick={() => engine.toggleAdmin()}>
-                 {session.username[0]}
-              </div>
-           </div>
-        </header>
+            </div>
+          </div>
+        )}
 
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8 pb-32">
-           {children}
-        </main>
+        {/* Desktop Sidebar */}
+        <aside className="hidden lg:flex w-72 bg-bet-900 border-r border-white/5 flex-col shrink-0">
+          <div className="h-20 flex items-center px-8 border-b border-white/5">
+             <Link to="/" className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-bet-accent rounded-xl flex items-center justify-center text-black font-black text-xl shadow-[0_0_20px_rgba(250,204,21,0.2)]">S</div>
+                <div className="flex flex-col">
+                  <span className="text-white font-black text-lg leading-none tracking-tighter uppercase italic">SATTA<span className="text-bet-accent">KING</span></span>
+                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Bharat's No. 1 Portal</span>
+                </div>
+             </Link>
+          </div>
+
+          <nav className="flex-1 p-6 space-y-1.5 overflow-y-auto no-scrollbar">
+             {menu.map(item => (
+               <Link 
+                 key={item.to} to={item.to} 
+                 onClick={() => audio.playClick()}
+                 className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-sm transition-all group ${location.pathname === item.to ? 'bg-bet-primary text-white shadow-xl translate-x-1' : 'hover:bg-bet-800'}`}
+               >
+                  <span className="text-xl group-hover:scale-110 transition-transform">{item.icon}</span>
+                  <span>{item.label}</span>
+               </Link>
+             ))}
+          </nav>
+
+          <div className="p-8 border-t border-white/5 bg-bet-950">
+             <div className="bg-bet-900 p-5 rounded-2xl border border-white/5">
+                <div className="text-[10px] font-bold text-slate-500 uppercase mb-3">VIP Status</div>
+                <div className="h-1.5 bg-black rounded-full overflow-hidden">
+                   <div className="h-full bg-bet-accent" style={{ width: '45%' }}></div>
+                </div>
+                <div className="flex justify-between mt-3 text-[9px] font-black uppercase tracking-widest">
+                   <span>Bronze</span>
+                   <span className="text-bet-accent">Silver</span>
+                </div>
+             </div>
+          </div>
+        </aside>
+
+        {/* Main Interface */}
+        <div className="flex-1 flex flex-col relative min-w-0">
+           {/* Global App Header */}
+           <header className="h-16 lg:h-20 bg-bet-900/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 lg:px-12 shrink-0 sticky top-0 z-50">
+              <div className="flex items-center gap-4 lg:hidden">
+                 <button onClick={() => setSidebarOpen(true)} className="text-2xl text-white focus:outline-none">☰</button>
+                 <span className="text-bet-accent font-black italic text-lg tracking-tighter">SK</span>
+              </div>
+              
+              <div className="flex items-center gap-6">
+                 <div className="hidden lg:flex items-center gap-2 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+                    <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Secure Node: 14ms</span>
+                 </div>
+              </div>
+
+              <div className="flex items-center gap-4 lg:gap-8">
+                 <div className="bg-bet-950 px-4 py-1.5 lg:px-8 lg:py-2.5 rounded-2xl border border-white/10 flex items-center gap-4 lg:gap-8 shadow-inner">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-3">
+                       <span className="text-[9px] font-black text-slate-500 uppercase leading-none">Balance</span>
+                       <span className="text-sm lg:text-xl font-black text-white tabular-nums tracking-tighter">₹{Math.floor(session.balance).toLocaleString('en-IN')}</span>
+                    </div>
+                    <button 
+                      onClick={() => setShowDeposit(true)} 
+                      className="bg-bet-accent text-black px-4 py-1.5 lg:px-6 lg:py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all"
+                    >
+                      Deposit
+                    </button>
+                 </div>
+              </div>
+           </header>
+
+           <main className="flex-1 overflow-y-auto p-4 lg:p-12 pb-24 lg:pb-12 no-scrollbar">
+              <div className="max-w-7xl mx-auto w-full">
+                {children}
+              </div>
+           </main>
+
+           {/* Adaptive Mobile Nav */}
+           <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-bet-900/90 backdrop-blur-2xl border-t border-white/5 flex justify-around items-center h-20 px-2 z-50">
+              {menu.slice(0, 5).map(m => (
+                <Link key={m.to} to={m.to} onClick={() => audio.playClick()} className={`flex flex-col items-center gap-1.5 flex-1 ${location.pathname === m.to ? 'text-bet-accent' : 'text-slate-500'}`}>
+                  <span className="text-2xl">{m.icon}</span>
+                  <span className="text-[8px] font-bold uppercase tracking-tighter">{m.label.split(' ')[0]}</span>
+                </Link>
+              ))}
+           </nav>
+        </div>
       </div>
 
-      <LiveFeed />
-
-      {/* Wallet Modal */}
-      {showWallet && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fade-in">
-           <div className="bg-[#1a1d23] w-full max-w-xl rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden animate-fade-in-up">
-              <div className="flex flex-col md:flex-row h-auto md:h-[500px]">
-                 <div className="w-full md:w-40 bg-[#0f1116] border-b md:border-b-0 md:border-r border-white/5 p-6 flex flex-col justify-between">
-                    <div className="flex md:flex-col gap-2">
-                        <button onClick={() => setWalletTab('DEPOSIT')} className={`flex-1 md:w-full text-center md:text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${walletTab === 'DEPOSIT' ? 'bg-casino-accent text-black shadow-lg' : 'text-slate-500'}`}>Deposit</button>
-                        <button onClick={() => setWalletTab('WITHDRAW')} className={`flex-1 md:w-full text-center md:text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${walletTab === 'WITHDRAW' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500'}`}>Withdraw</button>
-                        <button onClick={() => setWalletTab('HISTORY')} className={`flex-1 md:w-full text-center md:text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${walletTab === 'HISTORY' ? 'bg-white/10 text-white border border-white/10 shadow-inner' : 'text-slate-500'}`}>Ledger</button>
-                    </div>
-                    <button onClick={() => setShowWallet(false)} className="w-full text-center py-4 text-[9px] font-black text-slate-700 uppercase hover:text-white transition-colors tracking-widest hidden md:block">Close</button>
+      {/* Deposit Modal */}
+      {showDeposit && (
+        <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+           <div className="bg-bet-900 w-full max-w-lg rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
+              <div className="p-8 border-b border-white/5 flex justify-between items-center bg-bet-800">
+                 <div>
+                   <h2 className="text-2xl font-black text-white italic -skew-x-12 tracking-tighter uppercase">Instant <span className="text-bet-accent">Deposit</span></h2>
+                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Direct Bank Transfer & UPI</p>
                  </div>
-                 
-                 <div className="flex-1 p-8 lg:p-10 overflow-y-auto custom-scrollbar">
-                    {walletTab === 'DEPOSIT' && (
-                      <div className="space-y-6">
-                        <h2 className="text-2xl lg:text-3xl font-black text-white italic transform -skew-x-12 uppercase tracking-tighter">Add Virtual Credits</h2>
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black text-slate-600 uppercase block tracking-widest">Wager Amount (₹)</label>
-                          <input type="number" value={amountInput} onChange={(e) => setAmountInput(e.target.value)} className="w-full bg-black border border-white/10 rounded-xl px-6 py-4 text-white font-mono font-black text-2xl outline-none focus:border-casino-accent transition-all" />
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                           {[1000, 5000, 25000].map(v => (
-                             <button key={v} onClick={() => setAmountInput(v.toString())} className="bg-white/5 py-3 rounded-xl text-[10px] font-black hover:bg-white/10 border border-white/5 transition-all">₹{v.toLocaleString()}</button>
-                           ))}
-                        </div>
-                        <button onClick={deposit} className="w-full py-4 bg-casino-accent text-black font-black text-lg rounded-xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">Confirm Deposit</button>
-                      </div>
-                    )}
-                    
-                    {walletTab === 'WITHDRAW' && (
-                      <div className="space-y-6">
-                        <h2 className="text-2xl lg:text-3xl font-black text-rose-500 italic transform -skew-x-12 uppercase tracking-tighter">Claim Payout</h2>
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black text-slate-600 uppercase block tracking-widest">Payout Amount (₹)</label>
-                          <input type="number" value={amountInput} onChange={(e) => setAmountInput(e.target.value)} className="w-full bg-black border border-white/10 rounded-xl px-6 py-4 text-white font-mono font-black text-2xl outline-none focus:border-rose-500 transition-all" />
-                        </div>
-                        <button onClick={withdraw} className="w-full py-4 bg-rose-600 text-white font-black text-lg rounded-xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">Transfer to Bank</button>
-                      </div>
-                    )}
+                 <button onClick={() => setShowDeposit(false)} className="w-10 h-10 bg-black/20 rounded-full text-white text-xl flex items-center justify-center">✕</button>
+              </div>
+              <div className="p-8 space-y-8">
+                 <div className="grid grid-cols-2 gap-4">
+                    <button className="p-6 border-2 border-bet-primary rounded-3xl flex flex-col items-center gap-3 bg-bet-primary/10 transition-all">
+                       <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="UPI" className="h-8 invert" />
+                       <span className="text-[10px] font-black uppercase text-bet-primary tracking-[0.2em]">Scan & Pay</span>
+                    </button>
+                    <button className="p-6 border border-white/5 rounded-3xl flex flex-col items-center gap-3 opacity-40 grayscale">
+                       <span className="text-3xl">🏛️</span>
+                       <span className="text-[10px] font-black uppercase tracking-[0.2em]">Net Banking</span>
+                    </button>
+                 </div>
 
-                    {walletTab === 'HISTORY' && (
-                      <div className="space-y-4">
-                        <h2 className="text-xl font-black text-white italic transform -skew-x-12 uppercase tracking-tighter">Transaction Ledger</h2>
-                        <div className="space-y-2">
-                           {session.transactions.length === 0 ? (
-                             <div className="text-center py-20 text-slate-800 italic uppercase font-black tracking-widest text-[10px]">No entries found.</div>
-                           ) : (
-                             session.transactions.map(tx => (
-                               <div key={tx.id} className="bg-black/40 p-4 rounded-xl border border-white/5 flex justify-between items-center hover:border-white/10 transition-all">
-                                  <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm ${tx.type === 'DEPOSIT' ? 'text-casino-accent' : 'text-rose-500'}`}>
-                                       {tx.type === 'DEPOSIT' ? '↓' : '↑'}
-                                    </div>
-                                    <div>
-                                      <div className={`text-[9px] font-black uppercase tracking-widest ${tx.type === 'DEPOSIT' ? 'text-casino-accent' : 'text-rose-500'}`}>{tx.type}</div>
-                                      <div className="text-[8px] text-slate-600 font-bold">{new Date(tx.timestamp).toLocaleDateString()}</div>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                     <div className="font-black text-white font-mono text-sm tracking-tighter">₹{tx.amount.toLocaleString()}</div>
-                                     <div className="text-[8px] text-slate-700 uppercase font-bold">{tx.method}</div>
-                                  </div>
-                               </div>
-                             ))
-                           )}
-                        </div>
-                      </div>
-                    )}
+                 <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Select Recharge Amount</label>
+                    <div className="grid grid-cols-3 gap-3">
+                       {[1000, 5000, 10000, 25000, 50000, 100000].map(amt => (
+                          <button key={amt} onClick={() => { engine.deposit(amt, 'UPI'); setShowDeposit(false); audio.playWin(); }} className="py-4 bg-bet-800 hover:bg-bet-700 border border-white/5 rounded-2xl text-xs font-black text-white transition-all">+₹{amt.toLocaleString()}</button>
+                       ))}
+                    </div>
                  </div>
               </div>
            </div>

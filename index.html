@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Stake.IND | India's #1 Matka & Casino Simulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>SattaKing.IND | Bharat's No. 1 Trusted Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -11,85 +11,113 @@
         theme: {
           extend: {
             colors: {
+              bet: {
+                950: '#04080f',
+                900: '#0a101d',
+                800: '#141c2d',
+                700: '#1d2a44',
+                accent: '#facc15', // Vibrant Yellow
+                primary: '#1a73e8', // Trust Blue
+                success: '#00c805',
+                danger: '#ff3b30'
+              },
+              // Alias casino colors to bet theme for compatibility
               casino: {
-                950: '#07080a',
-                900: '#0f1116',
-                800: '#1a1d23',
-                700: '#21262d',
-                600: '#3c444d',
-                accent: '#00e701',
-                win: '#00e701',
-                loss: '#ff0033',
-                gold: '#ffb800'
+                950: '#04080f',
+                900: '#0a101d',
+                800: '#141c2d',
+                700: '#1d2a44',
+                accent: '#facc15',
+                gold: '#ca8a04',
+                win: '#00c805',
+                loss: '#ff3b30'
               }
             },
             animation: {
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'bounce-short': 'bounce 0.5s ease-in-out infinite',
-              'fade-in': 'fade-in 0.4s ease-out forwards',
-              'fade-in-up': 'fade-in-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards'
+              'marquee': 'marquee 25s linear infinite',
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'bounce-short': 'bounce 0.5s ease-in-out 2'
+            },
+            keyframes: {
+              marquee: {
+                '0%': { transform: 'translateX(0)' },
+                '100%': { transform: 'translateX(-50%)' }
+              }
             }
           }
         }
       }
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@700&display=swap');
       
       :root {
-        --casino-bg: #07080a;
+        --fluid-text-xs: clamp(0.7rem, 0.6rem + 0.3vw, 0.9rem);
+        --fluid-text-sm: clamp(0.8rem, 0.7rem + 0.4vw, 1rem);
+        --fluid-text-base: clamp(0.9rem, 0.8rem + 0.5vw, 1.2rem);
+        --fluid-text-lg: clamp(1.1rem, 1rem + 0.6vw, 1.5rem);
+        --fluid-text-xl: clamp(1.5rem, 1.2rem + 1vw, 2.5rem);
       }
 
       body {
-        background-color: var(--casino-bg);
-        color: #b1b5c3;
+        background-color: #04080f;
+        color: #e2e8f0;
         font-family: 'Inter', sans-serif;
-        overflow-x: hidden;
-        -webkit-font-smoothing: antialiased;
         margin: 0;
-        font-size: 14px;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+        height: 100dvh; /* Dynamic viewport height */
+        width: 100vw;
       }
 
-      #root {
-        min-height: 100vh;
+      .noise-overlay {
+        position: fixed;
+        inset: 0;
+        background-image: url('https://www.transparenttextures.com/patterns/asfalt-dark.png');
+        opacity: 0.05;
+        pointer-events: none;
+        z-index: 9999;
       }
 
-      h1, h2, h3, .heading-font {
-        font-family: 'Syne', sans-serif;
+      .bet-card {
+        background: #0a101d;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        transition: all 0.2s ease;
       }
 
-      .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-      .custom-scrollbar::-webkit-scrollbar-thumb { background: #1a1d23; border-radius: 20px; border: 1px solid #2d333b; }
+      .bet-card:hover {
+        border-color: rgba(250, 204, 21, 0.2);
+        background: #141c2d;
+      }
+
+      .gold-text {
+        background: linear-gradient(to bottom, #facc15, #ca8a04);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .no-scrollbar::-webkit-scrollbar { display: none; }
       
-      @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes fade-in-up {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
+      input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+      .game-viewport {
+        aspect-ratio: 16/9;
+        width: 100%;
+        max-height: 60vh;
       }
 
-      input[type=number]::-webkit-inner-spin-button, 
-      input[type=number]::-webkit-outer-spin-button { 
-        -webkit-appearance: none; 
-        margin: 0; 
+      @media (max-width: 1024px) {
+        .game-viewport {
+          aspect-ratio: 1/1;
+          max-height: 50vh;
+        }
       }
 
-      .matka-card {
-        transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-      }
-      .matka-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
-        border-color: #00e701;
-      }
-
-      .glass {
-        background: rgba(15, 17, 22, 0.85);
-        backdrop-filter: blur(16px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      }
+      .perspective-1000 { perspective: 1000px; }
     </style>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.3",
@@ -102,8 +130,8 @@
   }
 }
 </script>
-</head>
-  <body>
+  </head>
+  <body class="noise-overlay">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
