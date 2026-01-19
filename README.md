@@ -1,63 +1,58 @@
-# LossLimit Casino Simulator 🎰
+# SattaKing.IND Pro | Behavioral Gambling Simulator 🏺🎰
 
-**Live Demo:** [paidguy.me/casino](https://paidguy.me/casino)
+**The House Always Wins. We'll show you the math.**
 
-## ⚠️ DISCLAIMER
-**THIS IS A SIMULATION.**
-- **NO REAL MONEY** is involved.
-- **NO CRYPTO** transactions occur.
-- **NO PAYMENTS** are processed.
-
-This project is a behavioral economics experiment and educational tool designed to demonstrate the mathematics of gambling losses and the psychological dark patterns used by online casinos.
+## ⚠️ MANDATORY DISCLAIMER
+**THIS IS A MATHEMATICAL SIMULATION.**
+- **NO REAL MONEY** is involved (Virtual ₹ Currency only).
+- **NO DEPOSITS** are processed; all "Add Balance" functions are local simulations.
+- **EDUCATIONAL USE ONLY:** Designed to demonstrate the mathematics of gambling losses and the psychological "dark patterns" used in modern Satta and Crypto-Casino platforms.
 
 ---
 
-## 🎯 Purpose
-The goal of LossLimit is to provide a visually identical experience to modern high-stakes crypto casinos (like Stake or Roobet) but with transparent mathematics that prove **the house always wins**.
+## 🎯 The Philosophy
+SattaKing.IND Pro is a **Glass Casino**. It provides the high-octane, dopamine-heavy experience of Bharat's most popular Satta Matka and global casino suites, but with a fully exposed backend. It is a behavioral-economics experiment designed to help users understand why the "Punter" can never beat the "Bookie" in the long run.
 
-By simulating the dopamine loops, "near-miss" mechanics, and aggressive marketing of real casinos—without the financial risk—users can experience the volatility and inevitable decline of their balance in a safe environment.
+## 🎲 The Professional Suite
 
-## 🎲 Features
+### 🏺 Satta & Table Games
+1.  **Matka Draw:** High-fidelity Satta simulation with single-ank and patti logic.
+2.  **Teen Patti:** 3-card poker with 52.5% Dealer Bias (Standard House Edge).
+3.  **Baccarat:** Live-style table game with Player, Banker, and Tie logic.
+4.  **Wheel of Fortune:** Multiplier-based rotation with 10.0x jackpot segments.
+5.  **Keno:** 40-ball lottery synchronizer with multi-hit scaling.
 
-### Core Mechanics
-- **Virtual Credits:** Daily reset to $10,000 fake balance.
-- **Provably Fair Logic:** Implementation of standard HMAC-SHA256 outcome generation (simulated).
-- **Real Math:** Exact industry-standard House Edges (e.g., Crash 1% instant bust, Roulette 2.7% edge).
+### ✈️ Modern Crypto-Games
+1.  **Aviator (Crash):** Exponential curve growth with a 1% instant-bust mathematical trap.
+2.  **Mines:** Combinatorial risk assessment on a 5x5 grid.
+3.  **Plinko:** 16-row normal distribution simulator (1000x High-Risk mode).
+4.  **Slots:** High-variance volatility with "near-miss" visual algorithms.
 
-### Games Included
-1.  **Plinko:** 1000x High Risk mode (16 rows).
-2.  **Crash:** Exponential curve with 1% instant crash chance.
-3.  **Blackjack:** 3:2 payouts, Double Down, Dealer stands on 17.
-4.  **Mines:** Compounding multipliers.
-5.  **Slots:** High variance volatility with near-miss visuals.
-6.  **Roulette:** European standard.
-7.  **Dice:** Adjustable win chance.
-8.  **Coinflip:** 1.96x payouts.
+---
 
-### Psychological & Dark Patterns
-- **Audio Synthesis:** Custom Web Audio API sound effects engineered to trigger dopamine (rising pitch on wins, silence on losses).
-- **Fake Activity Feed:** Simulates high-rollers and community chat.
-- **Aggressive Marketing:** Fake "System Glitch" bonuses, sticky "Rakeback" banners, and VIP progress bars.
-- **Transparency Mode:** A hidden panel explaining the exact math behind why the player is losing.
+## 🛠️ Technical Architecture
 
-## 🛠️ Tech Stack
-- **Frontend:** React 18, TypeScript, Vite
-- **Styling:** Tailwind CSS (Dark Mode optimization)
-- **Charts:** Recharts (Real-time balance graphing)
-- **Audio:** Native Web Audio API (No external assets)
-- **State:** LocalStorage persistence for sessions
+### 1. Deterministic Fairness (HMAC-SHA256)
+Every outcome is generated using a **Client Seed**, **Server Seed**, and **Nonce**. This ensures the platform cannot change an outcome after a bet is placed. However, as the platform demonstrates, "Fair Randomness" does not equal "Winning Chance"—the House Edge is built into the payout ratios themselves.
 
-## 🚀 Deployment (GitHub Actions)
+### 2. Audio-Dopamine Synthesis
+We do not use mp3 files. All sound effects (wins, spins, losses) are synthesized in real-time using the **Web Audio API**. 
+- **Rising Shephard Tones:** Used in Crash to create a psychological sense of urgency.
+- **Harmonic Major Chords:** Frequency-shifted to trigger dopamine release during wins.
+- **Sub-bass Sawtooth Tones:** Used during losses to simulate a "physical" sense of disappointment.
 
-This project includes a fully automated workflow for GitHub Pages.
+### 3. The Pit Boss Command (Admin Panel)
+Unlock the **Admin Panel** to see the casino's perspective.
+- **RTP Control:** Adjust the Global Return to Player (e.g., set to 95% to see balance decay).
+- **Edge Overrides:** See the exact mathematical tax on every game module.
+- **Global Profit Tracking:** Monitor how much "Virtual ₹" the house has collected from the simulation.
 
-1.  Push this code to a GitHub repository named `casino`.
-2.  Go to **Settings > Pages** in your repository.
-3.  Under **Build and deployment**, switch Source to **GitHub Actions**.
-4.  The action defined in `.github/workflows/deploy.yml` will automatically build and deploy the site.
-
-**Custom Domain Note:** 
-To serve this at `paidguy.me/casino`, ensure your main user repository (`paidguy/paidguy.github.io`) has the CNAME `paidguy.me` configured, and this repository is named `casino`.
+## 🚀 Stack
+- **Framework:** React 19 (ESM)
+- **State Management:** Persistent `SimulationEngine` via LocalStorage
+- **Data Visualization:** Recharts (Live Performance Graphing)
+- **Styling:** Tailwind CSS (Optimized for 100dvh mobile-first usage)
+- **Audio:** Native Browser AudioContext (No external assets)
 
 ## ⚖️ License
-MIT License. Educational use encouraged.
+MIT License. Created for the purpose of gambling harm-reduction and technical education.

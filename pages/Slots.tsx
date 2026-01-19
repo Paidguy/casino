@@ -1,67 +1,90 @@
 
-import React, { useState } from 'react';
-// Fix: Layout is a named export, not a default export.
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
 import { audio } from '../services/audio';
 import { GameType } from '../types';
 
+const SYMBOLS = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
+
 export default function Slots() {
   const [betAmount, setBetAmount] = useState<number>(100);
-  const [reels, setReels] = useState(['?', '?', '?']);
+  const [reels, setReels] = useState(['7️⃣', '7️⃣', '7️⃣']);
   const [spinning, setSpinning] = useState(false);
-  const [message, setMessage] = useState('');
+  const [result, setResult] = useState<any>(null);
 
   const spin = () => {
-    if (betAmount > engine.getSession().balance) return;
+    if (betAmount > engine.getSession().balance || betAmount <= 0) return;
     setSpinning(true);
-    setMessage('');
+    setResult(null);
     audio.playBet();
     audio.playSpin();
     
-    const interval = setInterval(() => {
-      setReels([
-        ['🍒', '🍋', '🍇', '💎', '7️⃣'][Math.floor(Math.random()*5)],
-        ['🍒', '🍋', '🍇', '💎', '7️⃣'][Math.floor(Math.random()*5)],
-        ['🍒', '🍋', '🍇', '💎', '7️⃣'][Math.floor(Math.random()*5)]
-      ]);
-    }, 100);
+    // Logic resolution
     setTimeout(() => {
-      clearInterval(interval);
-      // Providing empty string as the 4th argument (outcome) which is ignored when a resolver is used
       engine.placeBet(GameType.SLOTS, betAmount, (r) => {
-         const result = engine.calculateSlotsResult(r);
-         setReels(result.symbols);
-         setSpinning(false);
-         const isWin = result.multiplier > 0;
-         setMessage(isWin ? `WIN ${result.multiplier}x` : 'Try Again');
-         if (isWin) audio.playWin(); else audio.playLoss();
-         return { multiplier: result.multiplier, outcome: `Slots: ${result.symbols.join(' ')}` };
+        const res = engine.calculateSlotsResult(r);
+        setReels(res.symbols);
+        setResult(res);
+        setSpinning(false);
+        if (res.multiplier > 0) audio.playWin();
+        else audio.playLoss();
+        return { multiplier: res.multiplier, outcome: `Slots: ${res.symbols.join('')}` };
       }, '');
     }, 2000);
   };
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-casino-800 p-8 rounded-xl border border-casino-700 text-center">
-          <div className="bg-casino-900 p-8 rounded-lg border-4 border-yellow-600 shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] mb-8 flex justify-center gap-4">
-            {reels.map((symbol, i) => (
-              <div key={i} className="w-24 h-32 bg-slate-100 rounded flex items-center justify-center text-5xl shadow-inner border-2 border-slate-300">
-                <span className={spinning ? 'animate-bounce-short' : ''}>{symbol}</span>
+      <div className="flex flex-col items-center gap-12">
+        {/* Slot Machine Container */}
+        <div className="w-full max-w-3xl bg-bet-900 p-8 lg:p-16 rounded-[4rem] border-[12px] border-bet-800 shadow-[inset_0_0_100px_rgba(0,0,0,0.5),0_50px_100px_rgba(0,0,0,0.5)] relative overflow-hidden">
+           <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-bet-accent/10 to-transparent"></div>
+           
+           <div className="flex justify-center gap-4 lg:gap-8 relative z-10 mb-12">
+              {reels.map((symbol, i) => (
+                <div key={i} className="w-24 h-36 lg:w-36 lg:h-52 bg-black/40 rounded-3xl border-4 border-white/5 flex items-center justify-center text-5xl lg:text-7xl shadow-inner relative overflow-hidden">
+                   <div className={`${spinning ? 'animate-bounce' : 'animate-none'}`}>
+                      {symbol}
+                   </div>
+                </div>
+              ))}
+           </div>
+
+           <div className="text-center h-16 flex items-center justify-center">
+              {result && (
+                <div className={`text-4xl lg:text-6xl font-black italic -skew-x-12 uppercase tracking-tighter ${result.multiplier > 0 ? 'text-bet-accent' : 'text-slate-600 opacity-30'}`}>
+                   {result.multiplier > 0 ? `JACKPOT ${result.multiplier}x!` : 'TRY AGAIN'}
+                </div>
+              )}
+           </div>
+        </div>
+
+        {/* Controls */}
+        <div className="bg-bet-900 w-full max-w-xl p-8 rounded-[3rem] border border-white/5 space-y-8 shadow-2xl">
+           <div className="space-y-4">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Stake (₹)</label>
+              <div className="flex gap-4">
+                 <input 
+                   type="number" value={betAmount} 
+                   onChange={e => setBetAmount(Number(e.target.value))} 
+                   disabled={spinning}
+                   className="flex-1 bg-black border border-white/10 p-5 rounded-2xl text-white font-black text-2xl outline-none focus:border-bet-primary transition-all" 
+                 />
+                 <div className="flex flex-col gap-2">
+                    <button onClick={() => setBetAmount(betAmount*2)} className="bg-bet-800 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-bet-700">2X</button>
+                    <button onClick={() => setBetAmount(Math.max(10, Math.floor(betAmount/2)))} className="bg-bet-800 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-bet-700">1/2</button>
+                 </div>
               </div>
-            ))}
-          </div>
-          <div className="h-8 mb-4">
-             {message && <span className="text-2xl font-black text-emerald-400 animate-pulse">{message}</span>}
-          </div>
-          <div className="flex gap-4 items-end">
-             <div className="flex-1 text-left">
-               <label className="text-xs text-slate-400 font-bold uppercase">Bet Amount</label>
-               <input type="number" value={betAmount} onChange={(e) => setBetAmount(Number(e.target.value))} className="w-full bg-casino-900 border border-casino-600 rounded p-3 text-white font-mono mt-1" disabled={spinning} />
-             </div>
-             <button onClick={spin} disabled={spinning} className={`px-8 py-3 h-[52px] font-black text-xl rounded shadow-lg ${spinning ? 'bg-slate-700' : 'bg-yellow-500 hover:bg-yellow-400 text-black'}`}>SPIN</button>
-          </div>
+           </div>
+
+           <button 
+             onClick={spin} 
+             disabled={spinning || betAmount <= 0}
+             className="w-full py-8 bg-bet-accent text-black font-black text-3xl rounded-[2.5rem] shadow-xl hover:scale-105 active:scale-95 transition-all uppercase tracking-[0.2em] disabled:opacity-30"
+           >
+             {spinning ? 'Spinning...' : 'Spin'}
+           </button>
         </div>
       </div>
     </Layout>

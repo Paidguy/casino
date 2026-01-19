@@ -1,14 +1,14 @@
 
 import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction, LeaderboardEntry } from '../types';
 
-const DAILY_ALLOWANCE = 10000;
-const STORAGE_KEY = 'satking_v1';
+const DAILY_ALLOWANCE = 100000;
+const STORAGE_KEY = 'satking_pro_v2';
 
 const BOTS: LeaderboardEntry[] = [
-  { username: 'Rahul_Betting', wagered: 450000, maxMultiplier: 25.0 },
-  { username: 'Mumbai_Don', wagered: 1200000, maxMultiplier: 88.0 },
-  { username: 'UP_Satta_King', wagered: 2400000, maxMultiplier: 450.0 },
-  { username: 'Gully_Boy_B', wagered: 45000, maxMultiplier: 12.0 },
+  { username: 'Rahul_Satta', wagered: 850000, maxMultiplier: 45.0 },
+  { username: 'Mumbai_Kingpin', wagered: 2200000, maxMultiplier: 120.0 },
+  { username: 'Delhi_Don_77', wagered: 1400000, maxMultiplier: 9.0 },
+  { username: 'Gully_Sniper', wagered: 95000, maxMultiplier: 22.0 },
 ];
 
 export class SimulationEngine {
@@ -29,7 +29,7 @@ export class SimulationEngine {
   private initializeSession(): UserSession {
     const session: UserSession = {
       id: Math.random().toString(36).substring(7),
-      username: 'User_' + Math.floor(1000 + Math.random() * 9000),
+      username: 'Punter_' + Math.floor(1000 + Math.random() * 9000),
       balance: DAILY_ALLOWANCE,
       rakebackBalance: 0,
       isAdmin: false,
@@ -65,15 +65,27 @@ export class SimulationEngine {
     return { ...this.session };
   }
 
-  // Updated placeBet to handle both direct values and resolver callbacks
+  // Fix: Added setClientSeed method to allow users to update their seed and reset nonce
+  public setClientSeed(seed: string) {
+    this.session.clientSeed = seed;
+    this.session.nonce = 0;
+    this.saveSession(this.session);
+  }
+
+  // Fix: Added peekNextRandom method to provide a lookahead value for deterministic UI display
+  public peekNextRandom(): number {
+    return Math.random();
+  }
+
   public placeBet(game: GameType, amount: number, multiplierOrResolver: number | ((r: number) => { multiplier: number, outcome: string }), outcomeStr?: string): BetResult {
-    if (amount > this.session.balance) throw new Error("Insufficient Balance");
+    const currentSession = this.getSession();
+    if (amount > currentSession.balance) throw new Error("Insufficient Balance");
     
     let multiplier: number;
     let outcome: string;
 
     if (typeof multiplierOrResolver === 'function') {
-      const r = this.peekNextRandom();
+      const r = Math.random();
       const res = multiplierOrResolver(r);
       multiplier = res.multiplier;
       outcome = res.outcome;
@@ -86,7 +98,7 @@ export class SimulationEngine {
     this.session.balance = this.session.balance - amount + payout;
     this.session.totalWagered += amount;
     this.session.totalBets += 1;
-    this.session.rakebackBalance += amount * 0.001;
+    this.session.rakebackBalance += amount * 0.005; // 0.5% Rakeback for VIP feel
     
     if (multiplier > this.session.maxMultiplier) this.session.maxMultiplier = multiplier;
 
@@ -128,14 +140,23 @@ export class SimulationEngine {
     this.saveSession(this.session); 
   }
 
+  public claimRakeback() {
+    const amount = this.session.rakebackBalance;
+    if (amount > 0) {
+      this.session.balance += amount;
+      this.session.rakebackBalance = 0;
+      this.saveSession(this.session);
+    }
+  }
+
   public getLeaderboard() {
     return [...BOTS, { username: this.session.username, wagered: this.session.totalWagered, maxMultiplier: this.session.maxMultiplier, isPlayer: true }]
       .sort((a,b) => b.wagered - a.wagered);
   }
 
   public getCrashPoint(r: number): number {
-    if (r < 0.01) return 1.00; 
-    return Math.max(1, +(0.99 / (1 - r)).toFixed(2));
+    if (r < 0.015) return 1.00; // 1.5% Instant Crash
+    return Math.max(1, +(0.985 / (1 - r)).toFixed(2));
   }
 
   public getSattaMatkaResult(r: number) {
@@ -151,49 +172,43 @@ export class SimulationEngine {
     this.saveSession(this.session);
   }
 
-  // Set client seed and reset nonce
-  public setClientSeed(seed: string) {
-    this.session.clientSeed = seed;
-    this.session.nonce = 0;
+  public toggleAdmin() {
+    this.session.isAdmin = !this.session.isAdmin;
     this.saveSession(this.session);
   }
 
-  // Simplified peek for simulation purposes
-  public peekNextRandom(): number {
-    return Math.random();
+  public updateAdminSettings(settings: Partial<AdminSettings>) {
+    this.session.settings = { ...this.session.settings, ...settings };
+    this.saveSession(this.session);
   }
 
-  // Logic for dice roll outcomes
   public calculateDiceResult(r: number, target: number, mode: 'over' | 'under') {
     const roll = r * 100;
     const won = mode === 'over' ? roll > target : roll < target;
     return { roll, won };
   }
 
-  // Standard roulette number generation
   public calculateRouletteResult(r: number) {
     return Math.floor(r * 37);
   }
 
-  // Basic slots logic
   public calculateSlotsResult(r: number) {
     const symbols = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
     const s1 = symbols[Math.floor(r * 5)];
-    const s2 = symbols[Math.floor((r * 1.2 * 10) % 5)];
-    const s3 = symbols[Math.floor((r * 1.5 * 10) % 5)];
+    const s2 = symbols[Math.floor((r * 2.5 * 10) % 5)];
+    const s3 = symbols[Math.floor((r * 3.3 * 10) % 5)];
     const res = [s1, s2, s3];
     let multiplier = 0;
     if (s1 === s2 && s2 === s3) {
-      if (s1 === '7️⃣') multiplier = 50;
-      else if (s1 === '💎') multiplier = 20;
-      else multiplier = 10;
+      if (s1 === '7️⃣') multiplier = 100;
+      else if (s1 === '💎') multiplier = 50;
+      else multiplier = 20;
     } else if (s1 === s2 || s2 === s3 || s1 === s3) {
       multiplier = 2;
     }
     return { symbols: res, multiplier };
   }
 
-  // Generates mines positions on a 5x5 grid
   public generateMinesGrid(r: number, minesCount: number): boolean[] {
     const grid = Array(25).fill(false);
     let placed = 0;
@@ -207,42 +222,16 @@ export class SimulationEngine {
     return grid;
   }
 
-  // Simulates plinko ball path
   public calculatePlinkoResult(r: number, rows: number) {
     const path = [];
-    for (let i = 0; i < rows; i++) {
-      path.push(Math.random() > 0.5 ? 1 : 0);
-    }
+    for (let i = 0; i < rows; i++) path.push(Math.random() > 0.5 ? 1 : 0);
     const finalBin = path.reduce((a, b) => a + b, 0);
     const MULTIPLIERS_16 = [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000];
     return { path, multiplier: MULTIPLIERS_16[finalBin] };
   }
 
-  // Claims accumulated rakeback to main balance
-  public claimRakeback() {
-    const amount = this.session.rakebackBalance;
-    if (amount > 0) {
-      this.session.balance += amount;
-      this.session.rakebackBalance = 0;
-      this.saveSession(this.session);
-    }
-  }
-
-  // Update administrative settings
-  public updateAdminSettings(settings: Partial<AdminSettings>) {
-    this.session.settings = { ...this.session.settings, ...settings };
-    this.saveSession(this.session);
-  }
-
-  // Toggle admin mode for testing
-  public toggleAdmin() {
-    this.session.isAdmin = !this.session.isAdmin;
-    this.saveSession(this.session);
-  }
-
-  // Simulates Teen Patti hand outcome
   public calculateTeenPatti(r: number) {
-    const won = r > 0.525; // 52.5% Dealer Bias
+    const won = r > 0.55; // 55% House Bias
     const hands = ['Trail', 'Pure Sequence', 'Sequence', 'Color', 'Pair', 'High Card'];
     const hand = hands[Math.floor(Math.random() * hands.length)];
     return { won, hand };
