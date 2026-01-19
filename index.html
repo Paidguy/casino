@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>SattaKing.IND | Bharat's No. 1 Trusted Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -24,13 +26,18 @@
             },
             animation: {
               'marquee': 'marquee 40s linear infinite',
-              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'spin-slow': 'spin 10s linear infinite',
+              'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'spin-slow': 'spin 15s linear infinite',
+              'fade-in': 'fadeIn 0.3s ease-out forwards',
             },
             keyframes: {
               marquee: {
                 '0%': { transform: 'translateX(0)' },
                 '100%': { transform: 'translateX(-50%)' }
+              },
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' }
               }
             }
           }
@@ -47,11 +54,11 @@
       * {
         -webkit-tap-highlight-color: transparent;
         box-sizing: border-box;
+        outline: none !important;
       }
 
       body {
         background: #03050a;
-        background-attachment: fixed;
         color: #f8fafc;
         font-family: 'Inter', sans-serif;
         margin: 0;
@@ -59,6 +66,7 @@
         height: var(--app-height);
         width: 100vw;
         overflow: hidden;
+        position: fixed; /* Prevent rubber-banding on iOS */
       }
 
       #root {
@@ -75,13 +83,27 @@
         background: linear-gradient(to bottom, #facc15, #ca8a04);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-weight: 900;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
       }
 
       input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       
+      /* Smooth touch interactions */
+      button, a {
+        transition: transform 0.1s ease, filter 0.2s ease;
+      }
+      button:active, a:active {
+        transform: scale(0.96);
+      }
+
       .safe-top { padding-top: env(safe-area-inset-top); }
       .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+      /* Responsive Canvas */
+      canvas {
+        max-width: 100%;
+        height: auto !important;
+      }
     </style>
     <script type="importmap">
 {

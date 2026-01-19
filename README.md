@@ -1,58 +1,95 @@
-# SattaKing.IND Pro | Behavioral Gambling Simulator 🏺🎰
+# 🏛️ SattaKing.IND Pro: The Definitive Technical & Behavioral Manual
 
-**The House Always Wins. We'll show you the math.**
-
-## ⚠️ MANDATORY DISCLAIMER
-**THIS IS A MATHEMATICAL SIMULATION.**
-- **NO REAL MONEY** is involved (Virtual ₹ Currency only).
-- **NO DEPOSITS** are processed; all "Add Balance" functions are local simulations.
-- **EDUCATIONAL USE ONLY:** Designed to demonstrate the mathematics of gambling losses and the psychological "dark patterns" used in modern Satta and Crypto-Casino platforms.
+**SattaKing.IND Pro** is a Tier-1, high-fidelity gambling simulation and behavioral economics laboratory. It is designed to serve as both a premium entertainment platform and a clinical exposure tool, demonstrating the mathematical inevitability of the "House Edge" through a transparent "Glass Casino" architecture.
 
 ---
 
-## 🎯 The Philosophy
-SattaKing.IND Pro is a **Glass Casino**. It provides the high-octane, dopamine-heavy experience of Bharat's most popular Satta Matka and global casino suites, but with a fully exposed backend. It is a behavioral-economics experiment designed to help users understand why the "Punter" can never beat the "Bookie" in the long run.
+## 💎 1. CORE CONCEPT: THE GLASS CASINO
+Unlike standard predatory platforms, SattaKing.IND Pro operates with an "Exposed Kernel." While the UI/UX is optimized for dopamine release (mimicking modern casino "dark patterns"), the underlying mathematical engine is fully auditable via the **Transparency Panel** and **Pit Boss Command (Admin)**.
 
-## 🎲 The Professional Suite
-
-### 🏺 Satta & Table Games
-1.  **Matka Draw:** High-fidelity Satta simulation with single-ank and patti logic.
-2.  **Teen Patti:** 3-card poker with 52.5% Dealer Bias (Standard House Edge).
-3.  **Baccarat:** Live-style table game with Player, Banker, and Tie logic.
-4.  **Wheel of Fortune:** Multiplier-based rotation with 10.0x jackpot segments.
-5.  **Keno:** 40-ball lottery synchronizer with multi-hit scaling.
-
-### ✈️ Modern Crypto-Games
-1.  **Aviator (Crash):** Exponential curve growth with a 1% instant-bust mathematical trap.
-2.  **Mines:** Combinatorial risk assessment on a 5x5 grid.
-3.  **Plinko:** 16-row normal distribution simulator (1000x High-Risk mode).
-4.  **Slots:** High-variance volatility with "near-miss" visual algorithms.
+### Behavioral Objectives:
+- **De-mystification of "Luck":** Replacing the concept of luck with deterministic probability.
+- **Pattern Recognition Interruption:** Exposing how the human brain fabricates "streaks" from independent RNG events.
+- **Capital Erosion Visualization:** Using Recharts to show the "Slow Grind to Zero" inherent in all negative-EV (Expected Value) games.
 
 ---
 
-## 🛠️ Technical Architecture
+## 🛠️ 2. TECHNICAL STACK (ENGINEERING DEEP-DIVE)
 
-### 1. Deterministic Fairness (HMAC-SHA256)
-Every outcome is generated using a **Client Seed**, **Server Seed**, and **Nonce**. This ensures the platform cannot change an outcome after a bet is placed. However, as the platform demonstrates, "Fair Randomness" does not equal "Winning Chance"—the House Edge is built into the payout ratios themselves.
+### Frontend Framework
+- **React 19 (ESM):** Utilizing the latest Concurrent Mode for fluid state transitions.
+- **Tailwind CSS + Tailwind Config:** A centralized design system using the `bet-` color palette, optimized for `100dvh` (Dynamic Viewport Height) to ensure a "native app" feel on iOS, Android, and Desktop.
+- **Responsive Architecture:** Flex-box and CSS Grid system with `clamp()` units for fluid typography and element scaling across devices.
 
-### 2. Audio-Dopamine Synthesis
-We do not use mp3 files. All sound effects (wins, spins, losses) are synthesized in real-time using the **Web Audio API**. 
-- **Rising Shephard Tones:** Used in Crash to create a psychological sense of urgency.
-- **Harmonic Major Chords:** Frequency-shifted to trigger dopamine release during wins.
-- **Sub-bass Sawtooth Tones:** Used during losses to simulate a "physical" sense of disappointment.
+### Deterministic RNG Engine (HMAC-SHA256)
+We utilize a **Provably Fair** algorithm to ensure that the operator cannot manipulate outcomes in real-time.
+- **Client Seed:** User-provided entropy.
+- **Server Seed:** CSPRNG-generated string (hashed and displayed to user before the bet).
+- **Nonce:** An incrementing counter ensuring unique outcomes for the same seed pair.
+- **Formula:** `HMAC_SHA256(ServerSeed, ClientSeed + Nonce)`
+- **Conversion:** The resulting hex is converted to a float `[0, 1)` to determine the game outcome.
 
-### 3. The Pit Boss Command (Admin Panel)
-Unlock the **Admin Panel** to see the casino's perspective.
-- **RTP Control:** Adjust the Global Return to Player (e.g., set to 95% to see balance decay).
-- **Edge Overrides:** See the exact mathematical tax on every game module.
-- **Global Profit Tracking:** Monitor how much "Virtual ₹" the house has collected from the simulation.
+### Psycho-Acoustic Synthesis (Web Audio API)
+Audio is generated procedurally to bypass asset-loading latency and allow for dynamic frequency modulation.
+- **Winning Chord:** A major triad (C-E-G) frequency-shifted to trigger positive reinforcement.
+- **Losing Tone:** A sub-bass sawtooth wave at 150Hz-200Hz to simulate a physical "gut punch" sensation.
+- **Crash Ascent:** Rising Shephard Tones to create a feeling of perpetual, high-stakes motion.
 
-## 🚀 Stack
-- **Framework:** React 19 (ESM)
-- **State Management:** Persistent `SimulationEngine` via LocalStorage
-- **Data Visualization:** Recharts (Live Performance Graphing)
-- **Styling:** Tailwind CSS (Optimized for 100dvh mobile-first usage)
-- **Audio:** Native Browser AudioContext (No external assets)
+---
 
-## ⚖️ License
-MIT License. Created for the purpose of gambling harm-reduction and technical education.
+## 🎲 3. MATHEMATICAL MODELS & HOUSE EDGES
+
+| Game Module | House Edge | Mathematical Basis |
+| :--- | :--- | :--- |
+| **Aviator (Crash)** | 3.00% | Formula: `0.97 / (1 - U)`. 3% of games bust at exactly 1.00x. |
+| **Kalyan Matka** | 5.00% | Single Ank payouts are 9.0x for a 1/10 probability event. |
+| **European Roulette**| 2.70% | The "Zero" pocket ensures a 1/37 disadvantage for all even-money bets. |
+| **Mega Slots** | 4.00% | Combinatorial symbol weighting with a 96% Return to Player (RTP). |
+| **Teen Patti** | 2.50% | Fixed dealer bias in tie-break and high-card resolution. |
+| **Mines** | 3.00% | Combinatorial risk scaling where multipliers grow slower than probability of loss. |
+
+---
+
+## 🏺 4. GAME MODULE DESCRIPTIONS
+
+### 🏺 Satta Matka (Kalyan Bazar)
+A high-fidelity simulation of the traditional Indian Satta Matka.
+- **Draw Logic:** Three random numbers `[0-9]` are generated. Their sum's last digit becomes the "Single Ank."
+- **Payout:** Standard 9:1 for Single Ank.
+
+### ✈️ Aviator (Crash)
+A real-time multiplier game using an exponential growth curve.
+- **Curve Formula:** $Multiplier = e^{0.06 \cdot t}$ where $t$ is time in seconds.
+- **Psychology:** Exploits the "Fear of Missing Out" (FOMO). The player must decide to exit before the deterministic crash point.
+
+### 🎰 Mega Slots
+A 3-reel simulation with high-variance symbol weighting.
+- **Near-Miss Logic:** Designed to show two matching symbols frequently to induce the "Near-Miss Effect," a proven driver for continued play.
+
+---
+
+## 👤 5. PIT BOSS COMMAND (ADMIN PANEL)
+The Admin panel is the "Director's Cut" of the simulation.
+- **RTP Manipulation:** Set the global Return to Player to see how quickly a user's balance evaporates at 80% vs 99%.
+- **Variance Control:** Toggle "Enhanced Variance" to simulate the "Bad Beat" clusters that occur naturally in random distributions.
+- **Real-Time Analytics:** Monitor the "Casino Profit," which is simply the inverse of the user's loss.
+
+---
+
+## 📱 6. SCALING & MULTI-DEVICE SUPPORT
+The application is built using a **Fluid Layout Engine**:
+- **Mobile:** 1-column grid with a bottom-sticky Rakeback Bar and a hamburger drawer for navigation.
+- **Tablet:** 2-column grid with a persistent sidebar.
+- **Desktop:** Full 4-column game grid with integrated Live Chat and Wager Feed.
+- **High-DPI Support:** Vector-based icons and CSS effects ensure crisp visuals on Retina and 4K displays.
+
+---
+
+## ⚖️ 7. LEGAL & SAFETY NOTICE
+**SattaKing.IND Pro is 100% Virtual.**
+- No real currency is accepted, stored, or paid out.
+- The platform is an educational tool for gambling harm reduction.
+- All "Deposits" are local state updates simulating the act of funding an account.
+
+---
+*Created by the SattaKing Pro Engineering Team for Behavioral Research and Mathematical Education.*
