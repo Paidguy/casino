@@ -28,7 +28,7 @@ export interface BetResult {
 
 export interface Transaction {
   id: string;
-  type: 'DEPOSIT' | 'WITHDRAW' | 'BAILOUT' | 'RAKEBACK';
+  type: 'DEPOSIT' | 'WITHDRAW' | 'BAILOUT' | 'RAKEBACK' | 'BONUS';
   amount: number;
   timestamp: number;
   status: 'COMPLETED' | 'PENDING';
@@ -40,6 +40,13 @@ export interface AdminSettings {
   forcedRTP: number; 
   houseEdgeOverrides: Record<GameType, number>;
   globalProfit: number;
+}
+
+export interface LeaderboardEntry {
+  username: string;
+  wagered: number;
+  maxMultiplier: number;
+  isPlayer?: boolean;
 }
 
 export interface UserSession {
@@ -54,6 +61,7 @@ export interface UserSession {
   totalWagered: number;
   totalWins: number;
   totalLosses: number; 
+  maxMultiplier: number;
   history: BetResult[];
   transactions: Transaction[];
   clientSeed: string;

@@ -1,17 +1,20 @@
 
-import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction } from '../types';
+import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction, LeaderboardEntry } from '../types';
 
 const DAILY_ALLOWANCE = 10000;
-const STORAGE_KEY = 'stake_ind_v5_pro';
+const STORAGE_KEY = 'stake_ind_v7_final';
 
-const SARCASTIC_BAILOUTS = [
-  "Back for more punishment? Here's ₹10,000. Try to last more than 5 minutes this time.",
-  "Your wallet is as empty as your betting strategy. Re-upping your balance for the house's sake.",
-  "Watching you play is our staff's favorite comedy. Take some credits, the show must go on.",
-  "A gold fish has a higher win rate than you. Here's a pity deposit. Don't spend it all in one spin.",
-  "Is this a hobby or a cry for help? Either way, take the money and get back to the tables.",
-  "The Bookie is feeling generous. Don't tell your family where this money came from.",
-  "You're single-handedly funding our next office expansion. Here, keep the donations coming."
+const BOTS: LeaderboardEntry[] = [
+  { username: 'Lakhpati_Raj', wagered: 1540000, maxMultiplier: 1250.0 },
+  { username: 'Matka_King_007', wagered: 920000, maxMultiplier: 450.5 },
+  { username: 'MumbaiHighRoller', wagered: 2450000, maxMultiplier: 84.0 },
+  { username: 'Satoshi_Bhai', wagered: 640000, maxMultiplier: 5000.0 },
+  { username: 'PaisaDouble', wagered: 120000, maxMultiplier: 12.5 },
+  { username: 'DelhiWhale', wagered: 3200000, maxMultiplier: 2.1 },
+  { username: 'JackpotJi', wagered: 95000, maxMultiplier: 99.0 },
+  { username: 'DesiGambler', wagered: 450000, maxMultiplier: 54.4 },
+  { username: 'NoLossZone', wagered: 5000, maxMultiplier: 1.5 },
+  { username: 'PunterPro', wagered: 12000, maxMultiplier: 1000.0 },
 ];
 
 class LCG {
@@ -58,6 +61,7 @@ export class SimulationEngine {
       totalWagered: 0,
       totalWins: 0,
       totalLosses: 0,
+      maxMultiplier: 0,
       history: [],
       transactions: [],
       clientSeed: Math.random().toString(36).substring(2),
@@ -83,6 +87,28 @@ export class SimulationEngine {
     return { ...this.session };
   }
 
+  // Fix: Added peekNextRandom to provide deterministic random values without advancing the nonce
+  public peekNextRandom(): number {
+    const rng = new LCG(this.session.serverSeed + this.session.clientSeed + this.session.nonce);
+    let rawRandom = rng.next();
+
+    // Rigging for educational display
+    if (this.session.settings.isRigged && Math.random() > this.session.settings.forcedRTP) {
+      rawRandom = 0.0001; 
+    }
+    return rawRandom;
+  }
+
+  public getLeaderboard(): LeaderboardEntry[] {
+    const playerEntry: LeaderboardEntry = {
+      username: this.session.username,
+      wagered: this.session.totalWagered,
+      maxMultiplier: this.session.maxMultiplier,
+      isPlayer: true
+    };
+    return [...BOTS, playerEntry];
+  }
+
   public deposit(amount: number, method: string): Transaction {
     const tx: Transaction = {
       id: Math.random().toString(36).substring(7),
@@ -99,7 +125,7 @@ export class SimulationEngine {
   }
 
   public withdraw(amount: number, method: string): Transaction {
-    if (amount > this.session.balance) throw new Error("Insufficient funds for withdrawal");
+    if (amount > this.session.balance) throw new Error("Insufficient funds");
     const tx: Transaction = {
       id: Math.random().toString(36).substring(7),
       type: 'WITHDRAW',
@@ -117,7 +143,6 @@ export class SimulationEngine {
   public claimRakeback(): number {
     const amount = this.session.rakebackBalance;
     if (amount <= 0) return 0;
-    
     const tx: Transaction = {
       id: Math.random().toString(36).substring(7),
       type: 'RAKEBACK',
@@ -134,7 +159,7 @@ export class SimulationEngine {
   }
 
   public requestBailout(): string {
-    if (this.session.balance > 10) return "You still have ₹. Go lose that first, then beg.";
+    if (this.session.balance > 10) return "Account still has funds. Wager them first.";
     const amount = DAILY_ALLOWANCE;
     this.session.balance = amount;
     const tx: Transaction = {
@@ -143,47 +168,20 @@ export class SimulationEngine {
       amount,
       timestamp: Date.now(),
       status: 'COMPLETED',
-      method: 'Broke Bailout'
+      method: 'System Pity'
     };
     this.session.transactions = [tx, ...this.session.transactions].slice(0, 50);
     this.saveSession(this.session);
-    return SARCASTIC_BAILOUTS[Math.floor(Math.random() * SARCASTIC_BAILOUTS.length)];
-  }
-
-  public toggleAdmin() {
-    this.session.isAdmin = !this.session.isAdmin;
-    this.saveSession(this.session);
-  }
-
-  public updateBalance(amount: number) {
-    this.session.balance += amount;
-    this.saveSession(this.session);
-  }
-
-  public updateAdminSettings(settings: Partial<AdminSettings>) {
-    this.session.settings = { ...this.session.settings, ...settings };
-    this.saveSession(this.session);
-  }
-
-  public resetBalance() {
-    this.session.balance = DAILY_ALLOWANCE;
-    this.session.rakebackBalance = 0;
-    this.session.transactions = [];
-    this.saveSession(this.session);
-  }
-
-  public peekNextRandom(): number {
-    const rng = new LCG(this.session.serverSeed + this.session.clientSeed + this.session.nonce);
-    return rng.next();
+    return "The Bookie covers you this time. Last warning.";
   }
 
   public placeBet(game: GameType, amount: number, resultCallback: (rawRandom: number) => { multiplier: number; outcome: string }): BetResult {
-    if (amount > this.session.balance && amount > 0) throw new Error("Insufficient funds");
+    if (amount > this.session.balance) throw new Error("Insufficient funds");
     
     const rng = new LCG(this.session.serverSeed + this.session.clientSeed + this.session.nonce);
     let rawRandom = rng.next();
 
-    // Educational rigging logic
+    // Rigging for educational display
     if (this.session.settings.isRigged && Math.random() > this.session.settings.forcedRTP) {
       rawRandom = 0.0001; 
     }
@@ -197,7 +195,10 @@ export class SimulationEngine {
     this.session.nonce += 1;
     this.session.settings.globalProfit += (amount - payout);
     
-    // Rakeback logic: 10% of house edge on every bet
+    if (multiplier > this.session.maxMultiplier) {
+      this.session.maxMultiplier = multiplier;
+    }
+
     const edge = HOUSE_EDGES[game];
     this.session.rakebackBalance += (amount * edge * 0.1);
 
@@ -225,7 +226,7 @@ export class SimulationEngine {
   }
 
   public getCrashPoint(r: number): number {
-    const edge = this.session.settings.houseEdgeOverrides[GameType.CRASH];
+    const edge = HOUSE_EDGES[GameType.CRASH];
     if (r < edge) return 1.00;
     return Math.max(1.00, Math.floor(((1 - edge) / (1 - r)) * 100) / 100);
   }
@@ -248,7 +249,6 @@ export class SimulationEngine {
       symbolsSet[Math.floor(rng.next() * symbolsSet.length)],
       symbolsSet[Math.floor(rng.next() * symbolsSet.length)]
     ];
-    
     let multiplier = 0;
     if (result[0] === result[1] && result[1] === result[2]) {
       if (result[0] === '7️⃣') multiplier = 50;
@@ -257,7 +257,6 @@ export class SimulationEngine {
     } else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) {
       multiplier = 2;
     }
-    
     return { symbols: result, multiplier };
   }
 
@@ -278,13 +277,15 @@ export class SimulationEngine {
     const rng = new LCG(r.toString());
     while (minesPlaced < minesCount) {
       const idx = Math.floor(rng.next() * 25);
-      if (!grid[idx]) {
-        grid[idx] = true;
-        minesPlaced++;
-      }
+      if (!grid[idx]) { grid[idx] = true; minesPlaced++; }
     }
     return grid;
   }
+
+  public toggleAdmin() { this.session.isAdmin = !this.session.isAdmin; this.saveSession(this.session); }
+  public updateAdminSettings(s: Partial<AdminSettings>) { this.session.settings = { ...this.session.settings, ...s }; this.saveSession(this.session); }
+  public resetBalance() { this.session.balance = DAILY_ALLOWANCE; this.saveSession(this.session); }
+  public updateBalance(a: number) { this.session.balance += a; this.saveSession(this.session); }
 }
 
 export const engine = new SimulationEngine();

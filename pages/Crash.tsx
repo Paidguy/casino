@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-// Fix: Layout is a named export, not a default export.
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
 import { audio } from '../services/audio';
@@ -12,17 +11,15 @@ export default function Crash() {
   const [gameState, setGameState] = useState<'IDLE' | 'RUNNING' | 'CRASHED' | 'CASHED_OUT'>('IDLE');
   const [history, setHistory] = useState<number[]>([]);
   const [crashPoint, setCrashPoint] = useState<number>(0);
-
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(0);
   const startTimeRef = useRef<number>(0);
 
   const animate = (time: number) => {
     if (gameState !== 'RUNNING') return;
     if (!startTimeRef.current) startTimeRef.current = time;
-    
     const elapsed = time - startTimeRef.current;
     const seconds = elapsed / 1000;
-    // Real Stake-style growth formula
     const newMultiplier = Math.pow(1.06, seconds);
 
     if (newMultiplier >= crashPoint) {
@@ -33,22 +30,46 @@ export default function Crash() {
       setHistory(prev => [crashPoint, ...prev].slice(0, 8));
     } else {
       setMultiplier(newMultiplier);
+      drawCurve(newMultiplier);
       requestRef.current = requestAnimationFrame(animate);
     }
   };
 
+  const drawCurve = (m: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.beginPath();
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#00e701';
+    ctx.moveTo(0, h);
+    const endX = Math.min(w, (m - 1) * 200);
+    const endY = h - Math.min(h, (m - 1) * 50);
+    ctx.quadraticCurveTo(w / 2, h, endX, endY);
+    ctx.stroke();
+    // Head marker
+    ctx.beginPath();
+    ctx.arc(endX, endY, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#00e701';
+  };
+
   useEffect(() => {
-    if (gameState === 'RUNNING') {
-      requestRef.current = requestAnimationFrame(animate);
-    }
+    if (gameState === 'RUNNING') requestRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(requestRef.current);
   }, [gameState, crashPoint]);
 
-  const startGame = () => {
+  const start = () => {
     if (betAmount > engine.getSession().balance || betAmount <= 0) return;
     audio.playBet();
-    const r = engine.peekNextRandom();
-    const point = engine.getCrashPoint(r);
+    const point = engine.getCrashPoint(engine.peekNextRandom());
     setCrashPoint(point);
     setGameState('RUNNING');
     setMultiplier(1.00);
@@ -66,83 +87,38 @@ export default function Crash() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 h-full">
-        {/* Betting Terminal */}
-        <div className="w-full lg:w-80 bg-[#0f1116] p-6 rounded-2xl border border-white/5 flex flex-col gap-6 shadow-2xl shrink-0">
-          <div className="bg-[#07080a] p-1 rounded-lg flex border border-white/5">
-             <button className="flex-1 py-2 text-[10px] font-black uppercase text-white bg-white/5 rounded">Manual</button>
-             <button className="flex-1 py-2 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Auto</button>
-          </div>
-
-          <div>
-            <div className="flex justify-between mb-2">
-               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Bet Amount</label>
-               <span className="text-[10px] font-bold text-slate-600">$ USD</span>
-            </div>
-            <div className="relative group">
-              <input 
-                type="number" 
-                value={betAmount} 
-                onChange={(e) => setBetAmount(Number(e.target.value))} 
-                className="w-full bg-[#07080a] border border-white/10 px-4 py-3 rounded-lg text-white font-mono font-black text-lg focus:outline-none focus:border-[#00e701] transition-all"
-                disabled={gameState === 'RUNNING'}
-              />
-              <div className="absolute right-2 top-2 flex gap-1">
-                 <button onClick={() => setBetAmount(Math.max(0, betAmount / 2))} className="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded text-[10px] font-black text-white border border-white/5 transition-all">1/2</button>
-                 <button onClick={() => setBetAmount(betAmount * 2)} className="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded text-[10px] font-black text-white border border-white/5 transition-all">2x</button>
-              </div>
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+        <div className="w-full lg:w-80 bg-[#0f1116] p-6 rounded-3xl border border-white/5 flex flex-col gap-6 shadow-2xl shrink-0">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Bet Amount (₹)</label>
+          <div className="relative">
+            <input type="number" value={betAmount} onChange={(e) => setBetAmount(Number(e.target.value))} className="w-full bg-black border border-white/10 px-4 py-3 rounded-xl text-white font-mono font-black text-lg focus:border-casino-accent outline-none" disabled={gameState === 'RUNNING'} />
+            <div className="absolute right-2 top-2 flex gap-1">
+               <button onClick={() => setBetAmount(betAmount / 2)} className="bg-white/5 px-2 py-1 rounded text-[10px] font-black">1/2</button>
+               <button onClick={() => setBetAmount(betAmount * 2)} className="bg-white/5 px-2 py-1 rounded text-[10px] font-black">2x</button>
             </div>
           </div>
-
           {gameState === 'RUNNING' ? (
-            <button onClick={cashOut} className="w-full py-5 bg-[#00e701] text-black font-black text-xl rounded-xl shadow-[0_0_50px_rgba(0,231,1,0.2)] transition-all hover:scale-[1.02] active:scale-95 uppercase tracking-widest">
-              Cashout (${(betAmount * multiplier).toFixed(2)})
-            </button>
+            <button onClick={cashOut} className="w-full py-5 bg-casino-accent text-black font-black text-xl rounded-2xl shadow-xl active:scale-95 transition-all">Cashout (₹{(betAmount * multiplier).toFixed(2)})</button>
           ) : (
-            <button 
-              onClick={startGame} 
-              className="w-full py-5 bg-[#00e701] text-black font-black text-xl rounded-xl shadow-[0_0_50px_rgba(0,231,1,0.2)] transition-all hover:scale-[1.02] active:scale-95 uppercase tracking-widest"
-            >
-              Bet
-            </button>
+            <button onClick={start} className="w-full py-5 bg-casino-accent text-black font-black text-xl rounded-2xl shadow-xl active:scale-95 transition-all">Play Matka</button>
           )}
-
-          <div className="mt-auto border-t border-white/5 pt-6">
-            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Latest Results</div>
+          <div className="border-t border-white/5 pt-6 mt-auto">
+            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Previous Draws</h4>
             <div className="flex flex-wrap gap-2">
                {history.map((h, i) => (
-                  <div key={i} className={`px-3 py-1.5 rounded-lg text-[10px] font-black border ${h >= 2 ? 'bg-[#00e701]/10 text-[#00e701] border-[#00e701]/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
-                    {h.toFixed(2)}x
-                  </div>
+                  <div key={i} className={`px-2 py-1 rounded text-[10px] font-black border ${h >= 2 ? 'text-casino-accent border-casino-accent/20 bg-casino-accent/5' : 'text-rose-500 border-rose-500/20 bg-rose-500/5'}`}>{h.toFixed(2)}x</div>
                ))}
             </div>
           </div>
         </div>
 
-        {/* Game Canvas Viewport */}
-        <div className="flex-1 bg-[#0f1116] rounded-3xl border border-white/5 relative overflow-hidden flex flex-col items-center justify-center min-h-[500px] shadow-inner group">
-           <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px]"></div>
-           
-           <div className="z-10 text-center select-none scale-100 group-hover:scale-105 transition-transform duration-700">
-              <div className={`text-[140px] leading-none font-black tracking-tighter tabular-nums drop-shadow-[0_0_60px_rgba(255,255,255,0.1)] transition-colors duration-300 ${gameState === 'CRASHED' ? 'text-rose-500' : 'text-white'}`}>
-                {multiplier.toFixed(2)}x
-              </div>
-              {gameState === 'CRASHED' && <div className="text-3xl font-black text-rose-500 uppercase tracking-[0.5em] mt-6 animate-pulse">Busted!</div>}
-              {gameState === 'CASHED_OUT' && <div className="text-3xl font-black text-[#00e701] uppercase tracking-[0.5em] mt-6">Profit: +${(betAmount * multiplier - betAmount).toFixed(2)}</div>}
+        <div className="flex-1 bg-[#0f1116] rounded-[3rem] border border-white/5 relative overflow-hidden flex flex-col items-center justify-center min-h-[400px] lg:min-h-[550px] shadow-inner p-10">
+           <canvas ref={canvasRef} width={800} height={500} className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" />
+           <div className={`text-6xl lg:text-9xl font-black tabular-nums transition-colors duration-300 ${gameState === 'CRASHED' ? 'text-rose-500 animate-pulse' : 'text-white'}`}>
+              {multiplier.toFixed(2)}x
            </div>
-
-           {gameState === 'RUNNING' && (
-             <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
-                <path 
-                   d={`M 0 500 Q ${300 + (multiplier * 30)} ${500 - (multiplier * 15)} 1000 0`} 
-                   fill="none" 
-                   stroke="#00e701" 
-                   strokeWidth="16" 
-                   strokeLinecap="round"
-                   className="animate-pulse"
-                />
-             </svg>
-           )}
+           {gameState === 'CRASHED' && <div className="text-xl lg:text-2xl font-black text-rose-500 uppercase tracking-[0.5em] mt-8 animate-bounce">Draw Busted!</div>}
+           {gameState === 'CASHED_OUT' && <div className="text-xl lg:text-2xl font-black text-casino-accent uppercase tracking-[0.5em] mt-8 animate-bounce">Jackpot Won!</div>}
         </div>
       </div>
     </Layout>
