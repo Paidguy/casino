@@ -42,7 +42,7 @@ export default function Matka() {
         <div className="bg-bet-900 border border-white/5 rounded-[2.5rem] p-6 lg:p-10 shadow-3xl">
            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
               <div>
-                 <h1 className="text-3xl lg:text-5xl font-black text-white uppercase italic tracking-tighter leading-none mb-2 bazar-font">Kalyan <span className="text-bet-primary drop-shadow-[0_0_15px_#22d3ee]">Draw</span></h1>
+                 <h1 className="text-3xl lg:text-5xl font-black text-white uppercase italic tracking-tighter leading-none mb-2 bazar-font">Kalyan <span className="text-bet-primary drop-shadow-[0_0_15px_#22d3ee]">Matka</span></h1>
                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] leading-none">Made by @paidguy</p>
               </div>
               <div className="bg-bet-primary/10 px-6 py-3 rounded-xl border border-bet-primary/30 text-bet-primary font-black text-xl bazar-font leading-none">ANK: 9x</div>

@@ -10,7 +10,7 @@
 ## 🏮 PREFACE BY @PAIDGUY
 Welcome to the absolute zenith of virtual betting technology. **SattaKing.IND Pro** is not merely a piece of software; it is a meticulously engineered cryptographic simulation of the vast and complex Indian "Bazar" economy. Built on the core foundations of **Provable Fairness**, **Behavioral Neural Loops**, and **High-Performance Silicon Logic**, this platform is designed for professional punters who demand total transparency, lightning-fast execution, and the raw, electric energy of Mumbai’s betting night-life.
 
-Every pixel—from the neon cyan glow of the Matka results to the exponential growth curve of the Udaan rocket—has been tuned by @paidguy to optimize for **"Silk UX."** This design paradigm ensures that interaction friction is mathematically near-zero, while cognitive engagement with the underlying game theory remains at its peak.
+Every pixel—from the neon cyan glow of the Matka results to the exponential growth curve of the Aviator rocket—has been tuned by @paidguy to optimize for **"Silk UX."** This design paradigm ensures that interaction friction is mathematically near-zero, while cognitive engagement with the underlying game theory remains at its peak.
 
 ---
 
@@ -21,10 +21,10 @@ Every pixel—from the neon cyan glow of the Matka results to the exponential gr
 4.  [**HMAC-SHA256: Provable Fairness Explained**](#-provable-fairness)
 5.  [**Behavioral Economics: The Dopamine Architecture**](#-behavioral-economics)
 6.  [**Game Module: Kalyan Matka (The Core)**](#-kalyan-matka)
-7.  [**Game Module: Udaan Aviator (Exponential Risk)**](#-udaan-aviator)
-8.  [**Game Module: Baccarat Royal (Elite Satta)**](#-baccarat-royal)
-9.  [**Game Module: Keno Satta (High Variance)**](#-keno-satta)
-10. [**Game Module: Satta Slots (High Variance)**](#-satta-slots)
+7.  [**Game Module: Aviator (Exponential Risk)**](#-aviator)
+8.  [**Game Module: Baccarat (Elite Satta)**](#-baccarat)
+9.  [**Game Module: Keno (High Variance)**](#-keno)
+10. [**Game Module: Slots (High Variance)**](#-slots)
 11. [**Visual Identity: Neon Mumbai Palette**](#-visual-identity)
 12. [**Performance Engineering: 60FPS Baseline**](#-performance)
 13. [**Operational Integrity & Node Stability**](#-operational-integrity)
@@ -46,7 +46,7 @@ By combining full-stack excellence with a deep understanding of behavioral scien
 In version 8.0, we have completely resolved the "Clutter Crisis." Traditional layouts fail on laptop screens (1080p with scaling) because they try to show everything at once.
 
 ### Focus-First Logic:
--   **Theater Mode**: When a user enters a game (like Kalyan or Udaan), the secondary "Intel Feed" and the "Navigation Bar" are automatically collapsed or minimized. This expands the central game stage to 100% of the viewport, providing a "Cinema-like" focus.
+-   **Theater Mode**: When a user enters a game (like Kalyan or Aviator), the secondary "Intel Feed" and the "Navigation Bar" are automatically collapsed or minimized. This expands the central game stage to 100% of the viewport, providing a "Cinema-like" focus.
 -   **Z-Index Optimization**: High-priority UI elements like the "Refill" button and "Wallet" are kept in a slim persistent header, ensuring they never overlap with game controls.
 -   **Fluid Typography**: All font sizes are calculated using `clamp()` and `rem` units, preventing text from becoming "squashed" on 13" laptop screens.
 -   **Contextual Suppresion**: Sidebars only appear on the Lobby or when explicitly triggered by the "Command Hub" button, ensuring the punter's flow state is never interrupted.
@@ -60,10 +60,10 @@ The SattaKing Engine is a deterministic state machine. It does not "roll dice" i
 | Module | House Edge | Mathematical Basis |
 | :--- | :--- | :--- |
 | **Kalyan Matka** | 5.0% | Standard Khaiwal Office Cut |
-| **Udaan Aviator** | 3.0% | Instant-Bust Probability at 1.00x |
-| **Baccarat Royal** | 1.06% | Tie-Zero Compensation |
-| **Keno Satta** | 5.0% | Combinatorial Draw Bias |
-| **Satta Slots** | 4.0% | Gravitational Symbol Weighting |
+| **Aviator** | 3.0% | Instant-Bust Probability at 1.00x |
+| **Baccarat** | 1.06% | Tie-Zero Compensation |
+| **Keno** | 5.0% | Combinatorial Draw Bias |
+| **Slots** | 4.0% | Gravitational Symbol Weighting |
 
 Every result is a product of the **Seed-Nonce Chain**. This means that if you know the server's seed and your client seed, you can predict every outcome for the next 1,000 rounds. This is the definition of **Provable Fairness**.
 
@@ -86,7 +86,7 @@ This protocol eliminates the possibility of "on-the-fly" rigging. Even the Pit B
 SattaKing Pro is a case study in **Neural Engagement**. We utilize several cognitive biases to create an immersive experience.
 
 ### Key Biases Leveraged:
-1.  **The Gambler's Fallacy**: The "History" bars in Kalyan and Udaan are designed to look like "Trends," encouraging punters to find patterns where none exist. We provide "Trend Indicators" (Hot/Cold numbers) to stimulate this psychological shortcut.
+1.  **The Gambler's Fallacy**: The "History" bars in Kalyan and Aviator are designed to look like "Trends," encouraging punters to find patterns where none exist. We provide "Trend Indicators" (Hot/Cold numbers) to stimulate this psychological shortcut.
 2.  **Near-Miss Conditioning**: Our Slots module is tuned to stop just one symbol away from a jackpot 150% more often than random chance would allow. This triggers the "Almost Won" dopaminergic circuit, which is the strongest driver of re-playability.
 3.  **Social Proofing**: The Live Intel Feed shows other "Punters" winning massive sums. This leverages the human instinct for competition and FOMO (Fear Of Missing Out).
 4.  **Pseudo-Control**: By allowing the user to rotate their "Client Seed," we provide a sense of agency over the RNG, reducing the "helplessness" associated with pure gambling.
@@ -102,7 +102,7 @@ The heartbeat of the Mumbai night. Our Matka module is the most accurate digital
 
 ---
 
-## 🚀 7. GAME MODULE: UDAAN AVIATOR (EXPONENTIAL RISK)
+## 🚀 7. GAME MODULE: AVIATOR (EXPONENTIAL RISK)
 A test of pure nerves and exit-strategy. The rocket ascends using an exponential growth curve:
 -   **Flight Formula**: $f(t) = e^{0.06 \cdot t}$
 -   **The Exit Problem**: Punters must decide when to "Cash Out" before the rocket busts. 
@@ -111,7 +111,7 @@ A test of pure nerves and exit-strategy. The rocket ascends using an exponential
 
 ---
 
-## 🤵 8. GAME MODULE: BACCARAT ROYAL (ELITE SATTA)
+## 🤵 8. GAME MODULE: BACCARAT (ELITE SATTA)
 Finalized for v8.0, this module brings high-stakes card logic to the Satta platform.
 -   **Logic**: Pure comparison of "Player" vs "Banker" values (0-9).
 -   **Odds**: Tie bet pays out at 9x, while Player/Banker pays 2x (minus 5% commission on Banker wins).
@@ -119,7 +119,7 @@ Finalized for v8.0, this module brings high-stakes card logic to the Satta platf
 
 ---
 
-## 🔢 9. GAME MODULE: KENO SATTA (HIGH VARIANCE)
+## 🔢 9. GAME MODULE: KENO (HIGH VARIANCE)
 A favorite of the Delhi-Gali Bazar circuit.
 -   **Mechanic**: Pick up to 10 numbers from a grid of 40.
 -   **Payouts**: Progressive multipliers based on the number of "Hits."
@@ -127,7 +127,7 @@ A favorite of the Delhi-Gali Bazar circuit.
 
 ---
 
-## 🎰 10. GAME MODULE: SATTA SLOTS (HIGH VARIANCE)
+## 🎰 10. GAME MODULE: SLOTS (HIGH VARIANCE)
 Engineered for maximum visual impact and "Hyper-Silk" smoothness.
 -   **Graphics**: GPU-accelerated SVG icons that scale perfectly on 4K monitors.
 -   **Feel**: 2000ms "Silk Spin" with physical haptic deceleration.
@@ -139,7 +139,7 @@ Engineered for maximum visual impact and "Hyper-Silk" smoothness.
 ## 💎 11. VISUAL IDENTITY: NEON MUMBAI PALETTE
 @paidguy has enforced a strict color code to maintain the "Mumbai Night" aesthetic.
 -   **Cyan Neon (#22d3ee)**: Trust, speed, and digital clarity. Used for primary winners and navigation.
--   **Magenta Laser (#d946ef)**: High-energy jackpot triggers. Used for the Udaan rocket and big wins.
+-   **Magenta Laser (#d946ef)**: High-energy jackpot triggers. Used for the Aviator rocket and big wins.
 -   **Kalyan Gold (#fbbf24)**: Success, status, and wealth. Used for the ultimate "Gold Text" effects.
 -   **Obsidian Void (#020617)**: The infinite, dark canvas of the Satta night. Chosen for zero eye-strain during late-night play.
 

@@ -34,11 +34,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const menu = [
     { label: 'Market Lobby', to: '/', icon: '🏰' },
-    { label: 'Kalyan Bazar', to: '/matka', icon: '🏺' },
-    { label: 'Udaan Aviator', to: '/crash', icon: '🚀' },
+    { label: 'Kalyan Matka', to: '/matka', icon: '🏺' },
+    { label: 'Aviator', to: '/crash', icon: '🚀' },
     { label: 'Teen Patti', to: '/teenpatti', icon: '🃏' },
-    { label: 'Satta Slots', to: '/slots', icon: '🎰' },
-    { label: 'Shubh Wheel', to: '/wheel', icon: '🎡' },
+    { label: 'Slots', to: '/slots', icon: '🎰' },
+    { label: 'Wheel', to: '/wheel', icon: '🎡' },
     { label: 'Fairness Audit', to: '/fairness', icon: '🔒' },
     { label: 'Pit Boss', to: '/admin', icon: '👤' },
   ];

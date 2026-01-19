@@ -44,11 +44,11 @@ export default function Lobby() {
                  BHAARI <br/> <span className="gold-text">PROFIT</span>
               </h1>
               <p className="text-base lg:text-xl font-bold text-slate-400 uppercase tracking-[0.1em] max-w-2xl leading-relaxed opacity-90">
-                 Final Edition Satta Engine with Provably Fair Baccarat, Matka, and high-speed Udaan Aviator.
+                 Final Edition Satta Engine with Provably Fair Baccarat, Matka, and high-speed Aviator.
               </p>
               <div className="flex flex-wrap gap-6 pt-6">
                  <Link to="/matka" className="bg-bet-primary text-bet-950 px-16 py-6 rounded-2xl font-black uppercase text-lg tracking-[0.2em] shadow-xl hover:scale-105 transition-all bazar-font cyan-glow">Kalyan Matka</Link>
-                 <Link to="/crash" className="bg-white/10 text-white px-16 py-6 rounded-2xl font-black uppercase text-lg tracking-[0.2em] border border-white/10 hover:bg-white/20 transition-all bazar-font">Udaan Flight</Link>
+                 <Link to="/crash" className="bg-white/10 text-white px-16 py-6 rounded-2xl font-black uppercase text-lg tracking-[0.2em] border border-white/10 hover:bg-white/20 transition-all bazar-font">Aviator</Link>
               </div>
            </div>
         </section>
@@ -78,14 +78,14 @@ export default function Lobby() {
            </div>
            
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              <GameCard title="Kalyan Bazar" to="/matka" icon="🏺" players="94k" color="from-bet-success to-transparent" desc="Direct Panna & Ank Fix" />
-              <GameCard title="Udaan Rocket" to="/crash" icon="🚀" players="158k" color="from-bet-danger to-transparent" desc="High-Speed Multiplier Flight" />
-              <GameCard title="Baccarat Royal" to="/baccarat" icon="🤵" players="42k" color="from-bet-primary to-transparent" desc="Elite Banker vs Player" />
-              <GameCard title="Keno Satta" to="/keno" icon="🔢" players="31k" color="from-bet-secondary to-transparent" desc="40-Ball High Odds Draw" />
+              <GameCard title="Kalyan Matka" to="/matka" icon="🏺" players="94k" color="from-bet-success to-transparent" desc="Direct Panna & Ank Fix" />
+              <GameCard title="Aviator" to="/crash" icon="🚀" players="158k" color="from-bet-danger to-transparent" desc="High-Speed Multiplier Flight" />
+              <GameCard title="Baccarat" to="/baccarat" icon="🤵" players="42k" color="from-bet-primary to-transparent" desc="Elite Banker vs Player" />
+              <GameCard title="Keno" to="/keno" icon="🔢" players="31k" color="from-bet-secondary to-transparent" desc="40-Ball High Odds Draw" />
               <GameCard title="Teen Patti" to="/teenpatti" icon="🃏" players="68k" color="from-bet-accent to-transparent" desc="Classic 3-Card Legend" />
-              <GameCard title="Jackpot Slots" to="/slots" icon="🎰" players="55k" color="from-bet-success to-transparent" desc="Diamond 777 Reels" />
-              <GameCard title="Neon Wheel" to="/wheel" icon="🎡" players="29k" color="from-bet-primary to-transparent" desc="Big Multiplier Spin" />
-              <GameCard title="Kanchas" to="/mines" icon="🧨" players="34k" color="from-bet-danger to-transparent" desc="Strategic Mines Grid" />
+              <GameCard title="Slots" to="/slots" icon="🎰" players="55k" color="from-bet-success to-transparent" desc="Diamond 777 Reels" />
+              <GameCard title="Wheel" to="/wheel" icon="🎡" players="29k" color="from-bet-primary to-transparent" desc="Big Multiplier Spin" />
+              <GameCard title="Mines" to="/mines" icon="🧨" players="34k" color="from-bet-danger to-transparent" desc="Strategic Mines Grid" />
            </div>
         </section>
 

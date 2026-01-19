@@ -25,7 +25,7 @@ export default function Fairness() {
             PROVABLY <span className="text-bet-primary drop-shadow-[0_0_15px_#22d3ee]">FAIR</span>
           </h1>
           <p className="text-slate-400 text-sm lg:text-lg font-bold leading-relaxed max-w-3xl mx-auto uppercase tracking-wide opacity-80">
-            Every Kalyan draw and Udaan flight is determined by a cryptographically secure HMAC-SHA256 chain. Verify the math, audit the bazar.
+            Every Kalyan draw and Aviator flight is determined by a cryptographically secure HMAC-SHA256 chain. Verify the math, audit the bazar.
           </p>
         </div>
 
@@ -84,11 +84,11 @@ export default function Fairness() {
            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {[
                 { name: 'Kalyan Matka', edge: HOUSE_EDGES[GameType.MATKA], formula: 'Weighted Sum', desc: '10% node fee for direct office result payouts.' },
-                { name: 'Udaan Aviator', edge: HOUSE_EDGES[GameType.CRASH], formula: '0.97 / (1 - U)', desc: '3% instant crash ensures mathematical bank profit.' },
-                { name: 'Shubh Wheel', edge: HOUSE_EDGES[GameType.WHEEL], formula: 'Normal Distribution', desc: 'Zero pockets balance the high multipliers.' },
+                { name: 'Aviator', edge: HOUSE_EDGES[GameType.CRASH], formula: '0.97 / (1 - U)', desc: '3% instant crash ensures mathematical bank profit.' },
+                { name: 'Wheel', edge: HOUSE_EDGES[GameType.WHEEL], formula: 'Normal Distribution', desc: 'Zero pockets balance the high multipliers.' },
                 { name: 'Teen Patti', edge: HOUSE_EDGES[GameType.TEENPATTI], formula: '52.5% Dealer Bias', desc: 'Slight bias ensures long-term bazar stability.' },
-                { name: 'Maha Slots', edge: HOUSE_EDGES[GameType.SLOTS], formula: 'Symbol Gravity', desc: 'High variance reels with a set 96% return rate.' },
-                { name: 'Kanchas (Mines)', edge: HOUSE_EDGES[GameType.MINES], formula: 'Combinatorial Risk', desc: 'Step multipliers grow slower than actual risk.' }
+                { name: 'Slots', edge: HOUSE_EDGES[GameType.SLOTS], formula: 'Symbol Gravity', desc: 'High variance reels with a set 96% return rate.' },
+                { name: 'Mines', edge: HOUSE_EDGES[GameType.MINES], formula: 'Combinatorial Risk', desc: 'Step multipliers grow slower than actual risk.' }
               ].map(game => (
                 <div key={game.name} className="bg-bet-900 p-10 rounded-[2.5rem] border border-white/5 hover:border-bet-primary/30 transition-all group card-bazar">
                    <h3 className="text-2xl font-black text-white mb-2 group-hover:text-bet-primary transition-colors uppercase italic -skew-x-6 bazar-font">{game.name}</h3>
