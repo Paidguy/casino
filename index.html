@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Stake.Sim | Premium Casino Simulation</title>
+    <title>Stake.IND | India's Premium Matka & Casino Simulation</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -12,83 +13,55 @@
           extend: {
             colors: {
               casino: {
-                950: '#0f1116', // Darker background
-                900: '#1a1d23', // Primary panel
-                800: '#21262d', // Sidebar/Hover
-                700: '#2d333b', // Borders
+                950: '#07080a',
+                900: '#0f1116',
+                800: '#1a1d23',
+                700: '#21262d',
                 600: '#3c444d',
-                accent: '#5865f2', // Brand blue
-                win: '#00e701',   // Positive
-                loss: '#ff0033',  // Negative
-                gold: '#ffb800'   // VIP
+                accent: '#00e701',
+                win: '#00e701',
+                loss: '#ff0033',
+                gold: '#ffb800'
               }
+            },
+            animation: {
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             }
           }
         }
       }
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap');
       
       body {
-        background-color: #0f1116;
+        background-color: #07080a;
         color: #b1b5c3;
         font-family: 'Inter', sans-serif;
         overflow: hidden;
+        -webkit-font-smoothing: antialiased;
       }
 
-      .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+      .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-      .custom-scrollbar::-webkit-scrollbar-thumb { background: #2d333b; border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #1a1d23; border-radius: 20px; border: 1px solid #2d333b; }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3c444d; }
 
-      .bet-input {
-        background: #0f1116;
-        border: 2px solid #2d333b;
-        transition: all 0.2s;
+      ::selection {
+        background: rgba(0, 231, 1, 0.2);
+        color: #00e701;
       }
-      .bet-input:focus {
-        border-color: #5865f2;
-        background: #1a1d23;
-        outline: none;
-        box-shadow: 0 0 0 4px rgba(88, 101, 242, 0.1);
-      }
-
-      @keyframes bounce-short {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
-      .animate-bounce-short { animation: bounce-short 0.5s ease-in-out infinite; }
 
       @keyframes fade-in {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
       }
-      .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+      .animate-fade-in { animation: fade-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
       .perspective-1000 { perspective: 1000px; }
-
-      /* Modern Range Slider Styling */
-      input[type=range] {
-        -webkit-appearance: none;
-        background: transparent;
-      }
-      input[type=range]::-webkit-slider-runnable-track {
-        width: 100%;
-        height: 8px;
-        background: #1a1d23;
-        border-radius: 4px;
-        border: 1px solid #2d333b;
-      }
-      input[type=range]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        height: 20px;
-        width: 20px;
-        border-radius: 50%;
-        background: #5865f2;
-        cursor: pointer;
-        margin-top: -7px;
-        box-shadow: 0 0 10px rgba(88, 101, 242, 0.3);
+      
+      .rocket-shadow {
+        filter: drop-shadow(0 0 10px rgba(0, 231, 1, 0.4));
       }
     </style>
   <script type="importmap">

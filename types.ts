@@ -26,6 +26,15 @@ export interface BetResult {
   resultInput: number; 
 }
 
+export interface Transaction {
+  id: string;
+  type: 'DEPOSIT' | 'WITHDRAW' | 'BAILOUT';
+  amount: number;
+  timestamp: number;
+  status: 'COMPLETED' | 'PENDING';
+  method: string;
+}
+
 export interface AdminSettings {
   isRigged: boolean;
   forcedRTP: number; 
@@ -45,6 +54,7 @@ export interface UserSession {
   totalWins: number;
   totalLosses: number; 
   history: BetResult[];
+  transactions: Transaction[];
   clientSeed: string;
   serverSeed: string;
   nonce: number;

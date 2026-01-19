@@ -1,8 +1,8 @@
 
-import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings } from '../types';
+import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction } from '../types';
 
 const DAILY_ALLOWANCE = 10000;
-const STORAGE_KEY = 'losslimit_book_v1';
+const STORAGE_KEY = 'stake_ind_v3_premium';
 
 const SARCASTIC_BAILOUTS = [
   "Back for more punishment? Here's 10k. Try not to lose it in 5 minutes this time.",
@@ -58,6 +58,7 @@ export class SimulationEngine {
       totalWins: 0,
       totalLosses: 0,
       history: [],
+      transactions: [],
       clientSeed: Math.random().toString(36).substring(2),
       serverSeed: Math.random().toString(36).substring(2),
       nonce: 0,
@@ -81,9 +82,50 @@ export class SimulationEngine {
     return { ...this.session };
   }
 
+  public deposit(amount: number, method: string): Transaction {
+    const tx: Transaction = {
+      id: Math.random().toString(36).substring(7),
+      type: 'DEPOSIT',
+      amount,
+      timestamp: Date.now(),
+      status: 'COMPLETED',
+      method
+    };
+    this.session.balance += amount;
+    this.session.transactions = [tx, ...this.session.transactions].slice(0, 50);
+    this.saveSession(this.session);
+    return tx;
+  }
+
+  public withdraw(amount: number, method: string): Transaction {
+    if (amount > this.session.balance) throw new Error("Insufficient funds for withdrawal");
+    const tx: Transaction = {
+      id: Math.random().toString(36).substring(7),
+      type: 'WITHDRAW',
+      amount,
+      timestamp: Date.now(),
+      status: 'COMPLETED',
+      method
+    };
+    this.session.balance -= amount;
+    this.session.transactions = [tx, ...this.session.transactions].slice(0, 50);
+    this.saveSession(this.session);
+    return tx;
+  }
+
   public requestBailout(): string {
     if (this.session.balance > 10) return "You still have cash. Go lose that first.";
-    this.session.balance = DAILY_ALLOWANCE;
+    const amount = DAILY_ALLOWANCE;
+    this.session.balance = amount;
+    const tx: Transaction = {
+      id: Math.random().toString(36).substring(7),
+      type: 'BAILOUT',
+      amount,
+      timestamp: Date.now(),
+      status: 'COMPLETED',
+      method: 'System Charity'
+    };
+    this.session.transactions = [tx, ...this.session.transactions].slice(0, 50);
     this.saveSession(this.session);
     return SARCASTIC_BAILOUTS[Math.floor(Math.random() * SARCASTIC_BAILOUTS.length)];
   }
@@ -98,15 +140,14 @@ export class SimulationEngine {
     this.saveSession(this.session);
   }
 
-  // Fix: Added missing updateAdminSettings method
   public updateAdminSettings(settings: Partial<AdminSettings>) {
     this.session.settings = { ...this.session.settings, ...settings };
     this.saveSession(this.session);
   }
 
-  // Fix: Added missing resetBalance method
   public resetBalance() {
     this.session.balance = DAILY_ALLOWANCE;
+    this.session.transactions = [];
     this.saveSession(this.session);
   }
 
@@ -121,7 +162,6 @@ export class SimulationEngine {
     const rng = new LCG(this.session.serverSeed + this.session.clientSeed + this.session.nonce);
     let rawRandom = rng.next();
 
-    // Rigging logic for simulation education
     if (this.session.settings.isRigged && Math.random() > this.session.settings.forcedRTP) {
       rawRandom = 0.0001; 
     }
@@ -164,19 +204,16 @@ export class SimulationEngine {
     return Math.max(1.00, Math.floor(((1 - edge) / (1 - r)) * 100) / 100);
   }
 
-  // Fix: Added missing calculateDiceResult method
   public calculateDiceResult(r: number, target: number, condition: 'over' | 'under') {
     const roll = r * 100;
     const won = condition === 'over' ? roll > target : roll < target;
     return { roll, won };
   }
 
-  // Fix: Added missing calculateRouletteResult method
   public calculateRouletteResult(r: number): number {
-    return Math.floor(r * 37); // European roulette: 0-36
+    return Math.floor(r * 37);
   }
 
-  // Fix: Added missing calculateSlotsResult method
   public calculateSlotsResult(r: number): { symbols: string[], multiplier: number } {
     const symbolsSet = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
     const rng = new LCG(r.toString());
