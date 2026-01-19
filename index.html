@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -12,36 +12,29 @@
           extend: {
             colors: {
               bet: {
-                950: '#02040a',
-                900: '#0a101d',
-                800: '#141c2d',
-                700: '#1d2a44',
-                accent: '#facc15', // Vibrant Yellow
-                primary: '#1a73e8', // Trust Blue
-                success: '#00c805',
-                danger: '#ff3b30'
-              },
-              casino: {
-                950: '#02040a',
-                900: '#0a101d',
-                800: '#141c2d',
-                700: '#1d2a44',
-                accent: '#facc15',
-                gold: '#ca8a04',
-                win: '#00c805',
-                loss: '#ff3b30'
+                950: '#050810',
+                900: '#0d1321',
+                800: '#161e31',
+                700: '#232e48',
+                accent: '#fbbf24', // Amber-400 for better visibility
+                primary: '#3b82f6', // Blue-500
+                success: '#22c55e',
+                danger: '#ef4444'
               }
             },
             animation: {
-              'marquee': 'marquee 30s linear infinite',
-              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'bounce-short': 'bounce 0.5s ease-in-out 2',
-              'spin-slow': 'spin 8s linear infinite',
+              'marquee': 'marquee 40s linear infinite',
+              'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'float': 'float 6s ease-in-out infinite',
             },
             keyframes: {
               marquee: {
                 '0%': { transform: 'translateX(0)' },
                 '100%': { transform: 'translateX(-50%)' }
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-20px)' },
               }
             }
           }
@@ -49,107 +42,80 @@
       }
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@700&display=swap');
       
       :root {
-        --fluid-text-xs: clamp(0.65rem, 0.6rem + 0.2vw, 0.85rem);
-        --fluid-text-sm: clamp(0.75rem, 0.7rem + 0.3vw, 1rem);
-        --fluid-text-base: clamp(0.85rem, 0.8rem + 0.4vw, 1.15rem);
-        --fluid-text-lg: clamp(1rem, 0.9rem + 0.5vw, 1.4rem);
-        --fluid-text-xl: clamp(1.25rem, 1.1rem + 0.8vw, 2.2rem);
+        --app-height: 100dvh;
       }
 
       * {
         -webkit-tap-highlight-color: transparent;
         box-sizing: border-box;
+        scrollbar-width: none;
       }
 
+      *::-webkit-scrollbar { display: none; }
+
       body {
-        background-color: #02040a;
-        color: #e2e8f0;
+        background-color: #050810;
+        color: #f8fafc;
         font-family: 'Inter', sans-serif;
         margin: 0;
         padding: 0;
-        -webkit-font-smoothing: antialiased;
-        overflow-x: hidden;
-        height: 100dvh;
+        height: var(--app-height);
         width: 100vw;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
       }
 
       #root {
         height: 100%;
         width: 100%;
+        position: relative;
+        z-index: 10;
       }
 
-      .noise-overlay {
+      /* Dynamic Glow Background instead of noise overlay */
+      .bg-glow {
         position: fixed;
         inset: 0;
-        background-image: url('https://www.transparenttextures.com/patterns/asfalt-dark.png');
-        opacity: 0.03;
-        pointer-events: none;
-        z-index: 9999;
+        background: radial-gradient(circle at 50% -20%, #1e293b 0%, #050810 100%);
+        z-index: 0;
       }
 
       .gold-text {
-        background: linear-gradient(to bottom, #facc15, #ca8a04);
+        background: linear-gradient(to bottom, #fbbf24, #d97706);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        font-weight: 900;
       }
-
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      
-      input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
       .game-viewport {
         aspect-ratio: 16/9;
         width: 100%;
-        max-width: 100%;
-        height: auto;
+        background: #0d1321;
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 2rem;
+        position: relative;
+        overflow: hidden;
       }
 
       @media (max-width: 1024px) {
-        .game-viewport {
-          aspect-ratio: 1/1;
-          max-height: 60vh;
-        }
+        .game-viewport { aspect-ratio: 1/1; }
       }
 
-      @media (max-width: 640px) {
-        .game-viewport {
-          aspect-ratio: 1/1.1;
-        }
+      .glass-card {
+        background: rgba(13, 19, 33, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
       }
 
-      .perspective-1000 { perspective: 1000px; }
+      input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
       
       .safe-top { padding-top: env(safe-area-inset-top); }
       .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-
-      /* Custom Range Slider Styling */
-      input[type=range] {
-        -webkit-appearance: none;
-        background: transparent;
-      }
-      input[type=range]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        height: 24px;
-        width: 24px;
-        border-radius: 50%;
-        background: #facc15;
-        cursor: pointer;
-        margin-top: -8px;
-        box-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
-      }
-      input[type=range]::-webkit-slider-runnable-track {
-        width: 100%;
-        height: 8px;
-        cursor: pointer;
-        background: #0a101d;
-        border-radius: 4px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-      }
     </style>
-    <script type="importmap">
+  <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.3",
@@ -162,8 +128,9 @@
   }
 }
 </script>
-  </head>
-  <body class="noise-overlay overflow-hidden">
+</head>
+  <body>
+    <div class="bg-glow"></div>
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
