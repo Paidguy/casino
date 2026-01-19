@@ -1,9 +1,19 @@
-/* Minimal reset to ensure React fills the container */
+/* Reset and full-screen enforcement */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: #020617;
+}
+
 #root {
   display: flex;
   flex-direction: column;
   height: 100%;
   width: 100%;
+  position: relative;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -15,6 +25,11 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(34, 211, 238, 0.2);
   border-radius: 10px;
+}
+
+/* Perspective for 3D effects in casino games */
+.perspective-1000 {
+  perspective: 1000px;
 }

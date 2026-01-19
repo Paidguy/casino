@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>SattaKing.IND | No. 1 Trusted Satta Bazar</title>
+    <title>SattaKing.IND | Bharat Ka No. 1 Bazar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -14,39 +14,34 @@
           extend: {
             colors: {
               bet: {
-                950: '#180202', // Deepest Ruby
-                900: '#450a0a', // Royal Crimson
-                800: '#7f1d1d', // Blood Red
-                accent: '#fbbf24', // Metallic Gold
-                primary: '#fbbf24', // Primary Gold
-                secondary: '#dc2626', // Vibrant Red
-                success: '#16a34a', // Cricket Green
-                danger: '#ef4444', 
-                saffron: '#f97316',
+                950: '#020617', // Deep Space
+                900: '#0f172a', // Midnight
+                800: '#1e293b', // Deep Slate
+                primary: '#22d3ee', // Cyan
+                secondary: '#d946ef', // Magenta
+                accent: '#fbbf24', // Gold
+                success: '#22c55e', // Green
+                danger: '#f43f5e', // Rose
               }
             },
             animation: {
-              'marquee': 'marquee 25s linear infinite',
-              'pulse-gold': 'pulseGold 2s ease-in-out infinite',
+              'marquee': 'marquee 30s linear infinite',
+              'pulse-neon': 'pulseNeon 2s ease-in-out infinite',
               'fade-in': 'fadeIn 0.3s ease-out forwards',
-              'shimmer': 'shimmer 2s linear infinite',
+              'spin-slow': 'spin 10s linear infinite',
             },
             keyframes: {
               marquee: {
                 '0%': { transform: 'translateX(0)' },
                 '100%': { transform: 'translateX(-50%)' }
               },
-              pulseGold: {
-                '0%, 100%': { filter: 'drop-shadow(0 0 5px #fbbf24) brightness(1)' },
-                '50%': { filter: 'drop-shadow(0 0 15px #fbbf24) brightness(1.2)' }
+              pulseNeon: {
+                '0%, 100%': { filter: 'drop-shadow(0 0 5px #22d3ee) brightness(1)' },
+                '50%': { filter: 'drop-shadow(0 0 15px #22d3ee) brightness(1.2)' }
               },
               fadeIn: {
-                '0%': { opacity: '0', transform: 'translateY(10px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' }
-              },
-              shimmer: {
-                '0%': { backgroundPosition: '-200% 0' },
-                '100%': { backgroundPosition: '200% 0' }
+                '0%': { opacity: '0', transform: 'scale(0.98) translateY(10px)' },
+                '100%': { opacity: '1', transform: 'scale(1) translateY(0)' }
               }
             }
           }
@@ -54,23 +49,24 @@
       }
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800&family=Teko:wght@400;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Teko:wght@400;600;700&display=swap');
       
       :root { --app-height: 100dvh; }
       * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; outline: none !important; }
 
       body {
-        background: #180202;
-        color: #fff;
+        background: #020617;
+        color: #f8fafc;
         font-family: 'Plus Jakarta Sans', sans-serif;
         margin: 0;
         padding: 0;
         height: var(--app-height);
+        width: 100vw;
         overflow: hidden;
         position: fixed;
       }
 
-      .bazar-font { font-family: 'Teko', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; }
+      .bazar-font { font-family: 'Teko', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; }
 
       #root {
         height: 100%;
@@ -78,52 +74,44 @@
         display: flex;
         flex-direction: column;
         background-image: 
-          radial-gradient(circle at 50% 0%, rgba(251, 191, 36, 0.1) 0%, transparent 60%),
-          url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l15 30-15 30-15-30z' fill='%23fbbf24' fill-opacity='0.02'/%3E%3C/svg%3E");
+          radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.15) 0%, transparent 60%),
+          radial-gradient(circle at 100% 100%, rgba(217, 70, 239, 0.1) 0%, transparent 40%);
+        background-attachment: fixed;
       }
 
-      .gold-gradient {
-        background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+      .cyan-glow { filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.6)); }
+      .magenta-glow { filter: drop-shadow(0 0 10px rgba(217, 70, 239, 0.6)); }
+
+      .card-glass {
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
       }
 
       .gold-text {
-        background: linear-gradient(to bottom, #fef3c7, #fbbf24, #d97706);
+        background: linear-gradient(to bottom, #fde047, #fbbf24, #f59e0b);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-weight: 900;
       }
 
-      .royal-border {
-        border: 2px solid;
-        border-image-source: linear-gradient(135deg, #fbbf24, #92400e);
-        border-image-slice: 1;
-      }
-
-      .card-bazar {
-        background: linear-gradient(180deg, rgba(127, 29, 29, 0.4) 0%, rgba(24, 2, 2, 0.8) 100%);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(251, 191, 36, 0.15);
-      }
-
-      button, a { transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-      button:active, a:active { transform: scale(0.94); }
-
+      button:active { transform: scale(0.95); }
       .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@^19.2.3",
-        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-        "react/": "https://esm.sh/react@^19.2.3/",
-        "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
-        "recharts": "https://esm.sh/recharts@^3.6.0",
-        "vite": "https://esm.sh/vite@^7.3.1",
-        "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
-      }
-    }
-    </script>
-  </head>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+  }
+}
+</script>
+</head>
   <body>
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
