@@ -10,6 +10,7 @@ import Plinko from './pages/Plinko';
 import Blackjack from './pages/Blackjack';
 import Coinflip from './pages/Coinflip';
 import Fairness from './pages/Fairness';
+import TeenPatti from './pages/TeenPatti';
 
 const App: React.FC = () => {
   return (
@@ -25,6 +26,7 @@ const App: React.FC = () => {
         <Route path="/blackjack" element={<Blackjack />} />
         <Route path="/coinflip" element={<Coinflip />} />
         <Route path="/fairness" element={<Fairness />} />
+        <Route path="/teenpatti" element={<TeenPatti />} />
       </Routes>
     </HashRouter>
   );
