@@ -36,12 +36,21 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap');
       
+      :root {
+        --casino-bg: #07080a;
+      }
+
       body {
-        background-color: #07080a;
+        background-color: var(--casino-bg);
         color: #b1b5c3;
         font-family: 'Inter', sans-serif;
         overflow-x: hidden;
         -webkit-font-smoothing: antialiased;
+        margin: 0;
+      }
+
+      #root {
+        min-height: 100vh;
       }
 
       h1, h2, h3, .heading-font {
@@ -83,10 +92,10 @@
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
     "recharts": "https://esm.sh/recharts@^3.6.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "vite": "https://esm.sh/vite@^7.3.1",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
