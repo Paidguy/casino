@@ -8,6 +8,7 @@ export default function Mines() {
   const [betAmount, setBetAmount] = useState<number>(100);
   const [minesCount, setMinesCount] = useState<number>(3);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [processing, setProcessing] = useState(false); // New lock state
   const [grid, setGrid] = useState<boolean[]>(Array(25).fill(false));
   const [revealed, setRevealed] = useState<boolean[]>(Array(25).fill(false));
   const [gameOver, setGameOver] = useState(false);
@@ -74,9 +75,7 @@ export default function Mines() {
       engine.updateBalance(-betAmount);
       const newGrid = engine.generateMinesGrid(Math.random(), minesCount);
       
-      // 2. Pick 3 random safe spots (simulated for simplicity in auto) or just pick 3 random indices
-      // In a real game, we don't know where mines are.
-      // So we pick 3 random indices.
+      // 2. Pick 3 random safe spots (simulated for simplicity in auto)
       const picks: number[] = [];
       while (picks.length < 3) {
           const r = Math.floor(Math.random() * 25);
@@ -101,7 +100,6 @@ export default function Mines() {
           audio.playLoss();
           engine.placeBet(GameType.MINES, 0, 0, 'Mines: Hit Mine (Auto)');
       } else {
-          // Cashout immediately
           const mult = getMultiplier(3);
           engine.updateBalance(betAmount * mult);
           engine.placeBet(GameType.MINES, betAmount, mult, `Mines: Auto Won @ ${mult.toFixed(2)}x`);
@@ -112,7 +110,8 @@ export default function Mines() {
   };
 
   const start = () => {
-    if (betAmount > engine.getSession().balance || betAmount <= 0) return;
+    if (processing || betAmount > engine.getSession().balance || betAmount <= 0) return;
+    setProcessing(true);
     audio.playBet();
     engine.updateBalance(-betAmount);
     setGrid(engine.generateMinesGrid(engine.peekNextRandom(), minesCount));
@@ -120,22 +119,34 @@ export default function Mines() {
     setIsPlaying(true);
     setGameOver(false);
     setWin(false);
+    setTimeout(() => setProcessing(false), 200);
   };
 
   const click = (i: number) => {
-    if (!isPlaying || revealed[i] || gameOver) return;
+    if (!isPlaying || revealed[i] || gameOver || processing) return;
+    
+    // Lock immediately to prevent double clicking
+    setProcessing(true);
+    
     const newRevealed = [...revealed];
     newRevealed[i] = true;
     setRevealed(newRevealed);
+    
     if (grid[i]) {
       setGameOver(true);
       setWin(false);
       setIsPlaying(false);
       audio.playLoss();
       engine.placeBet(GameType.MINES, 0, 0, `Mines: Hit mine on step ${revealedCount + 1}`);
+      setProcessing(false);
     } else {
       audio.playClick();
-      if (revealedCount + 1 === 25 - minesCount) cashOut(newRevealed);
+      // Auto cashout on last safe tile
+      if (revealedCount + 1 === 25 - minesCount) {
+          cashOut(newRevealed);
+      } else {
+          setProcessing(false);
+      }
     }
   };
 
@@ -148,6 +159,7 @@ export default function Mines() {
     setIsPlaying(false);
     setGameOver(true);
     setWin(true);
+    setProcessing(false);
   };
 
   const toggleAuto = () => {
@@ -195,9 +207,9 @@ export default function Mines() {
               
               {mode === 'MANUAL' ? (
                   !isPlaying ? (
-                     <button onClick={start} className="w-full py-6 bg-bet-primary text-bet-950 font-black text-xl rounded-2xl shadow-xl active:scale-95 transition-all uppercase tracking-widest bazar-font">Start Game</button>
+                     <button onClick={start} disabled={betAmount <= 0} className="w-full py-6 bg-bet-primary text-bet-950 font-black text-xl rounded-2xl shadow-xl active:scale-95 transition-all uppercase tracking-widest bazar-font disabled:opacity-50">Start Game</button>
                   ) : (
-                     <button onClick={() => cashOut()} className="w-full py-6 bg-bet-success text-bet-950 font-black text-xl rounded-2xl shadow-xl flex flex-col items-center leading-none active:scale-95 transition-all">
+                     <button onClick={() => cashOut()} disabled={processing} className="w-full py-6 bg-bet-success text-bet-950 font-black text-xl rounded-2xl shadow-xl flex flex-col items-center leading-none active:scale-95 transition-all">
                        <span className="bazar-font uppercase text-lg tracking-widest">Cashout</span>
                        <span className="text-[10px] mt-1 font-bold tabular-nums">₹{(betAmount * currentMult).toFixed(2)}</span>
                      </button>
@@ -213,7 +225,7 @@ export default function Mines() {
          <div className="lg:col-span-2 bg-bet-900 p-6 lg:p-14 rounded-[3.5rem] border border-white/5 flex items-center justify-center relative shadow-inner order-1 lg:order-2">
             <div className="grid grid-cols-5 gap-3 lg:gap-5 w-full max-w-lg aspect-square">
                {grid.map((isMine, i) => (
-                  <button key={i} onClick={() => click(i)} disabled={!isPlaying || revealed[i] || autoActive} className={`rounded-2xl lg:rounded-3xl transition-all duration-300 transform flex items-center justify-center text-4xl lg:text-5xl ${!revealed[i] ? (isPlaying ? 'bg-bet-950/80 hover:bg-bet-800 hover:-translate-y-1.5 shadow-xl border border-white/5' : 'bg-bet-950/40 opacity-30') : (isMine ? 'bg-bet-danger shadow-[0_0_40px_rgba(244,63,94,0.6)]' : 'bg-bet-primary text-bet-950 shadow-[0_0_40px_rgba(34,211,238,0.4)]')}`}>
+                  <button key={i} onClick={() => click(i)} disabled={!isPlaying || revealed[i] || autoActive || processing} className={`rounded-2xl lg:rounded-3xl transition-all duration-300 transform flex items-center justify-center text-4xl lg:text-5xl ${!revealed[i] ? (isPlaying ? 'bg-bet-950/80 hover:bg-bet-800 hover:-translate-y-1.5 shadow-xl border border-white/5 cursor-pointer' : 'bg-bet-950/40 opacity-30 cursor-default') : (isMine ? 'bg-bet-danger shadow-[0_0_40px_rgba(244,63,94,0.6)]' : 'bg-bet-primary text-bet-950 shadow-[0_0_40px_rgba(34,211,238,0.4)]')}`}>
                      {revealed[i] && (isMine ? '🧨' : '💎')}
                   </button>
                ))}

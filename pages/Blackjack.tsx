@@ -42,7 +42,7 @@ export default function Blackjack() {
   };
 
   const startGame = () => {
-     if (betAmount > engine.getSession().balance) return;
+     if (betAmount > engine.getSession().balance || betAmount <= 0) return;
      audio.playBet();
      engine.updateBalance(-betAmount);
      
@@ -57,12 +57,16 @@ export default function Blackjack() {
      setMessage('');
 
      if (getHandValue(p) === 21) {
-         if (getHandValue(dealer) === 21) finishGame('PUSH', p, dealer, betAmount);
-         else finishGame('BLACKJACK', p, dealer, betAmount);
+         // Instant blackjack check
+         setTimeout(() => {
+             if (getHandValue(dealer) === 21) finishGame('PUSH', p, dealer, betAmount);
+             else finishGame('BLACKJACK', p, dealer, betAmount);
+         }, 500);
      }
   };
 
   const hit = () => {
+     if (gameState !== 'PLAYER_TURN') return;
      audio.playClick();
      const newHand = [...playerHand, deck.pop()!];
      setPlayerHand(newHand);
@@ -72,6 +76,7 @@ export default function Blackjack() {
   };
 
   const doubleDown = () => {
+     if (gameState !== 'PLAYER_TURN') return;
      if (betAmount > engine.getSession().balance) return;
      audio.playBet();
      engine.updateBalance(-betAmount);
@@ -88,17 +93,20 @@ export default function Blackjack() {
   };
 
   const stand = (finalHand = playerHand, finalBet = betAmount) => {
+     if (gameState !== 'PLAYER_TURN') return;
      audio.playClick();
      setGameState('DEALER_TURN');
      
      let dHand = [...dealerHand];
+     // Async loop for dealer draw
      const playDealer = async () => {
-         await new Promise(r => setTimeout(r, 600));
+         await new Promise(r => setTimeout(r, 800)); // Reveal delay
+         
          while (getHandValue(dHand) < 17) {
              dHand.push(deck.pop()!);
              setDealerHand([...dHand]);
              audio.playSpin(); 
-             await new Promise(r => setTimeout(r, 600));
+             await new Promise(r => setTimeout(r, 800)); // Draw delay
          }
          determineWinner(finalHand, dHand, finalBet);
      };
@@ -172,11 +180,12 @@ export default function Blackjack() {
             {gameState === 'IDLE' || gameState === 'FINISHED' ? (
                 <button 
                    onClick={startGame}
-                   className="w-full py-6 bg-bet-primary text-bet-950 font-black text-2xl rounded-3xl shadow-xl transition-all active:scale-95 uppercase tracking-[0.2em] bazar-font cyan-glow"
+                   disabled={betAmount <= 0}
+                   className="w-full py-6 bg-bet-primary text-bet-950 font-black text-2xl rounded-3xl shadow-xl transition-all active:scale-95 uppercase tracking-[0.2em] bazar-font cyan-glow disabled:opacity-50"
                 >
                    Deal Cards
                 </button>
-            ) : (
+            ) : gameState === 'PLAYER_TURN' ? (
                 <div className="grid grid-cols-2 gap-4">
                    <button onClick={hit} className="py-5 bg-bet-800 text-white font-black rounded-2xl border border-white/10 hover:bg-bet-700">HIT</button>
                    <button onClick={() => stand()} className="py-5 bg-bet-primary text-bet-950 font-black rounded-2xl border border-white/10 active:scale-95">STAND</button>
@@ -184,10 +193,14 @@ export default function Blackjack() {
                        <button onClick={doubleDown} className="col-span-2 py-5 bg-bet-secondary text-white font-black rounded-2xl shadow-xl animate-pulse">DOUBLE DOWN</button>
                    )}
                 </div>
+            ) : (
+                <div className="py-6 text-center text-slate-500 font-black uppercase tracking-widest animate-pulse">
+                    Dealer's Turn...
+                </div>
             )}
             
             {message && (
-              <div className={`mt-6 p-6 text-center font-black text-2xl lg:text-3xl italic -skew-x-12 uppercase rounded-[2rem] border-4 animate-bounce bazar-font ${message.includes('WIN') || message.includes('BLACKJACK') ? 'bg-bet-primary/20 border-bet-primary text-bet-primary' : 'bg-bet-danger/20 border-bet-danger text-bet-danger'}`}>
+              <div className={`mt-6 p-6 text-center font-black text-2xl lg:text-3xl italic -skew-x-12 uppercase rounded-[2rem] border-4 animate-bounce bazar-font ${message.includes('WIN') || message.includes('BLACKJACK') ? 'bg-bet-primary/20 border-bet-primary text-bet-primary' : message.includes('PUSH') ? 'bg-bet-accent/20 border-bet-accent text-bet-accent' : 'bg-bet-danger/20 border-bet-danger text-bet-danger'}`}>
                 {message}
               </div>
             )}

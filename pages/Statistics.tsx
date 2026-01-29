@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
-import { UserSession, GameType } from '../types';
+import { UserSession, GameType, GameStats } from '../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const COLORS = ['#22d3ee', '#d946ef', '#facc15', '#22c55e', '#ef4444', '#3b82f6', '#f97316', '#a855f7', '#6366f1', '#14b8a6', '#ec4899', '#f43f5e', '#8b5cf6'];
@@ -24,7 +24,7 @@ export default function Statistics() {
       
       // Net Profit from Gameplay (Payout - Wagered)
       // We use totalPayout if available (added in recent engine update), else approximation
-      const totalPayout = session.totalPayout || (session.gameStats ? Object.values(session.gameStats).reduce((a, b) => a + b.payout, 0) : 0);
+      const totalPayout = session.totalPayout || (session.gameStats ? Object.values(session.gameStats).reduce((a, b: GameStats) => a + b.payout, 0) : 0);
       const totalWagered = session.totalWagered || 0;
       const netProfit = totalPayout - totalWagered;
       const rtp = totalWagered > 0 ? (totalPayout / totalWagered) * 100 : 0;
@@ -32,7 +32,7 @@ export default function Statistics() {
       // Game Distribution for Pie Chart
       const gameDist = Object.entries(session.gameStats || {}).map(([key, val]) => ({
           name: key,
-          value: val.bets
+          value: (val as GameStats).bets
       })).filter(g => g.value > 0);
 
       // Profit History for Area Chart (based on last 50 bets history for trend)
@@ -192,7 +192,7 @@ export default function Statistics() {
                          </tr>
                      </thead>
                      <tbody className="divide-y divide-white/5 text-[11px] font-bold">
-                         {Object.entries(session.gameStats || {})
+                         {Object.entries((session.gameStats || {}) as Record<string, GameStats>)
                             .filter(([_, s]) => s.bets > 0)
                             .sort((a, b) => b[1].wagered - a[1].wagered)
                             .map(([game, s]) => {
@@ -217,7 +217,7 @@ export default function Statistics() {
                                     </tr>
                                 );
                             })}
-                         {Object.values(session.gameStats || {}).every(s => s.bets === 0) && (
+                         {Object.values(session.gameStats || {}).every((s: any) => s.bets === 0) && (
                              <tr>
                                  <td colSpan={6} className="px-8 py-12 text-center text-slate-600 font-black uppercase tracking-widest text-xs">
                                      No gameplay data recorded yet.

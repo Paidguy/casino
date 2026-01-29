@@ -25,7 +25,7 @@ export default function Roulette() {
   }, [autoActive, autoBetCount, autoBetsRemaining]);
 
   const spin = () => {
-    if (betAmount > engine.getSession().balance || betAmount <= 0) {
+    if (spinning || betAmount > engine.getSession().balance || betAmount <= 0) {
         if (autoRef.current.active) setAutoActive(false);
         return;
     }
@@ -53,7 +53,7 @@ export default function Roulette() {
           
           return { multiplier, outcome: `Roulette: ${num}` };
       }, '');
-    }, 1500); // Spin duration
+    }, 1500); // Spin duration matching CSS animation roughly
   };
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function Roulette() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 pb-32">
         <div className="bg-bet-900 p-8 lg:p-12 rounded-[3rem] border border-white/5 flex flex-col items-center justify-center min-h-[400px] shadow-2xl relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-bet-accent/5 to-transparent pointer-events-none"></div>
           <div 
@@ -119,8 +119,8 @@ export default function Roulette() {
                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Standard European Odds 2.7% House Edge</p>
                </div>
                <div className="flex bg-black/40 p-1 rounded-xl">
-                  <button onClick={() => setMode('MANUAL')} disabled={autoActive} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase ${mode === 'MANUAL' ? 'bg-bet-800 text-white shadow' : 'text-slate-500'}`}>Man</button>
-                  <button onClick={() => setMode('AUTO')} disabled={autoActive} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase ${mode === 'AUTO' ? 'bg-bet-primary text-bet-950 shadow' : 'text-slate-500'}`}>Auto</button>
+                  <button onClick={() => setMode('MANUAL')} disabled={autoActive || spinning} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase ${mode === 'MANUAL' ? 'bg-bet-800 text-white shadow' : 'text-slate-500'}`}>Man</button>
+                  <button onClick={() => setMode('AUTO')} disabled={autoActive || spinning} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase ${mode === 'AUTO' ? 'bg-bet-primary text-bet-950 shadow' : 'text-slate-500'}`}>Auto</button>
                </div>
             </div>
             
@@ -130,7 +130,8 @@ export default function Roulette() {
                 <div className="relative">
                   <input type="number" value={betAmount} onChange={(e) => setBetAmount(Number(e.target.value))} className="w-full bg-black border border-white/10 rounded-2xl px-6 py-4 text-white font-mono font-black text-xl outline-none" disabled={spinning || autoActive} />
                   <div className="absolute right-3 top-3 flex gap-2">
-                    <button onClick={() => setBetAmount(betAmount * 2)} disabled={autoActive} className="bg-white/5 px-3 py-1 rounded text-[10px] font-black uppercase">2X</button>
+                    <button onClick={() => setBetAmount(Math.max(1, Math.floor(betAmount / 2)))} disabled={autoActive || spinning} className="bg-white/5 px-3 py-1 rounded text-[10px] font-black uppercase">1/2</button>
+                    <button onClick={() => setBetAmount(betAmount * 2)} disabled={autoActive || spinning} className="bg-white/5 px-3 py-1 rounded text-[10px] font-black uppercase">2X</button>
                   </div>
                 </div>
               </div>
@@ -145,9 +146,9 @@ export default function Roulette() {
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 block">Select Your Bet</label>
                 <div className="grid grid-cols-3 gap-3">
-                  <button onClick={() => setBetType('RED')} disabled={autoActive} className={`py-6 rounded-2xl font-black border-2 transition-all ${betType === 'RED' ? 'bg-bet-danger border-rose-300 text-white shadow-lg' : 'bg-black border-white/5 text-slate-700 hover:text-rose-500'}`}>RED (2x)</button>
-                  <button onClick={() => setBetType('GREEN')} disabled={autoActive} className={`py-6 rounded-2xl font-black border-2 transition-all ${betType === 'GREEN' ? 'bg-bet-success border-emerald-300 text-white shadow-lg' : 'bg-black border-white/5 text-slate-700 hover:text-emerald-500'}`}>ZERO (36x)</button>
-                  <button onClick={() => setBetType('BLACK')} disabled={autoActive} className={`py-6 rounded-2xl font-black border-2 transition-all ${betType === 'BLACK' ? 'bg-slate-700 border-slate-500 text-white shadow-lg' : 'bg-black border-white/5 text-slate-700 hover:text-slate-300'}`}>BLACK (2x)</button>
+                  <button onClick={() => setBetType('RED')} disabled={autoActive || spinning} className={`py-6 rounded-2xl font-black border-2 transition-all ${betType === 'RED' ? 'bg-bet-danger border-rose-300 text-white shadow-lg' : 'bg-black border-white/5 text-slate-700 hover:text-rose-500'}`}>RED (2x)</button>
+                  <button onClick={() => setBetType('GREEN')} disabled={autoActive || spinning} className={`py-6 rounded-2xl font-black border-2 transition-all ${betType === 'GREEN' ? 'bg-bet-success border-emerald-300 text-white shadow-lg' : 'bg-black border-white/5 text-slate-700 hover:text-emerald-500'}`}>ZERO (36x)</button>
+                  <button onClick={() => setBetType('BLACK')} disabled={autoActive || spinning} className={`py-6 rounded-2xl font-black border-2 transition-all ${betType === 'BLACK' ? 'bg-slate-700 border-slate-500 text-white shadow-lg' : 'bg-black border-white/5 text-slate-700 hover:text-slate-300'}`}>BLACK (2x)</button>
                 </div>
               </div>
             </div>
