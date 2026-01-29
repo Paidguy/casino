@@ -18,16 +18,8 @@ export class SimulationEngine {
     this.session = this.loadSession();
   }
 
-  private loadSession(): UserSession {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) return JSON.parse(stored);
-    } catch (e) {}
-    return this.initializeSession();
-  }
-
-  private initializeSession(): UserSession {
-    const session: UserSession = {
+  private createDefaultSession(): UserSession {
+    return {
       id: Math.random().toString(36).substring(7),
       username: 'Punter_' + Math.floor(1000 + Math.random() * 9000),
       balance: DAILY_ALLOWANCE,
@@ -52,13 +44,46 @@ export class SimulationEngine {
         globalProfit: 0
       }
     };
+  }
+
+  private loadSession(): UserSession {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const defaults = this.createDefaultSession();
+        
+        // Deep merge/sanitize to ensure new fields (like settings/rakeback) exist in old sessions
+        return {
+            ...defaults,
+            ...parsed,
+            // Ensure nested objects are merged correctly
+            settings: { ...defaults.settings, ...(parsed.settings || {}) },
+            // Preserve specific fields that shouldn't be overwritten by defaults if they exist
+            balance: typeof parsed.balance === 'number' ? parsed.balance : defaults.balance,
+            transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+            history: Array.isArray(parsed.history) ? parsed.history : []
+        };
+      }
+    } catch (e) {
+      console.error("Failed to load session, resetting:", e);
+    }
+    return this.initializeSession();
+  }
+
+  private initializeSession(): UserSession {
+    const session = this.createDefaultSession();
     this.saveSession(session);
     return session;
   }
 
   private saveSession(session: UserSession) {
     this.session = session;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    } catch (e) {
+        console.error("Save failed", e);
+    }
   }
 
   public getSession(): UserSession {
@@ -84,7 +109,7 @@ export class SimulationEngine {
           status: 'COMPLETED',
           method
       };
-      this.session.transactions = [tx, ...this.session.transactions];
+      this.session.transactions = [tx, ...this.session.transactions].slice(0, 100); // Limit transaction history
       this.saveSession(this.session);
   }
 
@@ -175,7 +200,6 @@ export class SimulationEngine {
   }
 
   public resetBalance() {
-    const oldBalance = this.session.balance;
     this.session.balance = DAILY_ALLOWANCE;
     this.logTransaction('BAILOUT', DAILY_ALLOWANCE, 'System Reset');
     this.saveSession(this.session);
