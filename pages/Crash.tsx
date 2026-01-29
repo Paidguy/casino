@@ -16,7 +16,8 @@ export default function Crash() {
   const [autoCashOutAt, setAutoCashOutAt] = useState<number>(2.00);
   const [autoBetsRemaining, setAutoBetsRemaining] = useState<number>(0);
 
-  // High-freq refs
+  // Refs for State Safety in Loops
+  const autoStateRef = useRef({ active: false, count: 0, remaining: 0 });
   const multiplierRef = useRef<number>(1.00);
   const crashPointRef = useRef<number>(1);
   const startTimeRef = useRef<number>(0);
@@ -26,21 +27,33 @@ export default function Crash() {
   const isCashOutProcessing = useRef<boolean>(false);
   const [displayMultiplier, setDisplayMultiplier] = useState<number>(1.00);
 
-  // --- Auto Bet Logic ---
+  // Sync Ref
   useEffect(() => {
-    // If auto is active, game is IDLE, and we have bets remaining (or infinite 0)
+    autoStateRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
+  }, [autoActive, autoBetCount, autoBetsRemaining]);
+
+  // --- Auto Bet Loop ---
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+
     if (autoActive && gameState === 'IDLE') {
-       if (autoBetCount === 0 || autoBetsRemaining > 0) {
-           const timer = setTimeout(() => {
-               start();
-               if (autoBetCount > 0) setAutoBetsRemaining(prev => prev - 1);
-           }, 1000); // 1s delay between rounds
-           return () => clearTimeout(timer);
+       const { count, remaining } = autoStateRef.current;
+       
+       if (count === 0 || remaining > 0) {
+           timeout = setTimeout(() => {
+               if (engine.getSession().balance >= betAmount) {
+                   start();
+                   if (count > 0) setAutoBetsRemaining(prev => prev - 1);
+               } else {
+                   setAutoActive(false);
+               }
+           }, 2000); // 2s cooldown between rounds
        } else {
-           setAutoActive(false); // Stop if run out of bets
+           setAutoActive(false);
        }
     }
-  }, [autoActive, gameState, autoBetsRemaining]);
+    return () => clearTimeout(timeout);
+  }, [gameState, autoActive]); // Trigger when gameState goes back to IDLE
 
   useEffect(() => {
       // Auto Cashout Check inside the running loop state
@@ -51,8 +64,7 @@ export default function Crash() {
       }
   }, [displayMultiplier, gameState, mode, autoCashOutAt]);
 
-
-  // Separate effect for Resize handling
+  // Resize handling
   useEffect(() => {
     const handleResize = () => {
         const canvas = canvasRef.current;
@@ -75,9 +87,8 @@ export default function Crash() {
 
   const start = () => {
     const bal = engine.getSession().balance;
-    // Check balance before start
     if (betAmount > bal || betAmount <= 0) {
-        setAutoActive(false); // Stop auto if broke
+        setAutoActive(false); 
         return;
     }
     
@@ -88,7 +99,6 @@ export default function Crash() {
       const r = Math.random();
       crashPointRef.current = engine.getCrashPoint(r);
       
-      // Reset State
       multiplierRef.current = 1.00;
       startTimeRef.current = performance.now();
       lastUiUpdateRef.current = 0;
@@ -96,7 +106,6 @@ export default function Crash() {
       setDisplayMultiplier(1.00);
       setGameState('RUNNING');
       
-      // Start Loop
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
       requestRef.current = requestAnimationFrame(animate);
     } catch (e) { console.error(e); }
@@ -109,7 +118,6 @@ export default function Crash() {
     const currentMult = Math.pow(Math.E, 0.06 * elapsed);
     
     multiplierRef.current = currentMult;
-    
     drawGraph(elapsed, currentMult);
 
     if (time - lastUiUpdateRef.current > 80) {
@@ -118,15 +126,22 @@ export default function Crash() {
     }
 
     if (currentMult >= crashPointRef.current) {
-      multiplierRef.current = crashPointRef.current;
-      setDisplayMultiplier(crashPointRef.current);
-      setGameState('CRASHED');
-      audio.playLoss();
-      setHistory(prev => [crashPointRef.current, ...prev].slice(0, 8));
-      engine.placeBet(GameType.CRASH, 0, 0, `Crashed @ ${crashPointRef.current.toFixed(2)}x`);
+      handleCrash(crashPointRef.current);
     } else {
       requestRef.current = requestAnimationFrame(animate);
     }
+  };
+
+  const handleCrash = (finalMult: number) => {
+      multiplierRef.current = finalMult;
+      setDisplayMultiplier(finalMult);
+      setGameState('CRASHED');
+      audio.playLoss();
+      setHistory(prev => [finalMult, ...prev].slice(0, 8));
+      engine.placeBet(GameType.CRASH, 0, 0, `Crashed @ ${finalMult.toFixed(2)}x`);
+      
+      // Auto Reset State
+      setTimeout(() => setGameState('IDLE'), 2000); 
   };
 
   const cashOut = () => {
@@ -144,6 +159,9 @@ export default function Crash() {
     engine.placeBet(GameType.CRASH, 0, finalMult, `Cashed out @ ${finalMult.toFixed(2)}x`);
     
     setHistory(prev => [crashPointRef.current, ...prev].slice(0, 8));
+    
+    // Auto Reset State
+    setTimeout(() => setGameState('IDLE'), 2000);
   };
 
   const drawGraph = (t: number, m: number) => {
@@ -159,7 +177,6 @@ export default function Crash() {
     const graphW = w - padding * 2;
     const graphH = h - padding * 2;
 
-    // Grid lines
     ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1 * window.devicePixelRatio;
     ctx.beginPath();
@@ -168,7 +185,6 @@ export default function Crash() {
     ctx.lineTo(w - padding, h - padding);
     ctx.stroke();
 
-    // Curve
     ctx.strokeStyle = '#facc15';
     if (m >= crashPointRef.current && gameState === 'CRASHED') ctx.strokeStyle = '#ef4444';
     
@@ -207,7 +223,6 @@ export default function Crash() {
   return (
     <Layout>
       <div className="flex flex-col gap-4 lg:gap-6 pb-20">
-        {/* Arena */}
         <div className="relative bg-bet-900 border border-white/5 rounded-[2rem] p-4 lg:p-6 shadow-2xl overflow-hidden min-h-[300px] lg:min-h-[350px] flex flex-col justify-center items-center">
            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
            <div className="relative z-10 flex flex-col items-center gap-2">
@@ -216,8 +231,6 @@ export default function Crash() {
               </div>
               {gameState === 'CRASHED' && <div className="text-[10px] text-bet-danger font-black uppercase tracking-widest bg-bet-danger/10 px-4 py-1 rounded-full">Bust @ {displayMultiplier.toFixed(2)}x</div>}
            </div>
-           
-           {/* History Bar */}
            <div className="absolute top-4 left-0 right-0 flex justify-center px-4 gap-2 overflow-hidden pointer-events-none">
               {history.map((h, i) => (
                 <div key={i} className={`px-2 py-1 rounded-md text-[9px] font-black border backdrop-blur-md animate-fade-in ${h >= 2 ? 'bg-bet-success/10 border-bet-success/30 text-bet-success' : 'bg-white/5 border-white/10 text-slate-500'}`}>
@@ -227,11 +240,8 @@ export default function Crash() {
            </div>
         </div>
 
-        {/* Controls */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6">
            <div className="md:col-span-5 bg-bet-900 p-5 lg:p-6 rounded-[2rem] border border-white/5 space-y-4 flex flex-col justify-between shadow-xl">
-              
-              {/* Mode Switch */}
               <div className="flex bg-black/40 p-1 rounded-xl">
                   <button onClick={() => setMode('MANUAL')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'MANUAL' ? 'bg-bet-800 text-white shadow' : 'text-slate-500'}`}>Manual</button>
                   <button onClick={() => setMode('AUTO')} disabled={autoActive || gameState === 'RUNNING'} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'AUTO' ? 'bg-bet-primary text-bet-950 shadow' : 'text-slate-500'}`}>Auto</button>
@@ -240,13 +250,7 @@ export default function Crash() {
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2 leading-none">Stake Amount (₹)</label>
                 <div className="relative">
-                   <input 
-                     type="number" 
-                     value={betAmount} 
-                     onChange={e => setBetAmount(Number(e.target.value))} 
-                     disabled={gameState === 'RUNNING' || autoActive} 
-                     className="w-full bg-black border border-white/10 p-3 lg:p-4 rounded-xl text-white font-black text-xl outline-none" 
-                   />
+                   <input type="number" value={betAmount} onChange={e => setBetAmount(Number(e.target.value))} disabled={gameState === 'RUNNING' || autoActive} className="w-full bg-black border border-white/10 p-3 lg:p-4 rounded-xl text-white font-black text-xl outline-none" />
                    <div className="absolute right-2 top-2 flex gap-1">
                       <button onClick={() => setBetAmount(Math.max(10, Math.floor(betAmount/2)))} disabled={gameState === 'RUNNING' || autoActive} className="px-2 py-1.5 bg-bet-800 rounded-lg text-[9px] font-black uppercase">1/2</button>
                       <button onClick={() => setBetAmount(betAmount*2)} disabled={gameState === 'RUNNING' || autoActive} className="px-2 py-1.5 bg-bet-800 rounded-lg text-[9px] font-black uppercase">2X</button>
@@ -254,15 +258,14 @@ export default function Crash() {
                 </div>
               </div>
 
-              {/* Auto Settings */}
               {mode === 'AUTO' && (
                   <div className="grid grid-cols-2 gap-3 animate-fade-in">
                       <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-500 uppercase">Number of Bets</label>
-                          <input type="number" value={autoBetCount} onChange={e => setAutoBetCount(Number(e.target.value))} disabled={autoActive} className="w-full bg-black border border-white/10 p-2 rounded-lg text-white font-black outline-none text-sm" placeholder="0 = Inf" />
+                          <label className="text-[9px] font-black text-slate-500 uppercase">Bets (0=Inf)</label>
+                          <input type="number" value={autoBetCount} onChange={e => setAutoBetCount(Number(e.target.value))} disabled={autoActive} className="w-full bg-black border border-white/10 p-2 rounded-lg text-white font-black outline-none text-sm" />
                       </div>
                       <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-500 uppercase">Auto Cashout</label>
+                          <label className="text-[9px] font-black text-slate-500 uppercase">Cashout At</label>
                           <input type="number" value={autoCashOutAt} onChange={e => setAutoCashOutAt(Number(e.target.value))} disabled={autoActive} className="w-full bg-black border border-white/10 p-2 rounded-lg text-white font-black outline-none text-sm" step="0.1" />
                       </div>
                   </div>
@@ -280,7 +283,7 @@ export default function Crash() {
                 )
               ) : (
                   <button onClick={toggleAuto} className={`w-full py-4 font-black text-lg rounded-xl shadow-lg transition-all uppercase tracking-widest hover:scale-[1.02] active:scale-95 ${autoActive ? 'bg-bet-danger text-white' : 'bg-bet-primary text-bet-950'}`}>
-                      {autoActive ? `Stop Auto (${autoBetCount === 0 ? 'Inf' : autoBetsRemaining})` : 'Start Auto Bet'}
+                      {autoActive ? `Stop Auto (${autoBetsRemaining === 999999 ? 'Inf' : autoBetsRemaining})` : 'Start Auto Bet'}
                   </button>
               )}
            </div>

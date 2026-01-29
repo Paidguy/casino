@@ -19,27 +19,14 @@ export class SimulationEngine {
     this.session = this.loadSession();
   }
 
-  // --- Pub/Sub for Real-Time UI Updates ---
   public subscribe(listener: (session: UserSession) => void) {
     this.listeners.push(listener);
-    try {
-      listener({ ...this.session });
-    } catch (e) {
-      console.error("Error in subscription listener:", e);
-    }
-    return () => {
-      this.listeners = this.listeners.filter(l => l !== listener);
-    };
+    try { listener({ ...this.session }); } catch (e) { console.error(e); }
+    return () => { this.listeners = this.listeners.filter(l => l !== listener); };
   }
 
   private notify() {
-    this.listeners.forEach(l => {
-      try {
-        l({ ...this.session });
-      } catch (e) {
-        console.error("Error notifying listener:", e);
-      }
-    });
+    this.listeners.forEach(l => { try { l({ ...this.session }); } catch (e) { console.error(e); } });
   }
 
   private createDefaultSession(): UserSession {
@@ -77,16 +64,13 @@ export class SimulationEngine {
         const parsed = JSON.parse(stored);
         const defaults = this.createDefaultSession();
         
-        // Critical Validation: Fix Corrupted File Error
-        // If balance is NaN or history is missing, sanitize the object
-        const safeBalance = (typeof parsed.balance === 'number' && !isNaN(parsed.balance)) 
+        const safeBalance = (typeof parsed.balance === 'number' && !isNaN(parsed.balance) && isFinite(parsed.balance)) 
           ? parsed.balance 
           : defaults.balance;
 
-        // Ensure history is an array
         const safeHistory = Array.isArray(parsed.history) ? parsed.history : [];
+        const safeTransactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
 
-        // Correctly merge nested settings
         const mergedSettings: AdminSettings = {
             ...defaults.settings,
             ...(parsed.settings || {}),
@@ -96,7 +80,6 @@ export class SimulationEngine {
             }
         };
 
-        // SAFETY: Ensure ALL GameTypes exist in the overrides object
         (Object.keys(HOUSE_EDGES) as GameType[]).forEach((key) => {
             if (typeof mergedSettings.houseEdgeOverrides[key] !== 'number') {
                 mergedSettings.houseEdgeOverrides[key] = HOUSE_EDGES[key];
@@ -108,13 +91,12 @@ export class SimulationEngine {
             ...parsed,
             balance: safeBalance,
             settings: mergedSettings,
-            transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+            transactions: safeTransactions,
             history: safeHistory
         };
       }
     } catch (e) {
       console.error("Failed to load session, resetting:", e);
-      // If parsing fails, clean storage to prevent persistent error loop
       try { localStorage.removeItem(STORAGE_KEY); } catch(err) {}
     }
     return this.initializeSession();
@@ -129,12 +111,7 @@ export class SimulationEngine {
   private saveSession(session: UserSession) {
     this.session = session;
     this.notify();
-    try {
-        // Debounce or safety check could be added here, but direct save is safer for accuracy
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    } catch (e) {
-        console.error("Save failed", e);
-    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(session)); } catch (e) {}
   }
 
   public getSession(): UserSession {
@@ -165,19 +142,20 @@ export class SimulationEngine {
   }
 
   public placeBet(game: GameType, amount: number, multiplierOrResolver: number | ((r: number) => { multiplier: number, outcome: string }), outcomeStr?: string): BetResult {
-    const currentSession = this.getSession();
+    const currentSession = this.session; 
     
-    if (isNaN(amount) || amount < 0) {
-        console.error("Invalid bet amount");
-        return {} as BetResult; 
+    // Strict Validation
+    if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount) || amount < 0) {
+        return {
+             id: 'ERR', gameType: game, betAmount: 0, payoutMultiplier: 0, payoutAmount: 0, timestamp: Date.now(), outcome: 'Error', balanceAfter: currentSession.balance, nonce: 0, clientSeed: '', serverSeedHash: '', resultInput: 0
+        }; 
     }
     
-    // Check balance
+    // Balance Check - Allow exact balance match
     if (amount > currentSession.balance) {
-        // Allow a tiny buffer for floating point errors, or reject
-        // For auto-bet stability, we simply return empty result and let UI handle logic
-        console.error("Insufficient Balance");
-        return {} as BetResult;
+        return {
+             id: 'ERR_BAL', gameType: game, betAmount: 0, payoutMultiplier: 0, payoutAmount: 0, timestamp: Date.now(), outcome: 'Insufficient Funds', balanceAfter: currentSession.balance, nonce: 0, clientSeed: '', serverSeedHash: '', resultInput: 0
+        };
     }
     
     let multiplier: number = 0;
@@ -202,8 +180,7 @@ export class SimulationEngine {
 
     const payout = amount * multiplier;
     
-    // Atomically update balance
-    this.session.balance = this.session.balance - amount + payout;
+    this.session.balance = Math.max(0, this.session.balance - amount + payout); 
     this.session.totalWagered += amount;
     this.session.totalBets += 1;
     this.session.rakebackBalance += amount * 0.005;
@@ -228,7 +205,6 @@ export class SimulationEngine {
       resultInput: Math.random()
     };
 
-    // Ensure history is an array before spreading
     const safeHistory = Array.isArray(this.session.history) ? this.session.history : [];
     this.session.history = [record, ...safeHistory].slice(0, 50);
     
@@ -282,7 +258,8 @@ export class SimulationEngine {
   
   public hardReset() {
     try {
-        localStorage.clear(); // Clear EVERYTHING
+        localStorage.clear();
+        sessionStorage.clear();
     } catch(e) { console.error(e); }
     this.session = this.initializeSession();
     this.notify();

@@ -16,13 +16,19 @@ export default function Dice() {
   const [autoActive, setAutoActive] = useState(false);
   const [autoBetCount, setAutoBetCount] = useState<number>(0);
   const [autoBetsRemaining, setAutoBetsRemaining] = useState<number>(0);
+  
+  const autoRef = useRef({ active: false, count: 0, remaining: 0 });
+
+  useEffect(() => {
+    autoRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
+  }, [autoActive, autoBetCount, autoBetsRemaining]);
 
   const multiplier = (100 - (HOUSE_EDGES.DICE * 100)) / winChance;
   const target = rollOver ? (100 - winChance) : winChance;
 
   const handleRoll = () => {
     if (betAmount > engine.getSession().balance || betAmount <= 0) {
-        if (autoActive) setAutoActive(false);
+        if (autoRef.current.active) setAutoActive(false);
         return;
     }
     audio.playBet();
@@ -37,17 +43,39 @@ export default function Dice() {
   };
 
   useEffect(() => {
-      let timeout: ReturnType<typeof setTimeout>;
-      if (autoActive && (autoBetCount === 0 || autoBetsRemaining > 0)) {
-          timeout = setTimeout(() => {
-              handleRoll();
-              if (autoBetCount > 0) setAutoBetsRemaining(prev => prev - 1);
-          }, 400); // Fast auto roll
-      } else if (autoActive) {
-          setAutoActive(false);
+      let interval: ReturnType<typeof setInterval>;
+      
+      if (autoActive) {
+          setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount);
+          
+          interval = setInterval(() => {
+              const { active, count, remaining } = autoRef.current;
+              
+              if (!active) {
+                  clearInterval(interval);
+                  return;
+              }
+
+              if (engine.getSession().balance < betAmount) {
+                  setAutoActive(false);
+                  clearInterval(interval);
+                  return;
+              }
+
+              if (count === 0 || remaining > 0) {
+                  handleRoll();
+                  if (count > 0) {
+                      setAutoBetsRemaining(prev => prev - 1);
+                  }
+              } else {
+                  setAutoActive(false);
+                  clearInterval(interval);
+              }
+          }, 300); // Fast roll speed
       }
-      return () => clearTimeout(timeout);
-  }, [autoActive, autoBetsRemaining]);
+      
+      return () => clearInterval(interval);
+  }, [autoActive]);
 
   const toggleAuto = () => {
       if (autoActive) {
@@ -80,7 +108,6 @@ export default function Dice() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-12 bg-bet-800/40 p-6 lg:p-10 rounded-3xl border border-white/5">
              <div className="space-y-6">
-               {/* Mode Switch */}
                <div className="flex bg-black/40 p-1 rounded-xl">
                   <button onClick={() => setMode('MANUAL')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'MANUAL' ? 'bg-bet-800 text-white shadow' : 'text-slate-500'}`}>Manual</button>
                   <button onClick={() => setMode('AUTO')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'AUTO' ? 'bg-bet-primary text-bet-950 shadow' : 'text-slate-500'}`}>Auto</button>
@@ -128,7 +155,7 @@ export default function Dice() {
                     <button onClick={handleRoll} className="w-full py-6 bg-bet-accent text-black font-black text-2xl rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">Roll Dice</button>
                 ) : (
                     <button onClick={toggleAuto} className={`w-full py-6 font-black text-2xl rounded-2xl shadow-xl transition-all uppercase tracking-widest ${autoActive ? 'bg-bet-danger text-white' : 'bg-bet-primary text-bet-950'}`}>
-                        {autoActive ? `Stop Auto (${autoBetCount === 0 ? '∞' : autoBetsRemaining})` : 'Start Auto'}
+                        {autoActive ? `Stop Auto (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})` : 'Start Auto'}
                     </button>
                 )}
              </div>
