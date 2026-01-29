@@ -35,7 +35,7 @@ class AudioManager {
         this.ctx.resume().catch(() => {});
       }
     } catch (e) {
-      console.warn("Audio init failed", e);
+      // Silence init errors
     }
   }
 

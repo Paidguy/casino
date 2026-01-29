@@ -24,7 +24,7 @@ export class SimulationEngine {
     this.listeners.push(listener);
     // Emit current state immediately to ensure UI is in sync
     try {
-      listener(this.session);
+      listener({ ...this.session });
     } catch (e) {
       console.error("Error in subscription listener:", e);
     }
@@ -113,7 +113,6 @@ export class SimulationEngine {
       }
     } catch (e) {
       console.error("Failed to load session, resetting:", e);
-      // If parsing fails, we clear storage to prevent persistent crash loops
       try { localStorage.removeItem(STORAGE_KEY); } catch(err) {}
     }
     return this.initializeSession();
@@ -136,6 +135,7 @@ export class SimulationEngine {
   }
 
   public getSession(): UserSession {
+    // Return a shallow copy to prevent direct mutation bugs
     return { ...this.session };
   }
 
@@ -164,23 +164,36 @@ export class SimulationEngine {
 
   public placeBet(game: GameType, amount: number, multiplierOrResolver: number | ((r: number) => { multiplier: number, outcome: string }), outcomeStr?: string): BetResult {
     const currentSession = this.getSession();
-    if (amount > currentSession.balance && amount > 0) throw new Error("Insufficient Balance");
     
-    let multiplier: number;
-    let outcome: string;
+    // Safety check for invalid bet amounts
+    if (isNaN(amount) || amount < 0) throw new Error("Invalid bet amount");
+    if (amount > currentSession.balance) throw new Error("Insufficient Balance");
+    
+    let multiplier: number = 0;
+    let outcome: string = '';
 
-    if (typeof multiplierOrResolver === 'function') {
-      const r = Math.random();
-      const res = multiplierOrResolver(r);
-      multiplier = res.multiplier;
-      outcome = res.outcome;
-    } else {
-      multiplier = multiplierOrResolver;
-      outcome = outcomeStr || '';
+    try {
+        if (typeof multiplierOrResolver === 'function') {
+            const r = Math.random();
+            const res = multiplierOrResolver(r);
+            multiplier = res.multiplier;
+            outcome = res.outcome;
+        } else {
+            multiplier = multiplierOrResolver;
+            outcome = outcomeStr || '';
+        }
+    } catch (e) {
+        console.error("Error calculating bet result:", e);
+        // Fallback to loss to prevent engine lock
+        multiplier = 0;
+        outcome = "System Error - Bet Refunded";
+        amount = 0; // effectively refund logic if we don't deduct
     }
 
     const payout = amount * multiplier;
-    this.session.balance = this.session.balance - (amount > 0 ? amount : 0) + payout;
+    
+    // Atomically update balance
+    this.session.balance = this.session.balance - amount + payout;
     this.session.totalWagered += amount;
     this.session.totalBets += 1;
     this.session.rakebackBalance += amount * 0.005;
@@ -257,6 +270,9 @@ export class SimulationEngine {
   public hardReset() {
     try {
         localStorage.removeItem(STORAGE_KEY);
+        // Also clear any other local storage keys used by the app
+        localStorage.removeItem('stake_welcome_v1');
+        localStorage.removeItem('sound_enabled_v1');
     } catch(e) { console.error(e); }
     this.session = this.initializeSession();
     this.notify();

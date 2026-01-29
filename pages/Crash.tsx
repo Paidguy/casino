@@ -40,7 +40,9 @@ export default function Crash() {
   }, [gameState]);
 
   const start = () => {
-    if (betAmount > engine.getSession().balance || betAmount <= 0) return;
+    const bal = engine.getSession().balance;
+    if (betAmount > bal || betAmount <= 0) return;
+    
     try {
       engine.updateBalance(-betAmount);
       audio.playBet();
