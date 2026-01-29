@@ -32,6 +32,14 @@ export default function Crash() {
     autoStateRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
   }, [autoActive, autoBetCount, autoBetsRemaining]);
 
+  // Clean up on unmount
+  useEffect(() => {
+      return () => {
+          if (requestRef.current) cancelAnimationFrame(requestRef.current);
+          setAutoActive(false); // Kill auto bet
+      };
+  }, []);
+
   // --- Auto Bet Loop ---
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
@@ -79,12 +87,6 @@ export default function Crash() {
     return () => window.removeEventListener('resize', handleResize);
   }, [gameState]);
 
-  useEffect(() => {
-      return () => {
-          if (requestRef.current) cancelAnimationFrame(requestRef.current);
-      };
-  }, []);
-
   const start = () => {
     const bal = engine.getSession().balance;
     if (betAmount > bal || betAmount <= 0) {
@@ -96,7 +98,7 @@ export default function Crash() {
       engine.updateBalance(-betAmount);
       audio.playBet();
       
-      const r = Math.random();
+      const r = engine.peekNextRandom();
       crashPointRef.current = engine.getCrashPoint(r);
       
       multiplierRef.current = 1.00;

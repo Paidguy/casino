@@ -16,29 +16,37 @@ interface Ball {
 
 export default function Plinko() {
   const [betAmount, setBetAmount] = useState<number>(100);
-  // We use a Ref for balls to avoid re-rendering React on every frame (60fps)
   const ballsRef = useRef<Ball[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const rows = 16;
   
-  // Auto Bet State
   const [autoActive, setAutoActive] = useState(false);
   const [autoBetCount, setAutoBetCount] = useState<number>(0);
   const [autoBetsRemaining, setAutoBetsRemaining] = useState<number>(0);
-  // Ref for auto state to be accessible in intervals without stale closures
   const autoStateRef = useRef({ active: false, count: 0, remaining: 0 });
 
-  // Sync ref with state
   useEffect(() => {
     autoStateRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
   }, [autoActive, autoBetCount, autoBetsRemaining]);
+
+  // Clean up animation frame on unmount
+  useEffect(() => {
+      return () => {
+          if (animationRef.current) cancelAnimationFrame(animationRef.current);
+          setAutoActive(false); // Stop auto bet on unmount
+      };
+  }, []);
 
   const dropBall = () => {
     if (betAmount > engine.getSession().balance || betAmount <= 0) {
         setAutoActive(false);
         return;
     }
+    
+    // Performance protection: Limit active balls
+    if (ballsRef.current.length > 50) return;
+
     audio.playBet();
     
     const r = engine.peekNextRandom();
@@ -49,7 +57,6 @@ export default function Plinko() {
     ballsRef.current.push({ id: Math.random(), path, step: 0, progress: 0, finished: false });
   };
 
-  // Auto Bet Loop
   useEffect(() => {
       let interval: ReturnType<typeof setInterval>;
       if (autoActive) {
@@ -71,7 +78,7 @@ export default function Plinko() {
               } else {
                   setAutoActive(false);
               }
-          }, 200); // 200ms per drop
+          }, 200); 
       }
       return () => clearInterval(interval);
   }, [autoActive]);
@@ -111,18 +118,17 @@ export default function Plinko() {
         }
       }
 
-      // Update and Draw Balls
-      // We mutate ballsRef.current directly for performance
       const activeBalls: Ball[] = [];
       
       ballsRef.current.forEach(ball => {
           if (ball.finished) return;
 
-          ball.progress += 0.08; // Speed
+          ball.progress += 0.08; 
           if (ball.progress >= 1) {
             ball.step++;
             ball.progress = 0;
-            if (Math.random() > 0.5) audio.playSpin(); // Reduce audio spam
+            // Only play spin sound occasionally to prevent audio thrashing
+            if (Math.random() > 0.8) audio.playSpin(); 
           }
 
           if (ball.step < rows) {
@@ -149,16 +155,13 @@ export default function Plinko() {
             
             activeBalls.push(ball);
           } else {
-             // Finished
              ball.finished = true;
              const finalBin = ball.path.reduce((a, b) => a + b, 0);
              if (MULTIPLIERS_16[finalBin] >= 10) audio.playWin();
           }
       });
       
-      // Filter out finished balls to keep array small
       ballsRef.current = activeBalls;
-
       animationRef.current = requestAnimationFrame(render);
     };
 

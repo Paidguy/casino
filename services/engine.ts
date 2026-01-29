@@ -18,6 +18,10 @@ export class SimulationEngine {
 
   constructor() {
     this.session = this.loadSession();
+    // Ensure state is saved if user abruptly closes tab
+    if (typeof window !== 'undefined') {
+        window.addEventListener('beforeunload', () => this.saveSessionImmediate());
+    }
   }
 
   public subscribe(listener: (session: UserSession) => void) {
@@ -27,7 +31,6 @@ export class SimulationEngine {
   }
 
   private notify() {
-    // Dispatch state updates immediately to UI listeners
     this.listeners.forEach(l => { try { l({ ...this.session }); } catch (e) { console.error(e); } });
   }
 
@@ -125,14 +128,17 @@ export class SimulationEngine {
     return session;
   }
 
+  private saveSessionImmediate() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.session)); } catch (e) {}
+  }
+
   private saveSession(session: UserSession) {
     this.session = session;
-    this.notify(); // Update UI immediately
+    this.notify();
     
-    // Throttle disk I/O to prevent lag
     if (this.saveTimeout) clearTimeout(this.saveTimeout);
     this.saveTimeout = setTimeout(() => {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(session)); } catch (e) {}
+        this.saveSessionImmediate();
     }, 2000);
   }
 
@@ -147,7 +153,13 @@ export class SimulationEngine {
   }
 
   public peekNextRandom(): number {
-    return Math.random();
+    const r = Math.random();
+    // Apply Admin Rigging logic
+    if (this.session.settings.isRigged) {
+        // If rigged, shift randomness towards loss (lower numbers usually mean loss in crash/dice)
+        return r * 0.8; 
+    }
+    return r;
   }
 
   private logTransaction(type: Transaction['type'], amount: number, method: string) {
@@ -166,14 +178,12 @@ export class SimulationEngine {
   public placeBet(game: GameType, amount: number, multiplierOrResolver: number | ((r: number) => { multiplier: number, outcome: string }), outcomeStr?: string): BetResult {
     const currentSession = this.session; 
     
-    // Strict Validation
     if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount) || amount < 0) {
         return {
              id: 'ERR', gameType: game, betAmount: 0, payoutMultiplier: 0, payoutAmount: 0, timestamp: Date.now(), outcome: 'Error', balanceAfter: currentSession.balance, nonce: 0, clientSeed: '', serverSeedHash: '', resultInput: 0
         }; 
     }
     
-    // Balance Check
     if (amount > currentSession.balance) {
         return {
              id: 'ERR_BAL', gameType: game, betAmount: 0, payoutMultiplier: 0, payoutAmount: 0, timestamp: Date.now(), outcome: 'Insufficient Funds', balanceAfter: currentSession.balance, nonce: 0, clientSeed: '', serverSeedHash: '', resultInput: 0
@@ -185,7 +195,7 @@ export class SimulationEngine {
 
     try {
         if (typeof multiplierOrResolver === 'function') {
-            const r = Math.random();
+            const r = this.peekNextRandom(); // Use the rigged/RNG function
             const res = multiplierOrResolver(r);
             multiplier = res.multiplier;
             outcome = res.outcome;
@@ -202,6 +212,10 @@ export class SimulationEngine {
 
     const payout = amount * multiplier;
     
+    // Update global profit tracking for admin
+    const profit = amount - payout;
+    this.session.settings.globalProfit += profit;
+
     this.session.balance = Math.max(0, this.session.balance - amount + payout); 
     this.session.totalWagered += amount;
     this.session.totalBets += 1;
@@ -213,7 +227,6 @@ export class SimulationEngine {
 
     if (multiplier > this.session.maxMultiplier) this.session.maxMultiplier = multiplier;
 
-    // Update Game Stats
     if (!this.session.gameStats[game]) {
         this.session.gameStats[game] = { bets: 0, wagered: 0, wins: 0, payout: 0 };
     }
@@ -270,6 +283,11 @@ export class SimulationEngine {
   }
 
   public getCrashPoint(r: number): number {
+    // Apply rigging: If rigged, crash early
+    if (this.session.settings.isRigged && r > 0.4) {
+        return 1.00 + Math.random() * 0.5; // Crash between 1.00x and 1.50x
+    }
+
     const houseEdge = 0.03; 
     if (r < houseEdge) return 1.00;
     return Math.max(1, +( (1 - houseEdge) / (1 - r) ).toFixed(2));
@@ -310,7 +328,17 @@ export class SimulationEngine {
   }
 
   public calculateDiceResult(r: number, target: number, mode: 'over' | 'under') {
-    const roll = r * 100;
+    // Apply rigging logic for Dice
+    let finalR = r;
+    if (this.session.settings.isRigged) {
+        // If rigged, push the roll towards the losing side
+        if (mode === 'over') finalR = Math.min(r, target / 100 - 0.01);
+        else finalR = Math.max(r, target / 100 + 0.01);
+        // Ensure bounds
+        finalR = Math.max(0, Math.min(0.99, finalR));
+    }
+
+    const roll = finalR * 100;
     const won = mode === 'over' ? roll > target : roll < target;
     return { roll, won };
   }
@@ -321,9 +349,17 @@ export class SimulationEngine {
 
   public calculateSlotsResult(r: number) {
     const symbols = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
-    const s1 = symbols[Math.floor(r * 5)];
-    const s2 = symbols[Math.floor((r * 2.5 * 10) % 5)];
-    const s3 = symbols[Math.floor((r * 3.3 * 10) % 5)];
+    
+    // In rigged mode, ensure s1 != s2
+    let s1 = symbols[Math.floor(r * 5)];
+    let s2 = symbols[Math.floor((r * 2.5 * 10) % 5)];
+    let s3 = symbols[Math.floor((r * 3.3 * 10) % 5)];
+
+    if (this.session.settings.isRigged && s1 === s2 && s2 === s3) {
+        // Force a loss
+        s3 = symbols[(symbols.indexOf(s3) + 1) % 5];
+    }
+
     const res = [s1, s2, s3];
     let multiplier = 0;
     if (s1 === s2 && s2 === s3) {
@@ -350,14 +386,22 @@ export class SimulationEngine {
   }
 
   public calculatePlinkoResult(r: number, rows: number) {
+    // If rigged, bias towards center (lower multipliers)
+    let biasedR = r;
+    if (this.session.settings.isRigged) {
+        // Skew probability distribution closer to 0.5 (center)
+        biasedR = (r + 0.5) / 2; 
+    }
+
     const path = [];
-    for (let i = 0; i < rows; i++) path.push(Math.random() > 0.5 ? 1 : 0);
+    for (let i = 0; i < rows; i++) path.push(Math.random() > (this.session.settings.isRigged ? 0.4 : 0.5) ? 1 : 0);
     const finalBin = path.reduce((a, b) => a + b, 0);
     const MULTIPLIERS_16 = [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000];
     return { path, multiplier: MULTIPLIERS_16[finalBin] };
   }
 
   public calculateTeenPatti(r: number) {
+    // Standard edge
     const won = r > 0.55; 
     const hands = ['Trail', 'Pure Sequence', 'Sequence', 'Color', 'Pair', 'High Card'];
     const hand = hands[Math.floor(Math.random() * hands.length)];
