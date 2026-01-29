@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { Link } from 'react-router-dom';
 import { audio } from '../services/audio';
@@ -23,11 +23,36 @@ const GameCard = ({ title, to, icon, players, color, desc }: any) => (
 );
 
 export default function Lobby() {
-  const markets = [
+  const [marketData, setMarketData] = useState([
     { name: 'KALYAN OPEN', result: '143-8', type: 'FIXED', color: 'text-bet-primary' },
     { name: 'MILAN DAY', result: '422-8', type: 'LIVE', color: 'text-bet-success' },
     { name: 'MAIN BAZAR', result: '789-4', type: 'OFFICE', color: 'text-bet-accent' },
-  ];
+  ]);
+
+  // Simulate live updates for market data
+  useEffect(() => {
+    // Generate initial random data on mount
+    const generateResult = () => {
+        const p1 = Math.floor(Math.random() * 10);
+        const p2 = Math.floor(Math.random() * 10);
+        const p3 = Math.floor(Math.random() * 10);
+        const sum = (p1 + p2 + p3) % 10;
+        return `${p1}${p2}${p3}-${sum}`;
+    }
+
+    setMarketData(prev => prev.map(m => ({ ...m, result: generateResult() })));
+
+    const interval = setInterval(() => {
+        setMarketData(prev => {
+            const idx = Math.floor(Math.random() * 3);
+            const newData = [...prev];
+            newData[idx] = { ...newData[idx], result: generateResult() };
+            return newData;
+        });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <Layout>
@@ -55,12 +80,12 @@ export default function Lobby() {
 
         {/* Live Market Results */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-           {markets.map(res => (
-             <div key={res.name} className="bg-bet-900/60 border border-white/5 p-6 rounded-[2rem] flex justify-between items-center group hover:border-bet-primary transition-all shadow-xl backdrop-blur-md relative overflow-hidden">
+           {marketData.map((res, i) => (
+             <div key={i} className="bg-bet-900/60 border border-white/5 p-6 rounded-[2rem] flex justify-between items-center group hover:border-bet-primary transition-all shadow-xl backdrop-blur-md relative overflow-hidden">
                 <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-white/5 rounded-full blur-3xl group-hover:bg-bet-primary/10 transition-colors"></div>
                 <div className="relative z-10">
                    <p className="text-[9px] font-black text-slate-600 uppercase mb-2 tracking-widest">{res.name}</p>
-                   <p className={`text-3xl lg:text-4xl font-black ${res.color} bazar-font tracking-[0.1em]`}>{res.result}</p>
+                   <p className={`text-3xl lg:text-4xl font-black ${res.color} bazar-font tracking-[0.1em] animate-fade-in`}>{res.result}</p>
                 </div>
                 <div className="text-right relative z-10">
                    <p className="text-[9px] font-black text-bet-accent uppercase mb-2 tracking-widest">{res.type}</p>

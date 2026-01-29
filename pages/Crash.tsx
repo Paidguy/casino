@@ -21,23 +21,32 @@ export default function Crash() {
   // State for the big number display - throttled updates
   const [displayMultiplier, setDisplayMultiplier] = useState<number>(1.00);
 
-  const handleResize = () => {
-    const canvas = canvasRef.current;
-    if (canvas && canvas.parentElement) {
-      canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
-      canvas.height = canvas.parentElement.clientHeight * window.devicePixelRatio;
-      if (gameState !== 'RUNNING') drawGraph(0, 1);
-    }
-  };
-
+  // Separate effect for Resize handling - does NOT cancel animation
   useEffect(() => {
+    const handleResize = () => {
+        const canvas = canvasRef.current;
+        if (canvas && canvas.parentElement) {
+          canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
+          canvas.height = canvas.parentElement.clientHeight * window.devicePixelRatio;
+          // Redraw static graph if not running to prevent blank canvas
+          if (gameState !== 'RUNNING') drawGraph(0, 1);
+        }
+    };
+    
     window.addEventListener('resize', handleResize);
-    setTimeout(handleResize, 100);
+    handleResize(); // Init size
+    
     return () => {
       window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(requestRef.current);
     };
-  }, [gameState]);
+  }, [gameState]); // Re-bind if state changes to ensure color updates
+
+  // Separate effect strictly for cleanup on Unmount
+  useEffect(() => {
+      return () => {
+          if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      };
+  }, []);
 
   const start = () => {
     const bal = engine.getSession().balance;
@@ -50,14 +59,16 @@ export default function Crash() {
       const r = Math.random();
       crashPointRef.current = engine.getCrashPoint(r);
       
-      setGameState('RUNNING');
+      // Reset State
       multiplierRef.current = 1.00;
-      setDisplayMultiplier(1.00);
       startTimeRef.current = performance.now();
       lastUiUpdateRef.current = 0;
       isCashOutProcessing.current = false;
+      setDisplayMultiplier(1.00);
+      setGameState('RUNNING');
       
-      // Start the optimized loop
+      // Start Loop
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
       requestRef.current = requestAnimationFrame(animate);
     } catch (e) { console.error(e); }
   };
@@ -87,7 +98,7 @@ export default function Crash() {
       audio.playLoss();
       setHistory(prev => [crashPointRef.current, ...prev].slice(0, 8));
       engine.placeBet(GameType.CRASH, 0, 0, `Crashed @ ${crashPointRef.current.toFixed(2)}x`);
-      cancelAnimationFrame(requestRef.current);
+      // Loop ends here naturally
     } else {
       requestRef.current = requestAnimationFrame(animate);
     }
@@ -135,12 +146,16 @@ export default function Crash() {
     ctx.stroke();
 
     // Curve
-    ctx.strokeStyle = gameState === 'CRASHED' ? '#ef4444' : '#facc15';
+    // IMPORTANT: Use refs or passed 'm' here, relying on state 'gameState' inside render loop can be stale
+    // but we use it for color which is fine to lag by 1 frame
+    ctx.strokeStyle = '#facc15';
+    if (m >= crashPointRef.current && gameState === 'CRASHED') ctx.strokeStyle = '#ef4444';
+    
     ctx.lineWidth = 3 * window.devicePixelRatio;
     ctx.beginPath();
     ctx.moveTo(padding, h - padding);
     
-    const steps = 40; // Reduced steps for performance
+    const steps = 40; 
     for (let i = 0; i <= steps; i++) {
         const stepT = (t / steps) * i;
         const stepM = Math.pow(Math.E, 0.06 * stepT);
@@ -156,7 +171,7 @@ export default function Crash() {
     ctx.stroke();
     
     // Fill area
-    ctx.fillStyle = gameState === 'CRASHED' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(250, 204, 21, 0.1)';
+    ctx.fillStyle = (m >= crashPointRef.current && gameState === 'CRASHED') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(250, 204, 21, 0.1)';
     ctx.lineTo(padding + (t / Math.max(8, t)) * graphW, h - padding);
     ctx.lineTo(padding, h - padding);
     ctx.fill();

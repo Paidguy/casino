@@ -7,12 +7,14 @@ class AudioManager {
       const stored = localStorage.getItem('sound_enabled_v1');
       this.enabled = stored !== 'false';
       
-      // Auto-init on first gesture for mobile
+      // Auto-init on first gesture for mobile/browser policy
       if (typeof window !== 'undefined') {
         const unlock = () => {
           this.init();
-          window.removeEventListener('click', unlock);
-          window.removeEventListener('touchstart', unlock);
+          if (this.ctx && this.ctx.state === 'running') {
+             window.removeEventListener('click', unlock);
+             window.removeEventListener('touchstart', unlock);
+          }
         };
         window.addEventListener('click', unlock);
         window.addEventListener('touchstart', unlock);
@@ -35,7 +37,7 @@ class AudioManager {
         this.ctx.resume().catch(() => {});
       }
     } catch (e) {
-      console.warn("Audio init failed - continuing silent", e);
+      // Silence init errors
     }
   }
 
@@ -54,13 +56,15 @@ class AudioManager {
   private playTone(freq: number, type: OscillatorType, duration: number, startTime = 0, vol = 0.1) {
     if (!this.enabled) return;
     
-    // Non-blocking init attempt
+    // Attempt init if missing
     if (!this.ctx) {
         try { this.init(); } catch(e) {}
     }
     
     if (!this.ctx) return;
 
+    // Browser might still be suspended if no interaction yet, but we try anyway
+    // If suspended, it schedules but doesn't play until resumed. This prevents crashes.
     try {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -81,7 +85,7 @@ class AudioManager {
     }
   }
 
-  // Public methods wrapped in try/catch to prevent ANY crashes
+  // Public methods wrapped to prevent game logic failure
   public playClick() { try { this.playTone(800, 'sine', 0.1, 0, 0.05); } catch(e){} }
   public playBet() { 
     try {
