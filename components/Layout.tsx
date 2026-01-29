@@ -21,6 +21,7 @@ const MarketTicker = () => (
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<UserSession>(engine.getSession());
   const [showDeposit, setShowDeposit] = useState(false);
+  const [customDeposit, setCustomDeposit] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showIntel, setShowIntel] = useState(false);
   const location = useLocation();
@@ -150,6 +151,32 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     {[10000, 50000, 100000, 500000].map(amt => (
                        <button key={amt} onClick={() => { engine.deposit(amt, 'UPI'); setShowDeposit(false); audio.playWin(); }} className="py-4 bg-bet-800 hover:bg-bet-primary hover:text-bet-950 border border-white/10 rounded-xl text-base font-black text-white transition-all active:scale-95">₹{amt.toLocaleString()}</button>
                     ))}
+                 </div>
+
+                 {/* Custom Amount Input */}
+                 <div className="relative pt-2">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black mt-1">₹</span>
+                    <input 
+                        type="number" 
+                        value={customDeposit} 
+                        onChange={(e) => setCustomDeposit(e.target.value)}
+                        placeholder="Custom Amount"
+                        className="w-full bg-black border border-white/10 rounded-xl pl-8 pr-20 py-4 text-white font-black outline-none focus:border-bet-primary transition-all placeholder:text-slate-700 placeholder:font-bold"
+                    />
+                    <button 
+                        onClick={() => { 
+                            const amt = parseInt(customDeposit);
+                            if (amt > 0) {
+                                engine.deposit(amt, 'UPI'); 
+                                setShowDeposit(false); 
+                                setCustomDeposit('');
+                                audio.playWin(); 
+                            }
+                        }}
+                        className="absolute right-2 top-2 bottom-2 bg-bet-primary text-bet-950 px-4 rounded-lg font-black uppercase text-[10px] tracking-widest hover:bg-white transition-colors"
+                    >
+                        Add
+                    </button>
                  </div>
               </div>
            </div>

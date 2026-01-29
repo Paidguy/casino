@@ -33,3 +33,18 @@ html, body {
 .perspective-1000 {
   perspective: 1000px;
 }
+
+/* Input Field Improvements for Mobile/All Devices */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+input, button, select, textarea {
+  touch-action: manipulation;
+}
