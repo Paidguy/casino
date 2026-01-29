@@ -75,6 +75,19 @@ export class SimulationEngine {
     return Math.random();
   }
 
+  private logTransaction(type: Transaction['type'], amount: number, method: string) {
+      const tx: Transaction = {
+          id: 'TX_' + Math.random().toString(36).substring(2, 9).toUpperCase(),
+          type,
+          amount,
+          timestamp: Date.now(),
+          status: 'COMPLETED',
+          method
+      };
+      this.session.transactions = [tx, ...this.session.transactions];
+      this.saveSession(this.session);
+  }
+
   public placeBet(game: GameType, amount: number, multiplierOrResolver: number | ((r: number) => { multiplier: number, outcome: string }), outcomeStr?: string): BetResult {
     const currentSession = this.getSession();
     if (amount > currentSession.balance && amount > 0) throw new Error("Insufficient Balance");
@@ -98,6 +111,9 @@ export class SimulationEngine {
     this.session.totalBets += 1;
     this.session.rakebackBalance += amount * 0.005;
     
+    if (payout > amount) this.session.totalWins++;
+    else this.session.totalLosses++;
+
     if (multiplier > this.session.maxMultiplier) this.session.maxMultiplier = multiplier;
 
     const record: BetResult = {
@@ -122,15 +138,7 @@ export class SimulationEngine {
 
   public deposit(amount: number, method: string) {
     this.session.balance += amount;
-    this.session.transactions = [{
-      id: Math.random().toString(36),
-      type: 'DEPOSIT',
-      amount,
-      timestamp: Date.now(),
-      status: 'COMPLETED',
-      method
-    }, ...this.session.transactions];
-    this.saveSession(this.session);
+    this.logTransaction('DEPOSIT', amount, method);
   }
 
   public updateBalance(a: number) { 
@@ -143,7 +151,7 @@ export class SimulationEngine {
     if (amount > 0) {
       this.session.balance += amount;
       this.session.rakebackBalance = 0;
-      this.saveSession(this.session);
+      this.logTransaction('RAKEBACK', amount, 'VIP Reward');
     }
   }
 
@@ -167,7 +175,9 @@ export class SimulationEngine {
   }
 
   public resetBalance() {
+    const oldBalance = this.session.balance;
     this.session.balance = DAILY_ALLOWANCE;
+    this.logTransaction('BAILOUT', DAILY_ALLOWANCE, 'System Reset');
     this.saveSession(this.session);
   }
 

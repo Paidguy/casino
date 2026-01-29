@@ -131,24 +131,24 @@ export default function Blackjack() {
   };
 
   const CardView: React.FC<{ card: Card, hidden?: boolean }> = ({ card, hidden }) => (
-     <div className={`w-20 h-32 lg:w-28 lg:h-44 bg-white rounded-2xl shadow-2xl border border-slate-300 flex flex-col items-center justify-center relative select-none transform transition-transform hover:-translate-y-4 duration-300 ${hidden ? 'bg-bet-800 border-bet-700' : ''}`}>
+     <div className={`w-16 h-24 sm:w-20 sm:h-32 lg:w-28 lg:h-44 bg-white rounded-lg sm:rounded-2xl shadow-2xl border border-slate-300 flex flex-col items-center justify-center relative select-none transform transition-transform hover:-translate-y-4 duration-300 ${hidden ? 'bg-bet-800 border-bet-700' : ''}`}>
         {!hidden ? (
             <>
-                <div className="absolute top-2 left-3 flex flex-col items-center leading-none">
-                    <span className={`text-xl lg:text-2xl font-black ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.value}</span>
-                    <span className={`text-xl lg:text-2xl ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.suit}</span>
+                <div className="absolute top-1 left-2 sm:top-2 sm:left-3 flex flex-col items-center leading-none">
+                    <span className={`text-lg sm:text-xl lg:text-2xl font-black ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.value}</span>
+                    <span className={`text-lg sm:text-xl lg:text-2xl ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.suit}</span>
                 </div>
-                <div className={`text-6xl lg:text-8xl ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>
+                <div className={`text-4xl sm:text-6xl lg:text-8xl ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>
                     {card.suit}
                 </div>
-                <div className="absolute bottom-2 right-3 flex flex-col items-center leading-none rotate-180">
-                    <span className={`text-xl lg:text-2xl font-black ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.value}</span>
-                    <span className={`text-xl lg:text-2xl ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.suit}</span>
+                <div className="absolute bottom-1 right-2 sm:bottom-2 sm:right-3 flex flex-col items-center leading-none rotate-180">
+                    <span className={`text-lg sm:text-xl lg:text-2xl font-black ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.value}</span>
+                    <span className={`text-lg sm:text-xl lg:text-2xl ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.suit}</span>
                 </div>
             </>
         ) : (
-            <div className="w-full h-full bg-bet-950 rounded-2xl flex items-center justify-center border-4 border-bet-primary shadow-inner">
-               <span className="text-4xl lg:text-6xl text-bet-primary font-black bazar-font opacity-40">K</span>
+            <div className="w-full h-full bg-bet-950 rounded-lg sm:rounded-2xl flex items-center justify-center border-4 border-bet-primary shadow-inner">
+               <span className="text-2xl sm:text-4xl lg:text-6xl text-bet-primary font-black bazar-font opacity-40">K</span>
             </div>
         )}
      </div>
@@ -157,7 +157,7 @@ export default function Blackjack() {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 pb-32">
-         <div className="bg-bet-900 p-8 rounded-[2.5rem] border border-white/10 h-fit shadow-3xl order-2 lg:order-1 space-y-8">
+         <div className="bg-bet-900 p-6 lg:p-8 rounded-[2.5rem] border border-white/10 h-fit shadow-3xl order-2 lg:order-1 space-y-8">
             <div className="space-y-4">
               <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Bet Amount (₹)</label>
               <input 
@@ -193,14 +193,14 @@ export default function Blackjack() {
             )}
          </div>
 
-         <div className="lg:col-span-2 bg-gradient-to-b from-[#064e3b] to-bet-950 rounded-[4rem] border-[12px] border-bet-900 p-10 lg:p-16 min-h-[600px] flex flex-col justify-between items-center relative shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] order-1 lg:order-2 overflow-hidden">
+         <div className="lg:col-span-2 bg-gradient-to-b from-[#064e3b] to-bet-950 rounded-[2.5rem] lg:rounded-[4rem] border-[8px] lg:border-[12px] border-bet-900 p-6 lg:p-16 min-h-[500px] lg:min-h-[600px] flex flex-col justify-between items-center relative shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] order-1 lg:order-2 overflow-hidden">
              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] pointer-events-none"></div>
 
              <div className="flex flex-col items-center relative z-10">
-                 <div className="mb-6 bg-black/40 px-6 py-1.5 rounded-full text-emerald-200/50 font-black text-[10px] uppercase tracking-[0.5em] backdrop-blur-md">
+                 <div className="mb-4 lg:mb-6 bg-black/40 px-4 lg:px-6 py-1.5 rounded-full text-emerald-200/50 font-black text-[9px] lg:text-[10px] uppercase tracking-[0.3em] lg:tracking-[0.5em] backdrop-blur-md">
                     Dealer Hand {gameState === 'FINISHED' ? getHandValue(dealerHand) : '?'}
                  </div>
-                 <div className="flex -space-x-12 lg:-space-x-16">
+                 <div className="flex -space-x-8 sm:-space-x-12 lg:-space-x-16">
                     {dealerHand.length > 0 ? dealerHand.map((c, i) => (
                         <div key={i} className="transform transition-transform hover:-translate-y-4">
                            <CardView card={c} hidden={i === 0 && gameState === 'PLAYER_TURN'} />
@@ -210,13 +210,13 @@ export default function Blackjack() {
              </div>
 
              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
-                 <div className="w-80 h-40 border-4 border-white rounded-full flex items-center justify-center transform -rotate-12">
-                     <span className="text-6xl font-black text-white uppercase bazar-font">SATTA KING</span>
+                 <div className="w-60 h-30 lg:w-80 lg:h-40 border-4 border-white rounded-full flex items-center justify-center transform -rotate-12">
+                     <span className="text-4xl lg:text-6xl font-black text-white uppercase bazar-font">SATTA KING</span>
                  </div>
              </div>
 
              <div className="flex flex-col items-center relative z-10 mt-12">
-                 <div className="flex -space-x-12 lg:-space-x-16 mb-8">
+                 <div className="flex -space-x-8 sm:-space-x-12 lg:-space-x-16 mb-6 lg:mb-8">
                     {playerHand.length > 0 ? playerHand.map((c, i) => (
                         <div key={i} className="transform transition-transform hover:-translate-y-4">
                            <CardView card={c} />
@@ -224,7 +224,7 @@ export default function Blackjack() {
                     )) : Array(2).fill(null).map((_, i) => <CardView key={i} card={{} as Card} hidden />)}
                  </div>
                  {playerHand.length > 0 && (
-                   <div className="bg-bet-primary text-bet-950 px-8 py-3 rounded-full font-black text-2xl lg:text-3xl shadow-xl border-4 border-white/20 bazar-font">
+                   <div className="bg-bet-primary text-bet-950 px-6 lg:px-8 py-2 lg:py-3 rounded-full font-black text-xl lg:text-3xl shadow-xl border-4 border-white/20 bazar-font">
                       {getHandValue(playerHand)}
                    </div>
                  )}

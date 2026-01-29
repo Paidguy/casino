@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
@@ -53,9 +52,9 @@ export default function Wheel() {
 
   return (
     <Layout>
-      <div className="flex flex-col items-center gap-12">
-        <div className="relative w-72 h-72 lg:w-96 lg:h-96">
-           <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-4 z-20 text-4xl text-bet-accent drop-shadow-xl">▼</div>
+      <div className="flex flex-col items-center gap-8 lg:gap-12">
+        <div className="relative w-64 h-64 sm:w-72 sm:h-72 lg:w-96 lg:h-96">
+           <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-4 z-20 text-3xl lg:text-4xl text-bet-accent drop-shadow-xl">▼</div>
            <div 
              className="w-full h-full rounded-full border-8 border-bet-900 shadow-[0_0_100px_rgba(0,0,0,0.5)] transition-transform duration-[4000ms] cubic-bezier(0.15, 0, 0.15, 1)"
              style={{ 
@@ -64,23 +63,23 @@ export default function Wheel() {
              }}
            >
               {WHEEL_SEGMENTS.map((seg, i) => (
-                <div key={i} className="absolute inset-0 flex items-center justify-center" style={{ transform: `rotate(${i * 36 + 18}deg) translateY(-120px)` }}>
-                   <span className="text-white font-black text-xs lg:text-sm rotate-90">{seg.label}</span>
+                <div key={i} className="absolute inset-0 flex items-center justify-center" style={{ transform: `rotate(${i * 36 + 18}deg) translateY(-110px) lg:translateY(-120px)` }}>
+                   <span className="text-white font-black text-[10px] lg:text-sm rotate-90">{seg.label}</span>
                 </div>
               ))}
            </div>
         </div>
 
-        <div className="bg-bet-900 w-full max-w-lg p-8 rounded-[3rem] border border-white/5 space-y-6">
-           <div className="text-center h-12">
+        <div className="bg-bet-900 w-full max-w-lg p-6 lg:p-8 rounded-[2rem] lg:rounded-[3rem] border border-white/5 space-y-6">
+           <div className="text-center h-10 lg:h-12">
               {result && (
-                <div className={`text-3xl font-black uppercase italic ${result.multi > 0 ? 'text-bet-success' : 'text-slate-500'}`}>
+                <div className={`text-2xl lg:text-3xl font-black uppercase italic ${result.multi > 0 ? 'text-bet-success' : 'text-slate-500'}`}>
                   {result.multi > 0 ? `Won ₹${(betAmount * result.multi).toLocaleString()}!` : 'Bust'}
                 </div>
               )}
            </div>
            
-           <div className="flex gap-4">
+           <div className="flex flex-col sm:flex-row gap-4">
               <input 
                 type="number" value={betAmount} 
                 onChange={e => setBetAmount(Number(e.target.value))} 

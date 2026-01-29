@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import Lobby from './pages/Lobby';
@@ -17,6 +16,8 @@ import Admin from './pages/Admin';
 import Wheel from './pages/Wheel';
 import Baccarat from './pages/Baccarat';
 import Keno from './pages/Keno';
+import Transactions from './pages/Transactions';
+import Statistics from './pages/Statistics';
 
 const App: React.FC = () => {
   return (
@@ -38,6 +39,8 @@ const App: React.FC = () => {
         <Route path="/wheel" element={<Wheel />} />
         <Route path="/baccarat" element={<Baccarat />} />
         <Route path="/keno" element={<Keno />} />
+        <Route path="/transactions" element={<Transactions />} />
+        <Route path="/statistics" element={<Statistics />} />
       </Routes>
     </HashRouter>
   );
