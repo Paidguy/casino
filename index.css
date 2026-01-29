@@ -62,3 +62,10 @@ input[type=number] {
 input, button, select, textarea, a {
   touch-action: manipulation;
 }
+
+/* Performance Optimizations */
+.will-change-transform {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}

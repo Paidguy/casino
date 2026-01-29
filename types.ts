@@ -1,3 +1,4 @@
+
 export enum GameType {
   CRASH = 'CRASH',
   DICE = 'DICE',
@@ -52,6 +53,13 @@ export interface LeaderboardEntry {
   isPlayer?: boolean;
 }
 
+export interface GameStats {
+  bets: number;
+  wagered: number;
+  wins: number;
+  payout: number;
+}
+
 export interface UserSession {
   id: string;
   username: string;
@@ -64,9 +72,11 @@ export interface UserSession {
   totalWagered: number;
   totalWins: number;
   totalLosses: number; 
+  totalPayout: number;
   maxMultiplier: number;
   history: BetResult[];
   transactions: Transaction[];
+  gameStats: Record<string, GameStats>;
   clientSeed: string;
   serverSeed: string;
   nonce: number;

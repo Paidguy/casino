@@ -1,4 +1,4 @@
-import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction, LeaderboardEntry } from '../types';
+import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction, LeaderboardEntry, GameStats } from '../types';
 
 const DAILY_ALLOWANCE = 100000;
 const STORAGE_KEY = 'satking_pro_v2';
@@ -14,6 +14,7 @@ const BOTS: LeaderboardEntry[] = [
 export class SimulationEngine {
   private session: UserSession;
   private listeners: ((session: UserSession) => void)[] = [];
+  private saveTimeout: any = null;
 
   constructor() {
     this.session = this.loadSession();
@@ -26,10 +27,16 @@ export class SimulationEngine {
   }
 
   private notify() {
+    // Dispatch state updates immediately to UI listeners
     this.listeners.forEach(l => { try { l({ ...this.session }); } catch (e) { console.error(e); } });
   }
 
   private createDefaultSession(): UserSession {
+    const gameStats: Record<string, GameStats> = {};
+    Object.values(GameType).forEach(g => {
+        gameStats[g] = { bets: 0, wagered: 0, wins: 0, payout: 0 };
+    });
+
     return {
       id: Math.random().toString(36).substring(7),
       username: 'Punter_' + Math.floor(1000 + Math.random() * 9000),
@@ -40,11 +47,13 @@ export class SimulationEngine {
       startTime: Date.now(),
       totalBets: 0,
       totalWagered: 0,
+      totalPayout: 0,
       totalWins: 0,
       totalLosses: 0,
       maxMultiplier: 0,
       history: [],
       transactions: [],
+      gameStats,
       clientSeed: Math.random().toString(36),
       serverSeed: Math.random().toString(36),
       nonce: 0,
@@ -71,6 +80,12 @@ export class SimulationEngine {
         const safeHistory = Array.isArray(parsed.history) ? parsed.history : [];
         const safeTransactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
 
+        // Merge gameStats safely
+        const mergedGameStats = { ...defaults.gameStats, ...(parsed.gameStats || {}) };
+        Object.values(GameType).forEach(g => {
+            if (!mergedGameStats[g]) mergedGameStats[g] = { bets: 0, wagered: 0, wins: 0, payout: 0 };
+        });
+
         const mergedSettings: AdminSettings = {
             ...defaults.settings,
             ...(parsed.settings || {}),
@@ -90,6 +105,8 @@ export class SimulationEngine {
             ...defaults,
             ...parsed,
             balance: safeBalance,
+            totalPayout: typeof parsed.totalPayout === 'number' ? parsed.totalPayout : 0,
+            gameStats: mergedGameStats,
             settings: mergedSettings,
             transactions: safeTransactions,
             history: safeHistory
@@ -110,8 +127,13 @@ export class SimulationEngine {
 
   private saveSession(session: UserSession) {
     this.session = session;
-    this.notify();
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(session)); } catch (e) {}
+    this.notify(); // Update UI immediately
+    
+    // Throttle disk I/O to prevent lag
+    if (this.saveTimeout) clearTimeout(this.saveTimeout);
+    this.saveTimeout = setTimeout(() => {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(session)); } catch (e) {}
+    }, 2000);
   }
 
   public getSession(): UserSession {
@@ -151,7 +173,7 @@ export class SimulationEngine {
         }; 
     }
     
-    // Balance Check - Allow exact balance match
+    // Balance Check
     if (amount > currentSession.balance) {
         return {
              id: 'ERR_BAL', gameType: game, betAmount: 0, payoutMultiplier: 0, payoutAmount: 0, timestamp: Date.now(), outcome: 'Insufficient Funds', balanceAfter: currentSession.balance, nonce: 0, clientSeed: '', serverSeedHash: '', resultInput: 0
@@ -183,12 +205,23 @@ export class SimulationEngine {
     this.session.balance = Math.max(0, this.session.balance - amount + payout); 
     this.session.totalWagered += amount;
     this.session.totalBets += 1;
+    this.session.totalPayout += payout;
     this.session.rakebackBalance += amount * 0.005;
     
     if (payout > amount) this.session.totalWins++;
     else this.session.totalLosses++;
 
     if (multiplier > this.session.maxMultiplier) this.session.maxMultiplier = multiplier;
+
+    // Update Game Stats
+    if (!this.session.gameStats[game]) {
+        this.session.gameStats[game] = { bets: 0, wagered: 0, wins: 0, payout: 0 };
+    }
+    const gs = this.session.gameStats[game];
+    gs.bets += 1;
+    gs.wagered += amount;
+    gs.payout += payout;
+    if (payout > amount) gs.wins += 1;
 
     const record: BetResult = {
       id: Math.random().toString(36).substring(7),
