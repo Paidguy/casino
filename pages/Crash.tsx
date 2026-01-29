@@ -16,6 +16,7 @@ export default function Crash() {
   const requestRef = useRef<number>(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastUiUpdateRef = useRef<number>(0);
+  const isCashOutProcessing = useRef<boolean>(false);
   
   // State for the big number display - throttled updates
   const [displayMultiplier, setDisplayMultiplier] = useState<number>(1.00);
@@ -52,6 +53,7 @@ export default function Crash() {
       setDisplayMultiplier(1.00);
       startTimeRef.current = performance.now();
       lastUiUpdateRef.current = 0;
+      isCashOutProcessing.current = false;
       
       // Start the optimized loop
       requestRef.current = requestAnimationFrame(animate);
@@ -59,6 +61,8 @@ export default function Crash() {
   };
 
   const animate = (time: number) => {
+    if (isCashOutProcessing.current) return;
+
     const elapsed = (time - startTimeRef.current) / 1000;
     const currentMult = Math.pow(Math.E, 0.06 * elapsed);
     
@@ -88,9 +92,10 @@ export default function Crash() {
   };
 
   const cashOut = () => {
-    // This function must be extremely fast and not rely on state updates
-    if (gameState !== 'RUNNING') return;
+    // Immediate check to prevent double-clicks or race conditions
+    if (gameState !== 'RUNNING' || isCashOutProcessing.current) return;
     
+    isCashOutProcessing.current = true;
     cancelAnimationFrame(requestRef.current); // Stop animation immediately
     const finalMult = multiplierRef.current;
     
@@ -162,7 +167,7 @@ export default function Crash() {
         <div className="relative bg-bet-900 border border-white/5 rounded-[2rem] p-4 lg:p-6 shadow-2xl overflow-hidden min-h-[300px] lg:min-h-[350px] flex flex-col justify-center items-center">
            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
            <div className="relative z-10 flex flex-col items-center gap-2">
-              <div className={`text-6xl lg:text-8xl font-black italic -skew-x-12 tabular-nums drop-shadow-2xl ${gameState === 'CRASHED' ? 'text-bet-danger' : 'text-white'}`}>
+              <div className={`text-6xl lg:text-7xl font-black italic -skew-x-12 tabular-nums drop-shadow-2xl ${gameState === 'CRASHED' ? 'text-bet-danger' : 'text-white'}`}>
                 {displayMultiplier.toFixed(2)}x
               </div>
               {gameState === 'CRASHED' && <div className="text-[10px] text-bet-danger font-black uppercase tracking-widest bg-bet-danger/10 px-4 py-1 rounded-full">Bust @ {displayMultiplier.toFixed(2)}x</div>}

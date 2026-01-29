@@ -40,7 +40,7 @@ export default function Lobby() {
                  <span className="w-1.5 h-1.5 bg-bet-primary rounded-full animate-pulse"></span>
                  <span className="text-[8px] lg:text-[9px] font-black uppercase tracking-[0.2em] text-bet-primary">DEVELOPED BY @PAIDGUY</span>
               </div>
-              <h1 className="text-5xl lg:text-7xl font-black text-white italic -skew-x-12 uppercase leading-[0.9] tracking-tighter bazar-font drop-shadow-3xl">
+              <h1 className="text-5xl lg:text-6xl font-black text-white italic -skew-x-12 uppercase leading-[0.9] tracking-tighter bazar-font drop-shadow-3xl">
                  BHAARI <br/> <span className="gold-text">PROFIT</span>
               </h1>
               <p className="text-sm lg:text-base font-bold text-slate-400 uppercase tracking-[0.1em] max-w-2xl leading-relaxed opacity-90">
@@ -60,7 +60,7 @@ export default function Lobby() {
                 <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-white/5 rounded-full blur-3xl group-hover:bg-bet-primary/10 transition-colors"></div>
                 <div className="relative z-10">
                    <p className="text-[9px] font-black text-slate-600 uppercase mb-2 tracking-widest">{res.name}</p>
-                   <p className={`text-4xl font-black ${res.color} bazar-font tracking-[0.1em]`}>{res.result}</p>
+                   <p className={`text-3xl lg:text-4xl font-black ${res.color} bazar-font tracking-[0.1em]`}>{res.result}</p>
                 </div>
                 <div className="text-right relative z-10">
                    <p className="text-[9px] font-black text-bet-accent uppercase mb-2 tracking-widest">{res.type}</p>
@@ -73,7 +73,7 @@ export default function Lobby() {
         {/* All Games Grid */}
         <section className="space-y-6">
            <div className="flex items-center justify-between px-2">
-              <h2 className="text-3xl lg:text-5xl font-black text-white italic -skew-x-6 uppercase tracking-tighter bazar-font leading-none">Global <span className="text-bet-primary">Bazar</span></h2>
+              <h2 className="text-3xl lg:text-4xl font-black text-white italic -skew-x-6 uppercase tracking-tighter bazar-font leading-none">Global <span className="text-bet-primary">Bazar</span></h2>
               <div className="hidden sm:block h-px flex-1 bg-white/5 mx-10"></div>
            </div>
            
@@ -92,7 +92,7 @@ export default function Lobby() {
         {/* Final Branding Footer */}
         <footer className="pt-10 border-t border-white/5 text-center">
             <div className="text-[10px] font-black text-slate-700 uppercase tracking-[0.6em] mb-4">Masterfully Crafted By</div>
-            <div className="text-3xl lg:text-5xl font-black text-white italic -skew-x-12 uppercase bazar-font drop-shadow-2xl">@PAID<span className="text-bet-primary">GUY</span></div>
+            <div className="text-3xl lg:text-4xl font-black text-white italic -skew-x-12 uppercase bazar-font drop-shadow-2xl">@PAID<span className="text-bet-primary">GUY</span></div>
             <div className="text-[9px] text-slate-800 font-bold uppercase tracking-widest mt-6">SattaKing.IND Pro v8.0 Final Build • Hyper-Silk Logic Engine</div>
         </footer>
       </div>

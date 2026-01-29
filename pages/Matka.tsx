@@ -103,7 +103,7 @@ export default function Matka() {
                  </div>
                  
                  <div className="space-y-2">
-                    <div className="text-7xl sm:text-8xl lg:text-[10rem] font-black gold-text drop-shadow-[0_10px_60px_rgba(251,191,36,0.6)] leading-none bazar-font">
+                    <div className="text-7xl sm:text-8xl lg:text-9xl font-black gold-text drop-shadow-[0_10px_60px_rgba(251,191,36,0.6)] leading-none bazar-font">
                        {result.single}
                     </div>
                     <div className={`text-3xl lg:text-5xl font-black uppercase italic tracking-tighter bazar-font ${result.single === selectedNum ? 'text-bet-primary animate-bounce' : 'text-bet-danger opacity-80'}`}>

@@ -35,7 +35,6 @@ class AudioManager {
         this.ctx.resume().catch(() => {});
       }
     } catch (e) {
-      // Safely ignore audio context errors to prevent app crashes
       console.warn("Audio init failed", e);
     }
   }
@@ -54,6 +53,7 @@ class AudioManager {
 
   private playTone(freq: number, type: OscillatorType, duration: number, startTime = 0, vol = 0.1) {
     if (!this.enabled) return;
+    // Attempt init but don't block
     this.init();
     if (!this.ctx) return;
 
@@ -73,26 +73,35 @@ class AudioManager {
       osc.start(this.ctx.currentTime + startTime);
       osc.stop(this.ctx.currentTime + startTime + duration);
     } catch (e) {
-      // AudioContext might still be blocked
+      // Swallow audio errors so game logic proceeds
     }
   }
 
-  public playClick() { this.playTone(800, 'sine', 0.1, 0, 0.05); }
+  // Public methods now safely wrap the internal logic
+  public playClick() { try { this.playTone(800, 'sine', 0.1, 0, 0.05); } catch(e){} }
   public playBet() { 
-    this.playTone(400, 'square', 0.08, 0, 0.03); 
-    this.playTone(600, 'square', 0.08, 0.05, 0.03); 
+    try {
+      this.playTone(400, 'square', 0.08, 0, 0.03); 
+      this.playTone(600, 'square', 0.08, 0.05, 0.03); 
+    } catch(e){}
   }
   public playWin() { 
-    this.playTone(523.25, 'sine', 0.3, 0, 0.08); 
-    this.playTone(659.25, 'sine', 0.3, 0.1, 0.08); 
-    this.playTone(783.99, 'sine', 0.5, 0.2, 0.08); 
+    try {
+      this.playTone(523.25, 'sine', 0.3, 0, 0.08); 
+      this.playTone(659.25, 'sine', 0.3, 0.1, 0.08); 
+      this.playTone(783.99, 'sine', 0.5, 0.2, 0.08); 
+    } catch(e){}
   }
   public playLoss() {
-    this.playTone(180, 'sawtooth', 0.4, 0, 0.08);
-    this.playTone(130, 'sawtooth', 0.4, 0.15, 0.08);
+    try {
+      this.playTone(180, 'sawtooth', 0.4, 0, 0.08);
+      this.playTone(130, 'sawtooth', 0.4, 0.15, 0.08);
+    } catch(e){}
   }
   public playSpin() {
-    this.playTone(1000, 'sine', 0.02, 0, 0.02);
+    try {
+      this.playTone(1000, 'sine', 0.02, 0, 0.02);
+    } catch(e){}
   }
 }
 
