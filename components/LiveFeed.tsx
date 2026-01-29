@@ -62,9 +62,7 @@ export const LiveFeed = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-bet-900 border-l border-white/10 w-full">
-            {/* Header removed as it is handled by Layout container */}
-            
+        <div className="flex flex-col h-full bg-bet-900 border-l border-white/10 w-full relative z-[10]">
             <div className="flex border-b border-white/10 shrink-0">
                 <TabButton active={tab === 'BETS'} onClick={() => setTab('BETS')} label="Live Satta" />
                 <TabButton active={tab === 'CHAT'} onClick={() => setTab('CHAT')} label="Punter Chat" />

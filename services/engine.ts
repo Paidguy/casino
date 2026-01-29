@@ -34,6 +34,7 @@ export class SimulationEngine {
   }
 
   private notify() {
+    // Notify all listeners of state change
     this.listeners.forEach(l => {
       try {
         l({ ...this.session });
@@ -166,8 +167,17 @@ export class SimulationEngine {
     const currentSession = this.getSession();
     
     // Safety check for invalid bet amounts
-    if (isNaN(amount) || amount < 0) throw new Error("Invalid bet amount");
-    if (amount > currentSession.balance) throw new Error("Insufficient Balance");
+    if (isNaN(amount) || amount < 0) {
+        // Don't throw, just return a dummy failure so UI can handle it
+        console.error("Invalid bet amount");
+        return {} as BetResult; 
+    }
+    
+    // Check balance
+    if (amount > currentSession.balance) {
+        console.error("Insufficient Balance");
+        return {} as BetResult;
+    }
     
     let multiplier: number = 0;
     let outcome: string = '';
@@ -184,10 +194,11 @@ export class SimulationEngine {
         }
     } catch (e) {
         console.error("Error calculating bet result:", e);
-        // Fallback to loss to prevent engine lock
+        // Fallback: Refund the user (multiplier = 1) or assume loss (0). 
+        // Let's assume loss to be safe, but log it.
         multiplier = 0;
         outcome = "System Error - Bet Refunded";
-        amount = 0; // effectively refund logic if we don't deduct
+        amount = 0; // Prevent deduction if logic failed
     }
 
     const payout = amount * multiplier;
@@ -270,7 +281,6 @@ export class SimulationEngine {
   public hardReset() {
     try {
         localStorage.removeItem(STORAGE_KEY);
-        // Also clear any other local storage keys used by the app
         localStorage.removeItem('stake_welcome_v1');
         localStorage.removeItem('sound_enabled_v1');
     } catch(e) { console.error(e); }

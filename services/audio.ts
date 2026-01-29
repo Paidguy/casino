@@ -35,7 +35,7 @@ class AudioManager {
         this.ctx.resume().catch(() => {});
       }
     } catch (e) {
-      // Silence init errors
+      console.warn("Audio init failed - continuing silent", e);
     }
   }
 
@@ -53,8 +53,12 @@ class AudioManager {
 
   private playTone(freq: number, type: OscillatorType, duration: number, startTime = 0, vol = 0.1) {
     if (!this.enabled) return;
-    // Attempt init but don't block
-    this.init();
+    
+    // Non-blocking init attempt
+    if (!this.ctx) {
+        try { this.init(); } catch(e) {}
+    }
+    
     if (!this.ctx) return;
 
     try {
@@ -73,11 +77,11 @@ class AudioManager {
       osc.start(this.ctx.currentTime + startTime);
       osc.stop(this.ctx.currentTime + startTime + duration);
     } catch (e) {
-      // Swallow audio errors so game logic proceeds
+      // Swallow errors to ensure game flow continues
     }
   }
 
-  // Public methods now safely wrap the internal logic
+  // Public methods wrapped in try/catch to prevent ANY crashes
   public playClick() { try { this.playTone(800, 'sine', 0.1, 0, 0.05); } catch(e){} }
   public playBet() { 
     try {
