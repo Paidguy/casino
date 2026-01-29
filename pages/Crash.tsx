@@ -342,7 +342,7 @@ export default function Crash() {
                     <button 
                         type="button"
                         onClick={cashOut} 
-                        className="w-full py-4 bg-bet-success text-bet-950 font-black text-2xl rounded-xl shadow-[0_0_30px_rgba(34,197,94,0.4)] active:scale-90 active:bg-emerald-400 transition-all uppercase tracking-widest cursor-pointer cyan-glow touch-manipulation select-none"
+                        className="w-full py-4 bg-bet-success text-bet-950 font-black text-2xl rounded-xl shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:scale-[1.01] active:scale-95 transition-all duration-75 uppercase tracking-widest cursor-pointer cyan-glow touch-manipulation select-none"
                     >
                         Cash Out
                         <span className="block text-sm opacity-80">₹{(betAmount * displayMultiplier).toFixed(0)}</span>
@@ -352,7 +352,7 @@ export default function Crash() {
                         type="button"
                         onClick={start} 
                         disabled={betAmount <= 0} 
-                        className="w-full py-4 bg-bet-accent text-black font-black text-lg rounded-xl shadow-lg transition-all uppercase tracking-widest hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 cursor-pointer touch-manipulation select-none"
+                        className="w-full py-4 bg-bet-accent text-black font-black text-lg rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest disabled:opacity-50 disabled:scale-100 cursor-pointer touch-manipulation select-none"
                     >
                         Bet Lagao
                     </button>

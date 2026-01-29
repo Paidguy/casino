@@ -1,3 +1,4 @@
+
 /* Reset and full-screen enforcement */
 html, body {
   margin: 0;
@@ -5,8 +6,9 @@ html, body {
   height: 100%;
   width: 100%;
   background-color: #020617;
-  /* Fixed position removed to allow native scrolling behavior on PC */
   overflow: hidden; 
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -58,9 +60,29 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
-/* Ensure snappy clicks */
-input, button, select, textarea, a {
+/* Button & Link Global Enhancements */
+button, a {
+  /* Optimized transition properties for performance */
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); /* Standard ease-in-out */
+  transition-duration: 150ms;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Global active state for tactile feedback */
+button:active:not(:disabled), a:active:not([href="#"]) {
+  transform: scale(0.97);
+}
+
+/* Disabled state handling */
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none !important;
 }
 
 /* Performance Optimizations */
@@ -69,3 +91,14 @@ input, button, select, textarea, a {
   backface-visibility: hidden;
   transform: translateZ(0);
 }
+
+.cyan-glow { filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.5)); }
+.magenta-glow { filter: drop-shadow(0 0 10px rgba(217, 70, 239, 0.5)); }
+
+.gold-text {
+  background: linear-gradient(to bottom, #fde047, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bazar-font { font-family: 'Teko', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; }
