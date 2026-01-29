@@ -22,14 +22,25 @@ export class SimulationEngine {
   // --- Pub/Sub for Real-Time UI Updates ---
   public subscribe(listener: (session: UserSession) => void) {
     this.listeners.push(listener);
-    listener(this.session); // Immediate update on subscribe
+    // Emit current state immediately to ensure UI is in sync
+    try {
+      listener(this.session);
+    } catch (e) {
+      console.error("Error in subscription listener:", e);
+    }
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);
     };
   }
 
   private notify() {
-    this.listeners.forEach(l => l({ ...this.session }));
+    this.listeners.forEach(l => {
+      try {
+        l({ ...this.session });
+      } catch (e) {
+        console.error("Error notifying listener:", e);
+      }
+    });
   }
 
   private createDefaultSession(): UserSession {
@@ -67,24 +78,29 @@ export class SimulationEngine {
         const parsed = JSON.parse(stored);
         const defaults = this.createDefaultSession();
         
-        // Validation: Ensure balance is a valid number
+        // Validation: Ensure critical numbers are safe
         const safeBalance = (typeof parsed.balance === 'number' && !isNaN(parsed.balance)) 
           ? parsed.balance 
           : defaults.balance;
 
-        // Deep merge/sanitize to ensure new fields exist
+        // Correctly merge nested settings to avoid undefined properties
+        const mergedSettings: AdminSettings = {
+            ...defaults.settings,
+            ...(parsed.settings || {}),
+            houseEdgeOverrides: {
+                ...defaults.settings.houseEdgeOverrides,
+                ...(parsed.settings?.houseEdgeOverrides || {})
+            }
+        };
+
+        // Deep merge/sanitize
         return {
             ...defaults,
             ...parsed,
             balance: safeBalance,
-            settings: { ...defaults.settings, ...(parsed.settings || {}) },
+            settings: mergedSettings,
             transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
-            history: Array.isArray(parsed.history) ? parsed.history : [],
-            // Ensure critical overrides are kept
-            houseEdgeOverrides: { 
-              ...defaults.settings.houseEdgeOverrides, 
-              ...(parsed.settings?.houseEdgeOverrides || {}) 
-            }
+            history: Array.isArray(parsed.history) ? parsed.history : []
         };
       }
     } catch (e) {
@@ -226,6 +242,14 @@ export class SimulationEngine {
     this.session.balance = DAILY_ALLOWANCE;
     this.logTransaction('BAILOUT', DAILY_ALLOWANCE, 'System Reset');
     this.saveSession(this.session);
+  }
+  
+  // Hard reset for error boundaries - clears everything
+  public hardReset() {
+    localStorage.removeItem(STORAGE_KEY);
+    this.session = this.initializeSession();
+    this.notify();
+    window.location.reload();
   }
 
   public toggleAdmin() {
