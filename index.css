@@ -4,8 +4,9 @@ html, body {
   padding: 0;
   height: 100%;
   width: 100%;
-  overflow: hidden;
   background-color: #020617;
+  /* Fixed position removed to allow native scrolling behavior on PC */
+  overflow: hidden; 
 }
 
 #root {
@@ -14,27 +15,39 @@ html, body {
   height: 100%;
   width: 100%;
   position: relative;
+  overflow: hidden;
 }
 
+/* Custom Scrollbar Styling - Crucial for Desktop Experience */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(15, 23, 42, 0.5);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.2);
+  background: rgba(34, 211, 238, 0.3);
   border-radius: 10px;
+  transition: background 0.2s;
 }
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.6);
+}
+
+/* Utilities */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* Perspective for 3D effects in casino games */
 .perspective-1000 {
   perspective: 1000px;
 }
 
-/* Input Field Improvements for Mobile/All Devices */
+/* Input Field Improvements */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -45,6 +58,7 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
-input, button, select, textarea {
+/* Ensure snappy clicks */
+input, button, select, textarea, a {
   touch-action: manipulation;
 }

@@ -35,6 +35,17 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     console.error("Uncaught error:", error, errorInfo);
   }
 
+  handleHardReset = () => {
+      // Aggressive clear
+      try {
+          localStorage.clear();
+          sessionStorage.clear();
+      } catch(e) {}
+      engine.hardReset();
+      // Force reload ignoring cache
+      window.location.reload();
+  }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -43,7 +54,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
           <h1 className="text-4xl font-black text-rose-500 mb-2 uppercase">System Malfunction</h1>
           <p className="text-slate-400 mb-8 max-w-md">The game engine encountered a critical data corruption. This usually happens when local data is outdated.</p>
           <button 
-            onClick={() => engine.hardReset()}
+            onClick={this.handleHardReset}
             className="px-8 py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold uppercase tracking-widest shadow-lg transition-all active:scale-95"
           >
             Hard Reset & Repair

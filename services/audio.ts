@@ -7,17 +7,19 @@ class AudioManager {
       const stored = localStorage.getItem('sound_enabled_v1');
       this.enabled = stored !== 'false';
       
-      // Auto-init on first gesture for mobile/browser policy
       if (typeof window !== 'undefined') {
+        // Aggressive unlocking for Chrome Autoplay Policy
         const unlock = () => {
-          this.init();
+          this.checkAndResume();
           if (this.ctx && this.ctx.state === 'running') {
              window.removeEventListener('click', unlock);
              window.removeEventListener('touchstart', unlock);
+             window.removeEventListener('keydown', unlock);
           }
         };
         window.addEventListener('click', unlock);
         window.addEventListener('touchstart', unlock);
+        window.addEventListener('keydown', unlock);
       }
     } catch (e) {
       this.enabled = true;
@@ -33,12 +35,16 @@ class AudioManager {
           this.ctx = new AudioContextClass();
         }
       }
-      if (this.ctx && this.ctx.state === 'suspended') {
-        this.ctx.resume().catch(() => {});
-      }
     } catch (e) {
       // Silence init errors
     }
+  }
+
+  private checkAndResume() {
+      if (!this.ctx) this.init();
+      if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+      }
   }
 
   public toggle() {
@@ -47,7 +53,10 @@ class AudioManager {
       localStorage.setItem('sound_enabled_v1', String(this.enabled));
     } catch(e) {}
     
-    if (this.enabled) this.init();
+    if (this.enabled) {
+        this.init();
+        this.checkAndResume();
+    }
     return this.enabled;
   }
 
@@ -56,15 +65,10 @@ class AudioManager {
   private playTone(freq: number, type: OscillatorType, duration: number, startTime = 0, vol = 0.1) {
     if (!this.enabled) return;
     
-    // Attempt init if missing
-    if (!this.ctx) {
-        try { this.init(); } catch(e) {}
-    }
+    this.checkAndResume();
     
     if (!this.ctx) return;
 
-    // Browser might still be suspended if no interaction yet, but we try anyway
-    // If suspended, it schedules but doesn't play until resumed. This prevents crashes.
     try {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();

@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
 import { audio } from '../services/audio';
@@ -12,13 +11,21 @@ export default function Dice() {
   const [lastRoll, setLastRoll] = useState<number | null>(null);
   const [lastWin, setLastWin] = useState<boolean | null>(null);
 
+  // Auto Bet State
+  const [mode, setMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
+  const [autoActive, setAutoActive] = useState(false);
+  const [autoBetCount, setAutoBetCount] = useState<number>(0);
+  const [autoBetsRemaining, setAutoBetsRemaining] = useState<number>(0);
+
   const multiplier = (100 - (HOUSE_EDGES.DICE * 100)) / winChance;
   const target = rollOver ? (100 - winChance) : winChance;
 
   const handleRoll = () => {
-    if (betAmount > engine.getSession().balance || betAmount <= 0) return;
+    if (betAmount > engine.getSession().balance || betAmount <= 0) {
+        if (autoActive) setAutoActive(false);
+        return;
+    }
     audio.playBet();
-    // Providing empty string as the 4th argument (outcome) which is ignored when a resolver is used
     engine.placeBet(GameType.DICE, betAmount, (r) => {
         const { roll, won } = engine.calculateDiceResult(r, target, rollOver ? 'over' : 'under');
         setLastRoll(roll);
@@ -27,6 +34,28 @@ export default function Dice() {
         else audio.playLoss();
         return { multiplier: won ? multiplier : 0, outcome: `Rolled ${roll.toFixed(2)}` };
     }, '');
+  };
+
+  useEffect(() => {
+      let timeout: ReturnType<typeof setTimeout>;
+      if (autoActive && (autoBetCount === 0 || autoBetsRemaining > 0)) {
+          timeout = setTimeout(() => {
+              handleRoll();
+              if (autoBetCount > 0) setAutoBetsRemaining(prev => prev - 1);
+          }, 400); // Fast auto roll
+      } else if (autoActive) {
+          setAutoActive(false);
+      }
+      return () => clearTimeout(timeout);
+  }, [autoActive, autoBetsRemaining]);
+
+  const toggleAuto = () => {
+      if (autoActive) {
+          setAutoActive(false);
+      } else {
+          setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount);
+          setAutoActive(true);
+      }
   };
 
   return (
@@ -51,21 +80,35 @@ export default function Dice() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-12 bg-bet-800/40 p-6 lg:p-10 rounded-3xl border border-white/5">
              <div className="space-y-6">
+               {/* Mode Switch */}
+               <div className="flex bg-black/40 p-1 rounded-xl">
+                  <button onClick={() => setMode('MANUAL')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'MANUAL' ? 'bg-bet-800 text-white shadow' : 'text-slate-500'}`}>Manual</button>
+                  <button onClick={() => setMode('AUTO')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'AUTO' ? 'bg-bet-primary text-bet-950 shadow' : 'text-slate-500'}`}>Auto</button>
+               </div>
+
                <div>
                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 block">Bet Amount (₹)</label>
                  <div className="relative">
-                    <input type="number" value={betAmount} onChange={(e) => setBetAmount(Number(e.target.value))} className="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-white font-mono font-black text-xl outline-none focus:border-bet-primary transition-all" />
+                    <input type="number" value={betAmount} onChange={(e) => setBetAmount(Number(e.target.value))} disabled={autoActive} className="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-white font-mono font-black text-xl outline-none focus:border-bet-primary transition-all" />
                     <div className="absolute right-3 top-3 flex gap-2">
-                       <button onClick={() => setBetAmount(betAmount * 2)} className="bg-white/5 px-3 py-1 rounded text-[10px] font-black uppercase">2X</button>
+                       <button onClick={() => setBetAmount(betAmount * 2)} disabled={autoActive} className="bg-white/5 px-3 py-1 rounded text-[10px] font-black uppercase">2X</button>
                     </div>
                  </div>
                </div>
+               
+               {mode === 'AUTO' && (
+                  <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 block">Number of Bets (0 = ∞)</label>
+                      <input type="number" value={autoBetCount} onChange={(e) => setAutoBetCount(Number(e.target.value))} disabled={autoActive} className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white font-mono font-black text-lg outline-none" />
+                  </div>
+               )}
+
                <div>
                   <div className="flex justify-between items-end mb-3">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Win Chance ({winChance}%)</label>
-                    <button onClick={() => setRollOver(!rollOver)} className="text-[10px] font-black text-bet-accent uppercase underline">Mode: {rollOver ? 'Over' : 'Under'}</button>
+                    <button onClick={() => setRollOver(!rollOver)} disabled={autoActive} className="text-[10px] font-black text-bet-accent uppercase underline">Mode: {rollOver ? 'Over' : 'Under'}</button>
                   </div>
-                  <input type="range" min="2" max="98" step="1" value={winChance} onChange={(e) => setWinChance(Number(e.target.value))} className="w-full h-3 bg-black rounded-full appearance-none cursor-pointer accent-bet-accent" />
+                  <input type="range" min="2" max="98" step="1" value={winChance} onChange={(e) => setWinChance(Number(e.target.value))} disabled={autoActive} className="w-full h-3 bg-black rounded-full appearance-none cursor-pointer accent-bet-accent" />
                </div>
              </div>
              
@@ -80,7 +123,14 @@ export default function Dice() {
                       <div className="text-xl font-black text-bet-success tabular-nums">₹{(betAmount * multiplier).toFixed(0)}</div>
                    </div>
                 </div>
-                <button onClick={handleRoll} className="w-full py-6 bg-bet-accent text-black font-black text-2xl rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">Roll Dice</button>
+                
+                {mode === 'MANUAL' ? (
+                    <button onClick={handleRoll} className="w-full py-6 bg-bet-accent text-black font-black text-2xl rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">Roll Dice</button>
+                ) : (
+                    <button onClick={toggleAuto} className={`w-full py-6 font-black text-2xl rounded-2xl shadow-xl transition-all uppercase tracking-widest ${autoActive ? 'bg-bet-danger text-white' : 'bg-bet-primary text-bet-950'}`}>
+                        {autoActive ? `Stop Auto (${autoBetCount === 0 ? '∞' : autoBetsRemaining})` : 'Start Auto'}
+                    </button>
+                )}
              </div>
           </div>
         </div>

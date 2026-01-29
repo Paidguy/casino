@@ -8,7 +8,7 @@ interface AnalyticsProps {
 
 export const Analytics: React.FC<AnalyticsProps> = ({ session }) => {
   // Safety check: Ensure history exists and is an array before mapping
-  const safeHistory = Array.isArray(session.history) ? session.history : [];
+  const safeHistory = (session && Array.isArray(session.history)) ? session.history : [];
   
   const historyData = [...safeHistory].reverse().map((bet, index) => ({
     name: index + 1,

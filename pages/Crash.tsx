@@ -9,7 +9,14 @@ export default function Crash() {
   const [gameState, setGameState] = useState<'IDLE' | 'RUNNING' | 'CRASHED' | 'CASHED_OUT'>('IDLE');
   const [history, setHistory] = useState<number[]>([]);
   
-  // Use refs for high-frequency data to avoid React re-renders blocking the thread
+  // Auto Bet State
+  const [mode, setMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
+  const [autoActive, setAutoActive] = useState(false);
+  const [autoBetCount, setAutoBetCount] = useState<number>(0); // 0 = infinite
+  const [autoCashOutAt, setAutoCashOutAt] = useState<number>(2.00);
+  const [autoBetsRemaining, setAutoBetsRemaining] = useState<number>(0);
+
+  // High-freq refs
   const multiplierRef = useRef<number>(1.00);
   const crashPointRef = useRef<number>(1);
   const startTimeRef = useRef<number>(0);
@@ -17,31 +24,49 @@ export default function Crash() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastUiUpdateRef = useRef<number>(0);
   const isCashOutProcessing = useRef<boolean>(false);
-  
-  // State for the big number display - throttled updates
   const [displayMultiplier, setDisplayMultiplier] = useState<number>(1.00);
 
-  // Separate effect for Resize handling - does NOT cancel animation
+  // --- Auto Bet Logic ---
+  useEffect(() => {
+    // If auto is active, game is IDLE, and we have bets remaining (or infinite 0)
+    if (autoActive && gameState === 'IDLE') {
+       if (autoBetCount === 0 || autoBetsRemaining > 0) {
+           const timer = setTimeout(() => {
+               start();
+               if (autoBetCount > 0) setAutoBetsRemaining(prev => prev - 1);
+           }, 1000); // 1s delay between rounds
+           return () => clearTimeout(timer);
+       } else {
+           setAutoActive(false); // Stop if run out of bets
+       }
+    }
+  }, [autoActive, gameState, autoBetsRemaining]);
+
+  useEffect(() => {
+      // Auto Cashout Check inside the running loop state
+      if (gameState === 'RUNNING' && mode === 'AUTO' && !isCashOutProcessing.current) {
+          if (displayMultiplier >= autoCashOutAt) {
+              cashOut();
+          }
+      }
+  }, [displayMultiplier, gameState, mode, autoCashOutAt]);
+
+
+  // Separate effect for Resize handling
   useEffect(() => {
     const handleResize = () => {
         const canvas = canvasRef.current;
         if (canvas && canvas.parentElement) {
           canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
           canvas.height = canvas.parentElement.clientHeight * window.devicePixelRatio;
-          // Redraw static graph if not running to prevent blank canvas
           if (gameState !== 'RUNNING') drawGraph(0, 1);
         }
     };
-    
     window.addEventListener('resize', handleResize);
-    handleResize(); // Init size
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [gameState]); // Re-bind if state changes to ensure color updates
+    handleResize(); 
+    return () => window.removeEventListener('resize', handleResize);
+  }, [gameState]);
 
-  // Separate effect strictly for cleanup on Unmount
   useEffect(() => {
       return () => {
           if (requestRef.current) cancelAnimationFrame(requestRef.current);
@@ -50,7 +75,11 @@ export default function Crash() {
 
   const start = () => {
     const bal = engine.getSession().balance;
-    if (betAmount > bal || betAmount <= 0) return;
+    // Check balance before start
+    if (betAmount > bal || betAmount <= 0) {
+        setAutoActive(false); // Stop auto if broke
+        return;
+    }
     
     try {
       engine.updateBalance(-betAmount);
@@ -81,42 +110,36 @@ export default function Crash() {
     
     multiplierRef.current = currentMult;
     
-    // Draw canvas every frame (high performance)
     drawGraph(elapsed, currentMult);
 
-    // Update UI state throttled (every ~80ms / 12fps) to keep main thread free for clicks
     if (time - lastUiUpdateRef.current > 80) {
         setDisplayMultiplier(currentMult);
         lastUiUpdateRef.current = time;
     }
 
     if (currentMult >= crashPointRef.current) {
-      // Crash logic
       multiplierRef.current = crashPointRef.current;
       setDisplayMultiplier(crashPointRef.current);
       setGameState('CRASHED');
       audio.playLoss();
       setHistory(prev => [crashPointRef.current, ...prev].slice(0, 8));
       engine.placeBet(GameType.CRASH, 0, 0, `Crashed @ ${crashPointRef.current.toFixed(2)}x`);
-      // Loop ends here naturally
     } else {
       requestRef.current = requestAnimationFrame(animate);
     }
   };
 
   const cashOut = () => {
-    // Immediate check to prevent double-clicks or race conditions
     if (gameState !== 'RUNNING' || isCashOutProcessing.current) return;
     
     isCashOutProcessing.current = true;
-    cancelAnimationFrame(requestRef.current); // Stop animation immediately
+    cancelAnimationFrame(requestRef.current); 
     const finalMult = multiplierRef.current;
     
     setGameState('CASHED_OUT');
     setDisplayMultiplier(finalMult);
     audio.playWin();
     
-    // Calculate payout
     engine.updateBalance(betAmount * finalMult);
     engine.placeBet(GameType.CRASH, 0, finalMult, `Cashed out @ ${finalMult.toFixed(2)}x`);
     
@@ -146,8 +169,6 @@ export default function Crash() {
     ctx.stroke();
 
     // Curve
-    // IMPORTANT: Use refs or passed 'm' here, relying on state 'gameState' inside render loop can be stale
-    // but we use it for color which is fine to lag by 1 frame
     ctx.strokeStyle = '#facc15';
     if (m >= crashPointRef.current && gameState === 'CRASHED') ctx.strokeStyle = '#ef4444';
     
@@ -159,8 +180,6 @@ export default function Crash() {
     for (let i = 0; i <= steps; i++) {
         const stepT = (t / steps) * i;
         const stepM = Math.pow(Math.E, 0.06 * stepT);
-        
-        // Dynamic scaling
         const scaleX = Math.max(8, t);
         const scaleY = Math.max(2, m);
         
@@ -170,11 +189,19 @@ export default function Crash() {
     }
     ctx.stroke();
     
-    // Fill area
     ctx.fillStyle = (m >= crashPointRef.current && gameState === 'CRASHED') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(250, 204, 21, 0.1)';
     ctx.lineTo(padding + (t / Math.max(8, t)) * graphW, h - padding);
     ctx.lineTo(padding, h - padding);
     ctx.fill();
+  };
+
+  const toggleAuto = () => {
+      if (autoActive) {
+          setAutoActive(false);
+      } else {
+          setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount);
+          setAutoActive(true);
+      }
   };
 
   return (
@@ -203,6 +230,13 @@ export default function Crash() {
         {/* Controls */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6">
            <div className="md:col-span-5 bg-bet-900 p-5 lg:p-6 rounded-[2rem] border border-white/5 space-y-4 flex flex-col justify-between shadow-xl">
+              
+              {/* Mode Switch */}
+              <div className="flex bg-black/40 p-1 rounded-xl">
+                  <button onClick={() => setMode('MANUAL')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'MANUAL' ? 'bg-bet-800 text-white shadow' : 'text-slate-500'}`}>Manual</button>
+                  <button onClick={() => setMode('AUTO')} disabled={autoActive || gameState === 'RUNNING'} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'AUTO' ? 'bg-bet-primary text-bet-950 shadow' : 'text-slate-500'}`}>Auto</button>
+              </div>
+
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2 leading-none">Stake Amount (₹)</label>
                 <div className="relative">
@@ -210,26 +244,44 @@ export default function Crash() {
                      type="number" 
                      value={betAmount} 
                      onChange={e => setBetAmount(Number(e.target.value))} 
-                     disabled={gameState === 'RUNNING'} 
+                     disabled={gameState === 'RUNNING' || autoActive} 
                      className="w-full bg-black border border-white/10 p-3 lg:p-4 rounded-xl text-white font-black text-xl outline-none" 
                    />
                    <div className="absolute right-2 top-2 flex gap-1">
-                      <button onClick={() => setBetAmount(Math.max(10, Math.floor(betAmount/2)))} disabled={gameState === 'RUNNING'} className="px-2 py-1.5 bg-bet-800 rounded-lg text-[9px] font-black uppercase">1/2</button>
-                      <button onClick={() => setBetAmount(betAmount*2)} disabled={gameState === 'RUNNING'} className="px-2 py-1.5 bg-bet-800 rounded-lg text-[9px] font-black uppercase">2X</button>
+                      <button onClick={() => setBetAmount(Math.max(10, Math.floor(betAmount/2)))} disabled={gameState === 'RUNNING' || autoActive} className="px-2 py-1.5 bg-bet-800 rounded-lg text-[9px] font-black uppercase">1/2</button>
+                      <button onClick={() => setBetAmount(betAmount*2)} disabled={gameState === 'RUNNING' || autoActive} className="px-2 py-1.5 bg-bet-800 rounded-lg text-[9px] font-black uppercase">2X</button>
                    </div>
                 </div>
               </div>
-              {gameState === 'RUNNING' ? (
-                <button 
-                    onClick={cashOut} 
-                    className="w-full py-4 bg-bet-success text-black font-black text-lg rounded-xl shadow-xl animate-pulse active:scale-95 transition-transform hover:brightness-110"
-                >
-                   Cash Out (₹{(betAmount * displayMultiplier).toFixed(0)})
-                </button>
+
+              {/* Auto Settings */}
+              {mode === 'AUTO' && (
+                  <div className="grid grid-cols-2 gap-3 animate-fade-in">
+                      <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-500 uppercase">Number of Bets</label>
+                          <input type="number" value={autoBetCount} onChange={e => setAutoBetCount(Number(e.target.value))} disabled={autoActive} className="w-full bg-black border border-white/10 p-2 rounded-lg text-white font-black outline-none text-sm" placeholder="0 = Inf" />
+                      </div>
+                      <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-500 uppercase">Auto Cashout</label>
+                          <input type="number" value={autoCashOutAt} onChange={e => setAutoCashOutAt(Number(e.target.value))} disabled={autoActive} className="w-full bg-black border border-white/10 p-2 rounded-lg text-white font-black outline-none text-sm" step="0.1" />
+                      </div>
+                  </div>
+              )}
+
+              {mode === 'MANUAL' ? (
+                gameState === 'RUNNING' ? (
+                    <button onClick={cashOut} className="w-full py-4 bg-bet-success text-black font-black text-lg rounded-xl shadow-xl animate-pulse active:scale-95 transition-transform hover:brightness-110">
+                    Cash Out (₹{(betAmount * displayMultiplier).toFixed(0)})
+                    </button>
+                ) : (
+                    <button onClick={start} disabled={betAmount <= 0} className="w-full py-4 bg-bet-accent text-black font-black text-lg rounded-xl shadow-lg transition-all uppercase tracking-widest hover:scale-[1.02] active:scale-95">
+                    Bet Lagao
+                    </button>
+                )
               ) : (
-                <button onClick={start} disabled={betAmount <= 0} className="w-full py-4 bg-bet-accent text-black font-black text-lg rounded-xl shadow-lg transition-all uppercase tracking-widest hover:scale-[1.02] active:scale-95">
-                   Bet Lagao
-                </button>
+                  <button onClick={toggleAuto} className={`w-full py-4 font-black text-lg rounded-xl shadow-lg transition-all uppercase tracking-widest hover:scale-[1.02] active:scale-95 ${autoActive ? 'bg-bet-danger text-white' : 'bg-bet-primary text-bet-950'}`}>
+                      {autoActive ? `Stop Auto (${autoBetCount === 0 ? 'Inf' : autoBetsRemaining})` : 'Start Auto Bet'}
+                  </button>
               )}
            </div>
            

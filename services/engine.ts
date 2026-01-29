@@ -22,7 +22,6 @@ export class SimulationEngine {
   // --- Pub/Sub for Real-Time UI Updates ---
   public subscribe(listener: (session: UserSession) => void) {
     this.listeners.push(listener);
-    // Emit current state immediately to ensure UI is in sync
     try {
       listener({ ...this.session });
     } catch (e) {
@@ -34,7 +33,6 @@ export class SimulationEngine {
   }
 
   private notify() {
-    // Notify all listeners of state change
     this.listeners.forEach(l => {
       try {
         l({ ...this.session });
@@ -75,16 +73,20 @@ export class SimulationEngine {
   private loadSession(): UserSession {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
+      if (stored && stored !== "undefined" && stored !== "null") {
         const parsed = JSON.parse(stored);
         const defaults = this.createDefaultSession();
         
-        // Validation: Ensure critical numbers are safe
+        // Critical Validation: Fix Corrupted File Error
+        // If balance is NaN or history is missing, sanitize the object
         const safeBalance = (typeof parsed.balance === 'number' && !isNaN(parsed.balance)) 
           ? parsed.balance 
           : defaults.balance;
 
-        // Correctly merge nested settings to avoid undefined properties
+        // Ensure history is an array
+        const safeHistory = Array.isArray(parsed.history) ? parsed.history : [];
+
+        // Correctly merge nested settings
         const mergedSettings: AdminSettings = {
             ...defaults.settings,
             ...(parsed.settings || {}),
@@ -95,25 +97,24 @@ export class SimulationEngine {
         };
 
         // SAFETY: Ensure ALL GameTypes exist in the overrides object
-        // This prevents crashes when new games are added but old sessions exist
         (Object.keys(HOUSE_EDGES) as GameType[]).forEach((key) => {
             if (typeof mergedSettings.houseEdgeOverrides[key] !== 'number') {
                 mergedSettings.houseEdgeOverrides[key] = HOUSE_EDGES[key];
             }
         });
 
-        // Deep merge/sanitize
         return {
             ...defaults,
             ...parsed,
             balance: safeBalance,
             settings: mergedSettings,
             transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
-            history: Array.isArray(parsed.history) ? parsed.history : []
+            history: safeHistory
         };
       }
     } catch (e) {
       console.error("Failed to load session, resetting:", e);
+      // If parsing fails, clean storage to prevent persistent error loop
       try { localStorage.removeItem(STORAGE_KEY); } catch(err) {}
     }
     return this.initializeSession();
@@ -127,8 +128,9 @@ export class SimulationEngine {
 
   private saveSession(session: UserSession) {
     this.session = session;
-    this.notify(); // Trigger UI updates immediately
+    this.notify();
     try {
+        // Debounce or safety check could be added here, but direct save is safer for accuracy
         localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     } catch (e) {
         console.error("Save failed", e);
@@ -136,7 +138,6 @@ export class SimulationEngine {
   }
 
   public getSession(): UserSession {
-    // Return a shallow copy to prevent direct mutation bugs
     return { ...this.session };
   }
 
@@ -166,15 +167,15 @@ export class SimulationEngine {
   public placeBet(game: GameType, amount: number, multiplierOrResolver: number | ((r: number) => { multiplier: number, outcome: string }), outcomeStr?: string): BetResult {
     const currentSession = this.getSession();
     
-    // Safety check for invalid bet amounts
     if (isNaN(amount) || amount < 0) {
-        // Don't throw, just return a dummy failure so UI can handle it
         console.error("Invalid bet amount");
         return {} as BetResult; 
     }
     
     // Check balance
     if (amount > currentSession.balance) {
+        // Allow a tiny buffer for floating point errors, or reject
+        // For auto-bet stability, we simply return empty result and let UI handle logic
         console.error("Insufficient Balance");
         return {} as BetResult;
     }
@@ -194,11 +195,9 @@ export class SimulationEngine {
         }
     } catch (e) {
         console.error("Error calculating bet result:", e);
-        // Fallback: Refund the user (multiplier = 1) or assume loss (0). 
-        // Let's assume loss to be safe, but log it.
         multiplier = 0;
         outcome = "System Error - Bet Refunded";
-        amount = 0; // Prevent deduction if logic failed
+        amount = 0; 
     }
 
     const payout = amount * multiplier;
@@ -229,7 +228,10 @@ export class SimulationEngine {
       resultInput: Math.random()
     };
 
-    this.session.history = [record, ...this.session.history].slice(0, 50);
+    // Ensure history is an array before spreading
+    const safeHistory = Array.isArray(this.session.history) ? this.session.history : [];
+    this.session.history = [record, ...safeHistory].slice(0, 50);
+    
     this.saveSession(this.session);
     return record;
   }
@@ -280,9 +282,7 @@ export class SimulationEngine {
   
   public hardReset() {
     try {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem('stake_welcome_v1');
-        localStorage.removeItem('sound_enabled_v1');
+        localStorage.clear(); // Clear EVERYTHING
     } catch(e) { console.error(e); }
     this.session = this.initializeSession();
     this.notify();

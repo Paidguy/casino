@@ -107,7 +107,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
 
           {/* Scrollable Game List */}
-          <div className="flex-1 overflow-y-auto no-scrollbar p-3">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
              {gameCategories.map((cat, idx) => (
                 <div key={idx} className="mb-4">
                     <div className="px-3 mb-2 text-[9px] font-black text-slate-700 uppercase tracking-[0.2em]">{cat.name}</div>
@@ -177,16 +177,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               </div>
            </header>
 
-           <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
-              {/* FIXED: Constrained max-width to prevents ultra-wide stretching */}
+           {/* Use custom-scrollbar for desktop-friendly scrolling */}
+           <main className="flex-1 overflow-y-auto custom-scrollbar scroll-smooth">
               <div className={`${isLobby ? 'max-w-6xl' : 'max-w-6xl'} mx-auto p-3 sm:p-4 lg:p-8 pb-32 lg:pb-8`}>
                 {children}
               </div>
            </main>
         </div>
 
-        {/* Floating/Slide-out Intel Feed */}
-        <div className={`fixed inset-y-0 right-0 w-full sm:w-80 bg-bet-900 border-l border-white/10 transition-transform duration-300 z-[1200] ${showIntel ? 'translate-x-0' : 'translate-x-full shadow-none'}`}>
+        {/* Floating/Slide-out Intel Feed - Added pointer-events-none when hidden */}
+        <div className={`fixed inset-y-0 right-0 w-full sm:w-80 bg-bet-900 border-l border-white/10 transition-transform duration-300 z-[1200] ${showIntel ? 'translate-x-0' : 'translate-x-full pointer-events-none shadow-none'}`}>
            <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/20">
               <span className="text-[10px] font-black text-bet-primary uppercase tracking-[0.3em] bazar-font">Live Intel Board</span>
               <button onClick={() => setShowIntel(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white">✕</button>

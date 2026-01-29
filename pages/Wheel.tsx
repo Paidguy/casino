@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
 import { audio } from '../services/audio';
@@ -33,11 +33,22 @@ export default function Wheel() {
     const randomIndex = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
     const targetSeg = WHEEL_SEGMENTS[randomIndex];
     
-    // Each segment is 36 degrees. Target is mid-segment.
+    // Logic to ensure forward rotation only
     const segmentAngle = 360 / WHEEL_SEGMENTS.length;
     const extraSpins = 3600; // 10 full spins
+    
+    // Target angle is where the segment needs to end up (at top)
+    // The wheel rotates CLOCKWISE (positive deg), so to bring a segment at angle X to the top (0),
+    // we need to rotate to (360 - X).
+    // Segment 0 is at 0 degrees. Segment 1 is at 36 deg.
+    // To bring Segment 1 to top, we rotate 360 - 36 = 324 deg.
     const targetAngle = 360 - (randomIndex * segmentAngle);
-    const newRotation = rotation + extraSpins + (targetAngle - (rotation % 360));
+    
+    const currentRotationMod = rotation % 360;
+    let adjustment = targetAngle - currentRotationMod;
+    if (adjustment < 0) adjustment += 360; // Ensure positive adjustment
+    
+    const newRotation = rotation + extraSpins + adjustment;
 
     setRotation(newRotation);
 
