@@ -26,7 +26,8 @@ export default function Crash() {
 
   useEffect(() => {
     window.addEventListener('resize', handleResize);
-    handleResize();
+    // Slight delay to ensure parent element is sized
+    setTimeout(handleResize, 100);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 

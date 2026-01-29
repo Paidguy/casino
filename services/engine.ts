@@ -13,9 +13,23 @@ const BOTS: LeaderboardEntry[] = [
 
 export class SimulationEngine {
   private session: UserSession;
+  private listeners: ((session: UserSession) => void)[] = [];
 
   constructor() {
     this.session = this.loadSession();
+  }
+
+  // --- Pub/Sub for Real-Time UI Updates ---
+  public subscribe(listener: (session: UserSession) => void) {
+    this.listeners.push(listener);
+    listener(this.session); // Immediate update on subscribe
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+
+  private notify() {
+    this.listeners.forEach(l => l({ ...this.session }));
   }
 
   private createDefaultSession(): UserSession {
@@ -53,16 +67,24 @@ export class SimulationEngine {
         const parsed = JSON.parse(stored);
         const defaults = this.createDefaultSession();
         
-        // Deep merge/sanitize to ensure new fields (like settings/rakeback) exist in old sessions
+        // Validation: Ensure balance is a valid number
+        const safeBalance = (typeof parsed.balance === 'number' && !isNaN(parsed.balance)) 
+          ? parsed.balance 
+          : defaults.balance;
+
+        // Deep merge/sanitize to ensure new fields exist
         return {
             ...defaults,
             ...parsed,
-            // Ensure nested objects are merged correctly
+            balance: safeBalance,
             settings: { ...defaults.settings, ...(parsed.settings || {}) },
-            // Preserve specific fields that shouldn't be overwritten by defaults if they exist
-            balance: typeof parsed.balance === 'number' ? parsed.balance : defaults.balance,
             transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
-            history: Array.isArray(parsed.history) ? parsed.history : []
+            history: Array.isArray(parsed.history) ? parsed.history : [],
+            // Ensure critical overrides are kept
+            houseEdgeOverrides: { 
+              ...defaults.settings.houseEdgeOverrides, 
+              ...(parsed.settings?.houseEdgeOverrides || {}) 
+            }
         };
       }
     } catch (e) {
@@ -79,6 +101,7 @@ export class SimulationEngine {
 
   private saveSession(session: UserSession) {
     this.session = session;
+    this.notify(); // Trigger UI updates immediately
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     } catch (e) {
@@ -109,7 +132,7 @@ export class SimulationEngine {
           status: 'COMPLETED',
           method
       };
-      this.session.transactions = [tx, ...this.session.transactions].slice(0, 100); // Limit transaction history
+      this.session.transactions = [tx, ...this.session.transactions].slice(0, 100);
       this.saveSession(this.session);
   }
 

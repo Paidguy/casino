@@ -29,8 +29,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const isLobby = location.pathname === '/';
 
   useEffect(() => {
-    const itv = setInterval(() => setSession(engine.getSession()), 1000);
-    return () => clearInterval(itv);
+    // Subscribe to engine updates for real-time balance reflection
+    const unsubscribe = engine.subscribe((newSession) => {
+      setSession(newSession);
+    });
+    return () => unsubscribe();
   }, []);
 
   const gameCategories = [
