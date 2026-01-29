@@ -178,7 +178,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
            </header>
 
            <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
-              <div className={`${isLobby ? 'max-w-6xl' : 'max-w-full'} mx-auto p-3 sm:p-4 lg:p-8 pb-32 lg:pb-8`}>
+              {/* FIXED: Constrained max-width to prevents ultra-wide stretching */}
+              <div className={`${isLobby ? 'max-w-6xl' : 'max-w-7xl'} mx-auto p-3 sm:p-4 lg:p-8 pb-32 lg:pb-8`}>
                 {children}
               </div>
            </main>

@@ -38,8 +38,8 @@ export default function Matka() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6 lg:gap-10 pb-20">
-        <div className="bg-bet-900 border border-white/5 rounded-[2.5rem] p-6 lg:p-10 shadow-3xl">
+      <div className="flex flex-col gap-6 lg:gap-8 pb-20">
+        <div className="bg-bet-900 border border-white/5 rounded-[2.5rem] p-6 lg:p-8 shadow-3xl">
            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
               <div>
                  <h1 className="text-3xl lg:text-5xl font-black text-white uppercase italic tracking-tighter leading-none mb-2 bazar-font">Kalyan <span className="text-bet-primary drop-shadow-[0_0_15px_#22d3ee]">Matka</span></h1>
@@ -50,12 +50,12 @@ export default function Matka() {
            
            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
               <div className="xl:col-span-8 space-y-6">
-                 <div className="grid grid-cols-5 gap-2 lg:gap-4">
+                 <div className="grid grid-cols-5 gap-2 lg:gap-3">
                     {[...Array(10)].map((_, i) => (
                       <button 
                         key={i} onClick={() => { setSelectedNum(i); audio.playClick(); }}
                         disabled={isDrawing}
-                        className={`aspect-square rounded-2xl lg:rounded-[2.5rem] font-black text-3xl lg:text-6xl transition-all border-2 ${selectedNum === i ? 'bg-bet-primary text-bet-950 border-bet-primary shadow-2xl scale-105' : 'bg-bet-800 text-slate-600 border-white/5 hover:border-bet-primary hover:text-white'}`}
+                        className={`aspect-square rounded-2xl font-black text-3xl lg:text-5xl transition-all border-2 ${selectedNum === i ? 'bg-bet-primary text-bet-950 border-bet-primary shadow-2xl scale-105' : 'bg-bet-800 text-slate-600 border-white/5 hover:border-bet-primary hover:text-white'}`}
                       >
                         {i}
                       </button>
@@ -85,8 +85,8 @@ export default function Matka() {
            </div>
         </div>
 
-        {/* Result Area - Expanded for Laptop Screens */}
-        <div className="bg-bet-900 border border-white/5 rounded-[2.5rem] lg:rounded-[3rem] p-8 lg:p-20 flex flex-col items-center justify-center min-h-[300px] lg:min-h-[450px] relative shadow-2xl overflow-hidden">
+        {/* Result Area */}
+        <div className="bg-bet-900 border border-white/5 rounded-[2.5rem] lg:rounded-[3rem] p-8 lg:p-12 flex flex-col items-center justify-center min-h-[300px] lg:min-h-[400px] relative shadow-2xl overflow-hidden">
            {isDrawing ? (
               <div className="flex flex-col items-center gap-6 animate-fade-in">
                  <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full border-[6px] lg:border-[8px] border-bet-primary border-t-transparent animate-spin"></div>
@@ -96,25 +96,25 @@ export default function Matka() {
               <div className="text-center space-y-6 lg:space-y-10 animate-fade-in">
                  <div className="flex gap-2 lg:gap-4 justify-center">
                     {result.cards.split('').map((c, i) => (
-                      <div key={i} className="w-12 h-20 sm:w-16 sm:h-28 lg:w-28 lg:h-44 bg-white text-bet-950 flex items-center justify-center text-4xl sm:text-5xl lg:text-8xl font-black rounded-lg sm:rounded-xl lg:rounded-[2rem] shadow-3xl">
+                      <div key={i} className="w-12 h-20 sm:w-16 sm:h-28 lg:w-28 lg:h-44 bg-white text-bet-950 flex items-center justify-center text-4xl sm:text-5xl lg:text-7xl font-black rounded-lg sm:rounded-xl lg:rounded-[2rem] shadow-3xl">
                         {c}
                       </div>
                     ))}
                  </div>
                  
                  <div className="space-y-2">
-                    <div className="text-7xl sm:text-8xl lg:text-[14rem] font-black gold-text drop-shadow-[0_10px_60px_rgba(251,191,36,0.6)] leading-none bazar-font">
+                    <div className="text-7xl sm:text-8xl lg:text-[10rem] font-black gold-text drop-shadow-[0_10px_60px_rgba(251,191,36,0.6)] leading-none bazar-font">
                        {result.single}
                     </div>
-                    <div className={`text-3xl lg:text-6xl font-black uppercase italic tracking-tighter bazar-font ${result.single === selectedNum ? 'text-bet-primary animate-bounce' : 'text-bet-danger opacity-80'}`}>
+                    <div className={`text-3xl lg:text-5xl font-black uppercase italic tracking-tighter bazar-font ${result.single === selectedNum ? 'text-bet-primary animate-bounce' : 'text-bet-danger opacity-80'}`}>
                        {message}
                     </div>
                  </div>
               </div>
            ) : (
               <div className="text-center space-y-4 lg:space-y-8 opacity-20">
-                 <div className="text-7xl lg:text-[12rem] leading-none">🏺</div>
-                 <h2 className="text-2xl lg:text-6xl font-black text-white uppercase italic tracking-tighter bazar-font">Select Luck Number</h2>
+                 <div className="text-7xl lg:text-[10rem] leading-none">🏺</div>
+                 <h2 className="text-2xl lg:text-5xl font-black text-white uppercase italic tracking-tighter bazar-font">Select Luck Number</h2>
               </div>
            )}
         </div>

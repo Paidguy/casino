@@ -4,7 +4,9 @@ class AudioManager {
 
   constructor() {
     try {
-      this.enabled = localStorage.getItem('sound_enabled_v1') !== 'false';
+      const stored = localStorage.getItem('sound_enabled_v1');
+      this.enabled = stored !== 'false';
+      
       // Auto-init on first gesture for mobile
       if (typeof window !== 'undefined') {
         const unlock = () => {
@@ -22,20 +24,28 @@ class AudioManager {
 
   private init() {
     if (!this.enabled) return;
-    if (!this.ctx && typeof window !== 'undefined') {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioContextClass) {
-        this.ctx = new AudioContextClass();
+    try {
+      if (!this.ctx && typeof window !== 'undefined') {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          this.ctx = new AudioContextClass();
+        }
       }
-    }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+    } catch (e) {
+      // Safely ignore audio context errors to prevent app crashes
+      console.warn("Audio init failed", e);
     }
   }
 
   public toggle() {
     this.enabled = !this.enabled;
-    localStorage.setItem('sound_enabled_v1', String(this.enabled));
+    try {
+      localStorage.setItem('sound_enabled_v1', String(this.enabled));
+    } catch(e) {}
+    
     if (this.enabled) this.init();
     return this.enabled;
   }

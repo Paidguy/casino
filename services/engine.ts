@@ -93,6 +93,14 @@ export class SimulationEngine {
             }
         };
 
+        // SAFETY: Ensure ALL GameTypes exist in the overrides object
+        // This prevents crashes when new games are added but old sessions exist
+        (Object.keys(HOUSE_EDGES) as GameType[]).forEach((key) => {
+            if (typeof mergedSettings.houseEdgeOverrides[key] !== 'number') {
+                mergedSettings.houseEdgeOverrides[key] = HOUSE_EDGES[key];
+            }
+        });
+
         // Deep merge/sanitize
         return {
             ...defaults,
@@ -105,6 +113,8 @@ export class SimulationEngine {
       }
     } catch (e) {
       console.error("Failed to load session, resetting:", e);
+      // If parsing fails, we clear storage to prevent persistent crash loops
+      try { localStorage.removeItem(STORAGE_KEY); } catch(err) {}
     }
     return this.initializeSession();
   }
@@ -244,9 +254,10 @@ export class SimulationEngine {
     this.saveSession(this.session);
   }
   
-  // Hard reset for error boundaries - clears everything
   public hardReset() {
-    localStorage.removeItem(STORAGE_KEY);
+    try {
+        localStorage.removeItem(STORAGE_KEY);
+    } catch(e) { console.error(e); }
     this.session = this.initializeSession();
     this.notify();
     window.location.reload();

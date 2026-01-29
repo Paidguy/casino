@@ -7,16 +7,19 @@ interface AnalyticsProps {
 }
 
 export const Analytics: React.FC<AnalyticsProps> = ({ session }) => {
-  const historyData = [...session.history].reverse().map((bet, index) => ({
+  // Safety check: Ensure history exists and is an array before mapping
+  const safeHistory = Array.isArray(session.history) ? session.history : [];
+  
+  const historyData = [...safeHistory].reverse().map((bet, index) => ({
     name: index + 1,
-    balance: bet.balanceAfter,
+    balance: typeof bet.balanceAfter === 'number' ? bet.balanceAfter : 0,
   }));
 
   if (historyData.length === 0) {
-      historyData.push({ name: 0, balance: session.startBalance });
+      historyData.push({ name: 0, balance: session.startBalance || 0 });
   }
 
-  const netProfit = session.balance - session.startBalance;
+  const netProfit = (session.balance || 0) - (session.startBalance || 0);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -24,7 +27,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ session }) => {
       <div className="md:col-span-1 space-y-4">
         <div className="bg-bet-900 p-6 rounded-[1.5rem] border border-white/5 shadow-xl">
            <div className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Wagered</div>
-           <div className="text-2xl font-black text-white tabular-nums tracking-tighter">₹{Math.floor(session.totalWagered).toLocaleString()}</div>
+           <div className="text-2xl font-black text-white tabular-nums tracking-tighter">₹{Math.floor(session.totalWagered || 0).toLocaleString()}</div>
         </div>
         
         <div className="bg-bet-900 p-6 rounded-[1.5rem] border border-white/5 shadow-xl">
@@ -36,7 +39,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ session }) => {
 
         <div className="bg-bet-900 p-6 rounded-[1.5rem] border border-white/5 shadow-xl">
            <div className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Bets Placed</div>
-           <div className="text-2xl font-black text-white tabular-nums tracking-tighter">{session.totalBets}</div>
+           <div className="text-2xl font-black text-white tabular-nums tracking-tighter">{session.totalBets || 0}</div>
         </div>
       </div>
 
