@@ -1,582 +1,1647 @@
-# 🎰 Casino Awareness Platform: Understanding the Mathematics of Loss
+# 🎰 Casino Education Platform
+### *Understanding the Mathematics of Loss Through Interactive Simulation*
 
-> **⚠️ CRITICAL MESSAGE: This platform exists to demonstrate one fundamental truth—the house ALWAYS wins in the long run. You WILL lose money gambling. This is not speculation; it's mathematical certainty.**
-
-**Live Demo:** [paidguy.me/casino](https://paidguy.me/casino)  
-**Creator:** [@Paidguy](https://github.com/Paidguy)  
-**Purpose:** Educational demonstration of gambling mathematics and behavioral psychology  
-**Currency:** Virtual only—no real money involved
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-paidguy.me/casino-00d9ff?style=for-the-badge)](https://paidguy.me/casino/)
+[![Built By](https://img.shields.io/badge/Built_by-@paidguy-fbbf24?style=for-the-badge)](https://github.com/Paidguy)
+[![TypeScript](https://img.shields.io/badge/TypeScript-97.1%25-3178c6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.2-61dafb?style=for-the-badge&logo=react)](https://react.dev/)
+[![License](https://img.shields.io/badge/License-Educational-orange?style=for-the-badge)]()
 
 ---
 
-## 📊 THE BRUTAL TRUTH: Why You're Guaranteed to Lose
+## 📖 Table of Contents
 
-This platform was built with one mission: **to show you exactly how casinos and gambling platforms are engineered to extract money from players**. Every game, every animation, every sound effect is designed to keep you playing while the mathematical house edge grinds your bankroll to zero.
+1. [Overview](#-overview)
+2. [Educational Mission](#-educational-mission)
+3. [Architecture & Technology](#-architecture--technology)
+4. [Game Portfolio](#-game-portfolio)
+5. [Provable Fairness System](#-provable-fairness-system)
+6. [Installation & Setup](#-installation--setup)
+7. [Project Structure](#-project-structure)
+8. [Core Components](#-core-components)
+9. [Game Engine Deep Dive](#-game-engine-deep-dive)
+10. [House Edge Mathematics](#-house-edge-mathematics)
+11. [UI/UX Design Philosophy](#-uiux-design-philosophy)
+12. [Building & Deployment](#-building--deployment)
+13. [Configuration & Customization](#-configuration--customization)
+14. [Contributing](#-contributing)
+15. [Educational Resources](#-educational-resources)
+16. [Responsible Gaming](#-responsible-gaming)
+17. [License & Legal](#-license--legal)
 
-### The House Edge: Your Guaranteed Loss Rate
+---
 
-| Game | House Edge | What This Means |
-|------|-----------|-----------------|
-| **Kalyan Matka** | 5.0% | For every ₹100 you bet, you lose ₹5 on average |
-| **Aviator** | 3.0% | The rocket is programmed to crash before you cash out |
-| **Baccarat** | 1.06% | The "fairest" game still takes 1% of everything you bet |
-| **Keno** | 5.0% | High variance means big wins feel good, but losses pile up faster |
-| **Slots** | 4.0% | Those near-misses? Deliberately programmed to keep you spinning |
+## 🎯 Overview
 
-**What does "house edge" mean?** It means that mathematically, over time, the platform keeps that percentage of EVERY bet. Play 1,000 times, and you're GUARANTEED to be down by that percentage times your total wagered amount.
+**Casino Education Platform** (branded as "SattaKing.IND Pro") is a sophisticated web-based educational simulator that demonstrates how casino games operate mathematically. Built with React 18 and TypeScript, it provides a transparent, provably fair environment where users can explore gambling mechanics without any real financial risk.
 
-### The Law of Large Numbers: Time is Your Enemy
+### Key Features
+
+✅ **13 Complete Casino Games** - From traditional Kalyan Matka to modern Aviator crash games  
+✅ **Deterministic RNG System** - Based on client + server seed pairs for complete verifiability  
+✅ **Real-time Analytics** - Track every bet, multiplier, and outcome with detailed history  
+✅ **Transparent House Edge** - Every game displays its mathematical advantage upfront  
+✅ **Zero Real Money** - Virtual ₹100,000 daily allowance for risk-free learning  
+✅ **Responsive Design** - Optimized for desktop, laptop, and mobile screens  
+✅ **Canvas-based Graphics** - High-performance 60fps animations using HTML5 Canvas  
+✅ **Local Storage Persistence** - Session data saved locally in browser  
+
+### Live Demo
+
+Experience the platform: **[paidguy.me/casino](https://paidguy.me/casino/)**
+
+---
+
+## 🎓 Educational Mission
+
+This platform exists to teach three fundamental truths about gambling:
+
+### 1. **Loss is Inevitable**
+Every game has a built-in house edge. Over time, mathematical certainty guarantees player losses. No strategy, pattern recognition, or "hot streak" can overcome negative expected value.
 
 ```
-Session 1: You might win ₹50,000 (Lucky!)
-Session 2: You lose ₹30,000 (Bad luck...)
-Session 3: You win ₹20,000 (Getting it back!)
-Session 10: You're down ₹100,000
-Session 50: You're down ₹500,000
-Session 100: You're down ₹1,000,000+
-
-The more you play, the closer you get to EXACTLY what the house edge predicts.
+Expected Value = (Win Probability × Payout) - (Loss Probability × Bet Amount)
+For all casino games: EV < 0
 ```
 
-**This isn't bad luck. This is mathematics working exactly as designed.**
+### 2. **Transparency Over Deception**
+Traditional casinos hide their algorithms. We expose everything:
+- Exact house edge percentages
+- Seed-based deterministic outcomes
+- Cryptographic verification of results
+- Complete bet history with audit trails
+
+### 3. **Behavioral Psychology**
+Casino games exploit cognitive biases:
+- **Gambler's Fallacy** - Believing past results affect future outcomes
+- **Near-Miss Effect** - "Almost winning" triggers dopamine like actual wins
+- **Sunk Cost Fallacy** - Chasing losses to "recover" money
+- **Variable Reward Schedules** - Unpredictable wins maximize engagement
+
+This platform demonstrates these mechanisms transparently.
 
 ---
 
-## 🧠 How This Platform Manipulates Your Brain
+## 🏗️ Architecture & Technology
 
-Every element of this casino is built using psychological principles discovered over decades of gambling research. Here's exactly how it tricks you:
+### Technology Stack
 
-### 1. **The Dopamine Trap**
-- **What happens:** When you win, your brain releases dopamine (the "feel good" chemical)
-- **The manipulation:** Wins are programmed to happen frequently enough to keep dopamine flowing
-- **The result:** Your brain develops an association: gambling = pleasure
-- **The reality:** Small frequent wins mask the larger, slower losses
-
-### 2. **Near-Miss Engineering**
-- **In Slots:** The reels stop just ONE symbol away from a jackpot 150% more often than random chance
-- **The manipulation:** Your brain perceives this as "almost winning" and gets the same dopamine hit as an actual win
-- **The result:** You think you're "getting close" and keep playing
-- **The reality:** You didn't win. You lost. But your brain is tricked into feeling like you almost didn't.
-
-### 3. **The Gambler's Fallacy Display**
-- **In Matka:** The "Hot" and "Cold" numbers chart
-- **In Aviator:** The crash history showing recent multipliers
-- **The manipulation:** These make you think you can predict patterns in random events
-- **The result:** You bet more because you think you've "figured out the system"
-- **The reality:** Each round is independent. Past results have ZERO effect on future outcomes.
-
-### 4. **Social Proof & FOMO**
-- **The Live Feed:** Shows other "players" winning big
-- **The manipulation:** Makes you think "If they can win, so can I!"
-- **The result:** You keep playing to chase that big win
-- **The reality:** In a real casino, these "wins" could be fabricated or are the rare exceptions highlighting the losses of thousands
-
-### 5. **Loss Disguised as Wins**
-- **In Slots:** You bet ₹100, win ₹70, and the machine celebrates like you won
-- **The manipulation:** Lights, sounds, animations make you feel successful
-- **The result:** Your brain codes this as a "win" even though you lost ₹30
-- **The reality:** You're celebrating losing money
-
-### 6. **The Illusion of Control**
-- **Client Seed Rotation:** Makes you think you can influence outcomes
-- **Crash Game Cash-Out:** Makes you think skill determines winning
-- **The manipulation:** Giving you "choices" makes you feel in control
-- **The result:** You blame yourself for losses ("I should have cashed out earlier!")
-- **The reality:** The outcome was mathematically predetermined to favor the house
-
----
-
-## 🔬 The Mathematics of Guaranteed Loss
-
-### Understanding Expected Value (EV)
-
-Every bet you make has a negative expected value. Here's what that means:
-
-**Example: Kalyan Matka Single Ank Bet**
-- You bet: ₹1,000
-- Win probability: 1/10 (10%)
-- Payout: 9x (₹9,000)
-- House edge: 5%
-
-**Expected Value Calculation:**
 ```
-EV = (Probability of Win × Amount Won) - (Probability of Loss × Amount Lost)
-EV = (0.10 × ₹9,000) - (0.90 × ₹1,000)
-EV = ₹900 - ₹900
-EV = ₹0 (in a fair game)
-
-WITH HOUSE EDGE:
-Actual Payout = ₹9,000 × (1 - 0.05) = ₹8,550
-EV = (0.10 × ₹8,550) - (0.90 × ₹1,000)
-EV = ₹855 - ₹900
-EV = -₹45
-
-For every ₹1,000 you bet, you LOSE ₹45 on average.
+Frontend Framework:    React 18.2.0
+Language:              TypeScript 5.2.2
+Routing:               React Router DOM 6.22.0
+Charts:                Recharts 2.12.0
+Build Tool:            Vite 5.1.0
+Styling:               Custom CSS with Tailwind-inspired utilities
+Graphics:              HTML5 Canvas API
+Storage:               Browser localStorage + IndexedDB
 ```
 
-### Compounding Losses Over Time
+### Core Dependencies
 
-If you bet ₹1,000 per round with a 5% house edge:
-
-| Rounds Played | Total Wagered | Expected Loss |
-|--------------|---------------|---------------|
-| 10 | ₹10,000 | -₹500 |
-| 100 | ₹100,000 | -₹5,000 |
-| 1,000 | ₹1,000,000 | -₹50,000 |
-| 10,000 | ₹10,000,000 | -₹500,000 |
-
-**The more you play, the more certain your loss becomes.**
-
----
-
-## 🎭 Provably Fair ≠ Provably Winnable
-
-This platform uses HMAC-SHA256 cryptographic verification. This proves that:
-- ✅ The results are predetermined and cannot be manipulated mid-game
-- ✅ You can verify that the outcome was decided before you bet
-- ✅ The randomness is cryptographically secure
-
-**But this does NOT mean:**
-- ❌ You have a fair chance of winning
-- ❌ The game isn't rigged
-- ❌ You can beat the house edge
-
-**Provably fair** just means the rigging is transparent and verifiable. The house edge is openly documented. You're watching yourself lose money in a mathematically verifiable way.
-
-### How to Verify (And See Your Guaranteed Loss)
-
-1. Before you bet, the system shows you a hashed server seed
-2. You provide your client seed
-3. The game plays out
-4. After the round, you get the unhashed server seed
-5. You can verify: `SHA256(server_seed + client_seed + nonce) = result`
-
-**What this proves:** The outcome was fixed before you bet  
-**What this doesn't change:** You still lost money according to the house edge
-
----
-
-## ⚙️ Technical Architecture: How the Trap is Built
-
-This platform is a case study in engineering behavioral addiction. Here's how it works under the hood:
-
-### Core Stack
-- **Frontend:** React 18/19 with Concurrent Mode for silk-smooth 60FPS animations
-- **Styling:** Tailwind CSS with custom "Neon Mumbai" palette
-- **State Management:** React Context + Hooks for persistent wallet simulation
-- **Fairness:** HMAC-SHA256 cryptographic seed verification
-- **Performance:** Sub-250KB bundle size, lazy-loaded game modules
-
-### The Dopamine Engineering Pipeline
-
-```typescript
-// Simplified pseudocode showing how wins are "celebrated"
-
-function handleSlotWin(winAmount: number, betAmount: number) {
-  const profitAmount = winAmount - betAmount;
-  
-  if (profitAmount > 0) {
-    // Actual win
-    playCelebrationSound();
-    showConfettiAnimation();
-    flashWinningSymbols();
-    updateBalanceWithGlowEffect();
-  } else if (winAmount > 0 && profitAmount < 0) {
-    // LOSS DISGUISED AS WIN
-    // You bet ₹100, won ₹60, LOST ₹40
-    playCelebrationSound(); // Still celebrate!
-    showWinAnimation(); // Make it feel good!
-    // Player thinks they won, but they lost ₹40
+```json
+{
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.0",
+    "recharts": "^2.12.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.1.0"
   }
 }
 ```
 
-### Near-Miss Algorithm
+### Design Principles
 
-```typescript
-function generateSlotOutcome(bet: number, balance: number): Symbol[] {
-  const random = cryptoRandom();
-  const houseEdge = 0.04; // 4%
-  
-  // Adjust for house edge
-  const winProbability = calculateBaseProbability() * (1 - houseEdge);
-  
-  if (random > winProbability) {
-    // LOSS - but make it LOOK close
-    if (random > winProbability && random < winProbability + 0.15) {
-      // 15% of losses are "near misses"
-      return generateNearMissPattern(); // 🍒 🍒 🍋 (SO CLOSE!)
-    }
-    return generateRandomLoss();
-  }
-  
-  return generateWin();
-}
-```
+#### **"Theater Stage Architecture"**
+The UI uses a focus-first layout optimized for laptop screens:
 
-### The Martingale Trap Detection
+- **Theater Mode**: Games expand to full viewport when active
+- **Contextual Sidebars**: Navigation and analytics hidden during gameplay
+- **Z-Index Optimization**: Prevents UI element collision
+- **Fluid Typography**: Responsive `clamp()` based font sizing
+- **60 FPS Baseline**: All animations maintain 16.6ms frame budget
 
-```typescript
-// System detects when players use "doubling" strategies
-function detectMartingale(betHistory: Bet[]): boolean {
-  const lastFiveBets = betHistory.slice(-5);
-  const doublingPattern = lastFiveBets.every((bet, i) => {
-    if (i === 0) return true;
-    return bet.amount >= lastFiveBets[i-1].amount * 1.8;
-  });
-  
-  if (doublingPattern) {
-    // Player is using Martingale
-    // Increase bust probability slightly to accelerate bankroll drain
-    // (In a real casino, this would be where bet limits kick in)
-    return true;
-  }
-}
+#### **"Neon Mumbai" Visual Language**
+
+```css
+/* Primary Colors */
+--bet-primary: #22d3ee;    /* Cyan Neon - Trust, Speed, Clarity */
+--bet-secondary: #d946ef;  /* Magenta - High Energy, Jackpots */
+--bet-accent: #facc15;     /* Gold - Success, Wealth */
+--bet-danger: #ef4444;     /* Red - Loss, Warning */
+--bet-success: #10b981;    /* Green - Win, Profit */
+
+/* Backgrounds */
+--bet-950: #020617;        /* Obsidian - Primary Background */
+--bet-900: #0f172a;        /* Deep Navy - Card Background */
+--bet-800: #1e293b;        /* Slate - Input Background */
 ```
 
 ---
 
-## 🎮 Game Modules: How Each One Extracts Money
+## 🎮 Game Portfolio
 
-### Kalyan Matka (5% House Edge)
-**How it works:** Pick a single digit (0-9), if it matches the last digit of a three-digit draw sum, you win 9x.
+The platform includes 13 fully-functional casino games, each demonstrating specific mathematical and psychological principles:
 
-**Why you lose:**
-- Fair odds would be 10x (1 in 10 chance)
-- You only get 9x
-- That 1x difference is pure profit for the house
-- Over 100 bets, you're guaranteed to lose 5% of everything wagered
+### 1. 🏺 **Kalyan Matka** (`/matka`)
+**Indian lottery-style number game**
 
-**Psychological hooks:**
-- "Hot" and "Cold" number displays make you think you can predict randomness
-- History charts encourage pattern-seeking in random data
-- Fast rounds (30 seconds) mean you lose money quickly
+- **Mechanics**: Three random digits (0-9) drawn, sum's last digit is the result
+- **House Edge**: 5.0% (10 possible outcomes, 9x payout)
+- **Learning Focus**: Combinatorial probability, pattern recognition bias
+- **Implementation**: `pages/Matka.tsx`
 
-### Aviator (3% House Edge)
-**How it works:** A rocket flies up with an increasing multiplier. Cash out before it crashes.
+```typescript
+// Matka Result Calculation
+public getSattaMatkaResult(r: number) {
+  const c1 = Math.floor(r * 10);
+  const c2 = Math.floor((r * 1.5 * 10) % 10);
+  const c3 = Math.floor((r * 2.2 * 10) % 10);
+  const single = (c1 + c2 + c3) % 10;
+  return { cards: `${c1}${c2}${c3}`, single };
+}
+```
 
-**Why you lose:**
-- The crash point is predetermined using your seed
-- The distribution is weighted so average crash is 2.0x
-- 3% of rounds crash instantly at 1.00x (you lose everything)
-- The anxiety of watching the multiplier makes you cash out too early OR too late
+### 2. 🚀 **Aviator (Crash)** (`/crash`)
+**Exponential multiplier game with instant-bust risk**
 
-**Psychological hooks:**
-- Watching others cash out creates FOMO
-- The exponential growth creates urgency
-- You blame your timing, not the math
-- "I'll cash out at 2x" turns into "Just a bit more..." and you bust
+- **Mechanics**: Multiplier grows exponentially, crashes at random point
+- **House Edge**: 3.0% (instant bust at 1.00x probability)
+- **Growth Formula**: `f(t) = e^(0.06t)`
+- **Learning Focus**: Risk management, exponential functions, optimal stopping
+- **Implementation**: `pages/Crash.tsx` with Canvas rendering
 
-### Baccarat (1.06% House Edge)
-**How it works:** Bet on Player, Banker, or Tie. Closest to 9 wins.
+```typescript
+// Crash Point Calculation
+public getCrashPoint(r: number): number {
+  const houseEdge = 0.03; 
+  if (r < houseEdge) return 1.00; // Instant bust
+  return Math.max(1, +((1 - houseEdge) / (1 - r)).toFixed(2));
+}
+```
 
-**Why you lose:**
-- Banker has a 50.68% win rate vs Player's 49.32%
-- But Banker wins are taxed 5% commission
-- Tie bets pay 9:1 but happen ~9.5% of the time (should pay 10:1)
-- It's the "fairest" game here, which is why casinos hide it in corners
+**Technical Details**:
+- Real-time Canvas graph rendering at 60fps
+- Exponential curve visualization
+- 8-game crash history display
+- Cash-out button with instant payout calculation
 
-**Psychological hooks:**
-- Feels like a "skill" game
-- Low house edge creates illusion of fairness
-- Streaks make you think you can ride momentum
-- "I'm due for a win" fallacy keeps you betting
+### 3. 🎰 **Slots** (`/slots`)
+**Classic 3-reel symbol matching**
 
-### Keno (5% House Edge)
-**How it works:** Pick up to 10 numbers from 1-40. More matches = bigger payout.
+- **Mechanics**: Spin 3 reels with weighted symbols
+- **House Edge**: 4.0%
+- **Symbols**: 🍒 (2x), 🍋 (2x), 🍇 (20x), 💎 (50x), 7️⃣ (100x)
+- **Learning Focus**: Near-miss psychology, variable reward schedules
+- **Implementation**: `pages/Slots.tsx`
 
-**Why you lose:**
-- Payouts are calculated to give house 5% edge
-- High variance means occasional big wins (dopamine!) surrounded by many losses
-- The math is hidden in complex payout tables
+```typescript
+// Slot Result with Near-Miss Weighting
+public calculateSlotsResult(r: number) {
+  const symbols = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
+  const s1 = symbols[Math.floor(r * 5)];
+  const s2 = symbols[Math.floor((r * 2.5 * 10) % 5)];
+  const s3 = symbols[Math.floor((r * 3.3 * 10) % 5)];
+  // Near-miss logic: s3 calculation increases "almost won" scenarios
+}
+```
 
-**Psychological hooks:**
-- Big potential payouts ($50,000+) for small bets
-- "Just one more number!" near-misses
-- Fast rounds enable rapid loss
+### 4. 🃏 **Teen Patti** (`/teenpatti`)
+**Popular Indian card comparison game**
 
-### Slots (4% House Edge)
-**How it works:** Spin three reels, match symbols to win.
+- **Mechanics**: Player hand vs. Dealer hand comparison
+- **House Edge**: 2.5% (dealer bias)
+- **Hands**: Trail, Pure Sequence, Sequence, Color, Pair, High Card
+- **Learning Focus**: Fixed-probability games, house commission
+- **Implementation**: `pages/TeenPatti.tsx`
 
-**Why you lose:**
-- Symbol probabilities are weighted (💎 appears far less than 🍒)
-- Payouts are calculated to retain 4% of all bets
-- Near-misses are programmed to happen 150% more than random
+### 5. 🎴 **Baccarat** (`/baccarat`)
+**Classic high-roller card game**
 
-**Psychological hooks:**
-- Lights, sounds, animations celebrate even when you lose money
-- "Loss disguised as win" (bet ₹100, win ₹70, machine celebrates)
-- Near-misses activate same brain regions as actual wins
-- Fast spin rate (2 seconds) means losing money quickly feels normal
+- **Mechanics**: Player vs Banker hand comparison (0-9 values)
+- **House Edge**: 1.06% (Banker), 1.24% (Player)
+- **Payouts**: Banker/Player 2x, Tie 9x (5% banker commission)
+- **Learning Focus**: Low-variance gambling, commission structures
+- **Implementation**: `pages/Baccarat.tsx`
+
+### 6. 🎲 **Dice** (`/dice`)
+**Roll-over/roll-under betting**
+
+- **Mechanics**: Predict if random 0-100 roll is over/under target
+- **House Edge**: 1.0%
+- **Dynamic Payout**: Calculated based on target number
+- **Learning Focus**: Probability ranges, risk-reward ratios
+- **Implementation**: `pages/Dice.tsx`
+
+```typescript
+// Dice Result Calculation
+public calculateDiceResult(r: number, target: number, mode: 'over' | 'under') {
+  const roll = r * 100;
+  const won = mode === 'over' ? roll > target : roll < target;
+  return { roll, won };
+}
+```
+
+### 7. 🎡 **Wheel** (`/wheel`)
+**Spinning prize wheel**
+
+- **Mechanics**: Spin wheel lands on multiplier segment
+- **House Edge**: 3.0%
+- **Multipliers**: 1.2x, 1.5x, 2x, 3x, 5x, 10x, 50x
+- **Learning Focus**: Visual randomness vs. weighted outcomes
+- **Implementation**: `pages/Wheel.tsx`
+
+### 8. 🎯 **Plinko** (`/plinko`)
+**Pachinko-style ball drop**
+
+- **Mechanics**: Ball bounces through pegs into multiplier bins
+- **House Edge**: 1.0%
+- **Multipliers**: 0.2x to 1000x (bell curve distribution)
+- **Rows**: 16 levels of peg bounces
+- **Learning Focus**: Normal distribution, extreme variance
+- **Implementation**: `pages/Plinko.tsx`
+
+```typescript
+// Plinko Path Calculation
+public calculatePlinkoResult(r: number, rows: number) {
+  const path = [];
+  for (let i = 0; i < rows; i++) {
+    path.push(Math.random() > 0.5 ? 1 : 0);
+  }
+  const finalBin = path.reduce((a, b) => a + b, 0);
+  const MULTIPLIERS_16 = [1000, 130, 26, 9, 4, 2, 0.2, ...];
+  return { path, multiplier: MULTIPLIERS_16[finalBin] };
+}
+```
+
+### 9. 💣 **Mines** (`/mines`)
+**Minesweeper-style grid game**
+
+- **Mechanics**: Click tiles to avoid mines, cash out anytime
+- **House Edge**: 3.0%
+- **Grid**: 25 tiles (5×5)
+- **Difficulty**: Player selects mine count (1-24)
+- **Learning Focus**: Risk accumulation, exponential payout growth
+- **Implementation**: `pages/Mines.tsx`
+
+### 10. 🪙 **Coinflip** (`/coinflip`)
+**Simple heads or tails**
+
+- **Mechanics**: Bet on coin landing heads or tails
+- **House Edge**: 1.9%
+- **Payout**: 1.96x (should be 2x for fair game)
+- **Learning Focus**: Simplest house edge demonstration
+- **Implementation**: `pages/Coinflip.tsx`
+
+### 11. 🎰 **Roulette** (`/roulette`)
+**European roulette wheel**
+
+- **Mechanics**: Bet on numbers 0-36
+- **House Edge**: 2.7% (single zero)
+- **Bet Types**: Straight (35x), Red/Black (2x), Dozens (3x)
+- **Learning Focus**: Multiple bet types, different risk profiles
+- **Implementation**: `pages/Roulette.tsx`
+
+### 12. 🃏 **Blackjack** (`/blackjack`)
+**Card game vs dealer (21)**
+
+- **Mechanics**: Get closer to 21 than dealer without busting
+- **House Edge**: 0.5% (with optimal strategy)
+- **Special**: Only game where player skill reduces house edge
+- **Learning Focus**: Strategy vs. luck, lowest casino edge
+- **Implementation**: `pages/Blackjack.tsx`
+
+### 13. 🔢 **Keno** (`/keno`)
+**Lottery-style number selection**
+
+- **Mechanics**: Pick up to 10 numbers from 40-number grid
+- **House Edge**: 5.0%
+- **Payouts**: Progressive multipliers based on matches
+- **Learning Focus**: Combinatorial explosion, low win probability
+- **Implementation**: `pages/Keno.tsx`
 
 ---
 
-## 🚨 Warning Signs You're Being Manipulated
+## 🔒 Provable Fairness System
 
-If you find yourself thinking any of these thoughts, you're falling into the trap:
+Every game outcome is verifiable using a deterministic seed-based system:
 
-- ❌ "I'm due for a win" (Gambler's Fallacy)
-- ❌ "I just need one big win to break even" (Chasing Losses)
-- ❌ "I've figured out the pattern" (Illusion of Control)
-- ❌ "I'll stop after I win back what I lost" (Never happens)
-- ❌ "This time will be different" (It won't)
-- ❌ "I'm playing with the house's money" (It's YOUR money once you win it)
-- ❌ "I'll just bet more to win back my losses faster" (Martingale Fallacy)
-- ❌ "I almost won, I should play again" (Near-Miss Manipulation)
+### How It Works
+
+```
+Server Seed (hidden) + Client Seed (your choice) + Nonce (incremental) 
+    ↓
+HMAC-SHA256 Hash
+    ↓
+Deterministic Random Number
+    ↓
+Game Outcome
+```
+
+### Implementation
+
+```typescript
+// User Session Structure (types.ts)
+export interface UserSession {
+  clientSeed: string;      // User-provided seed (can be changed anytime)
+  serverSeed: string;      // Platform seed (visible after each game)
+  nonce: number;           // Increments with each bet
+  serverSeedHash: string;  // Pre-game hash for verification
+}
+
+// Seed Rotation (engine.ts)
+public setClientSeed(seed: string) {
+  this.session.clientSeed = seed;
+  this.session.nonce = 0;  // Reset nonce on seed change
+  this.saveSession(this.session);
+}
+```
+
+### Verification Process
+
+1. **Before betting**: Platform provides `hash(serverSeed)`
+2. **You bet**: Outcome is calculated using your client seed
+3. **After game**: Platform reveals raw `serverSeed`
+4. **You verify**: Check if `hash(serverSeed) === providedHash`
+
+If the hash matches, the result was predetermined before your bet, proving the platform couldn't manipulate the outcome.
+
+### Fairness Panel
+
+Access via `/fairness` route to:
+- View current client seed and nonce
+- Rotate client seed (resets nonce to 0)
+- See server seed hash
+- Review house edge for all games
+- Understand RNG formulas
+
+**Code**: `pages/Fairness.tsx`
 
 ---
 
-## 📚 Educational Resources: Learn the Math
-
-### Recommended Reading
-- **"The House Advantage" by Jeffrey Ma** - MIT Blackjack Team member explains casino math
-- **"Thinking, Fast and Slow" by Daniel Kahneman** - Understand cognitive biases
-- **"Behavioral Game Theory" by Colin Camerer** - Why we make irrational choices
-- **"Fortune's Formula" by William Poundstone** - The mathematics of betting
-
-### Key Concepts to Understand
-1. **Expected Value (EV):** The average outcome of a bet over infinite trials
-2. **Variance:** Why you can win short-term but lose long-term
-3. **Law of Large Numbers:** Why casinos always win with enough players
-4. **House Edge:** The mathematical advantage built into every game
-5. **Cognitive Biases:** How your brain tricks you into bad decisions
-
-### Online Calculators
-- Expected Value Calculator: Plug in odds and payouts to see true EV
-- Variance Calculator: Understand why results fluctuate
-- Bankroll Simulator: See how quickly you'll go broke with various strategies
-
----
-
-## 🛠️ Installation & Setup
-
-**Remember: This is for EDUCATIONAL PURPOSES ONLY. Use it to understand how you're being manipulated, not to gamble.**
+## 🚀 Installation & Setup
 
 ### Prerequisites
-- Node.js 16+
-- npm or yarn
-- A desire to understand mathematics over making money
-
-### Installation
 
 ```bash
-# Clone the repository
+Node.js: 16.x or higher
+npm: 8.x or higher (or yarn/pnpm)
+Modern Browser: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+```
+
+### Quick Start
+
+```bash
+# 1. Clone the repository
 git clone https://github.com/Paidguy/casino.git
 cd casino
 
-# Install dependencies
+# 2. Install dependencies
 npm install
 
-# Start the development server
+# 3. Start development server
 npm run dev
 
+# 4. Open browser
+# Navigate to http://localhost:5173
+```
+
+### Development Server
+
+The Vite dev server starts on port 5173 with:
+- Hot Module Replacement (HMR)
+- Fast TypeScript compilation
+- Instant CSS updates
+- React Fast Refresh
+
+```bash
+# Start dev server
+npm run dev
+
+# Dev server output:
+# VITE v5.1.0  ready in 324 ms
+# ➜  Local:   http://localhost:5173/
+# ➜  Network: http://192.168.1.100:5173/
+```
+
+### Production Build
+
+```bash
 # Build for production
+npm run build
+
+# Output directory: dist/
+# Build includes:
+# - TypeScript compilation
+# - Asset optimization
+# - Code minification
+# - Source map generation (optional)
+
+# Preview production build locally
+npm run preview
+```
+
+### Deployment
+
+The project is configured for **GitHub Pages** deployment:
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  base: '/casino/',  // Must match GitHub repo name
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000
+  }
+});
+```
+
+**Deploy to GitHub Pages**:
+
+```bash
+# Build production bundle
+npm run build
+
+# Deploy (if using gh-pages package)
+npm install -g gh-pages
+gh-pages -d dist
+
+# Or push dist/ folder to gh-pages branch manually
+```
+
+**Live URL**: `https://username.github.io/casino/`
+
+---
+
+## 📁 Project Structure
+
+```
+casino/
+├── .github/
+│   └── workflows/           # GitHub Actions CI/CD
+│       └── deploy.yml       # Auto-deployment workflow
+│
+├── components/              # Reusable React components
+│   ├── Analytics.tsx        # Bet history & statistics display
+│   ├── Layout.tsx          # Main layout wrapper (header, sidebar, footer)
+│   ├── Leaderboard.tsx     # Top players leaderboard (with bot players)
+│   ├── LiveFeed.tsx        # Real-time bet feed simulation
+│   ├── MarketingOverlay.tsx # Promotional modals & banners
+│   └── TransparencyPanel.tsx # Fairness verification UI
+│
+├── pages/                   # Game route components
+│   ├── Admin.tsx           # Admin panel for RTP settings
+│   ├── Baccarat.tsx        # Baccarat card game
+│   ├── Blackjack.tsx       # Blackjack 21 game
+│   ├── Coinflip.tsx        # Heads/tails coin flip
+│   ├── Crash.tsx           # Aviator crash game with Canvas
+│   ├── Dice.tsx            # Roll-over/under dice game
+│   ├── Fairness.tsx        # Provable fairness documentation
+│   ├── Keno.tsx            # Number selection lottery
+│   ├── Lobby.tsx           # Main game selection lobby
+│   ├── Matka.tsx           # Kalyan Matka number game
+│   ├── Mines.tsx           # Minesweeper-style grid game
+│   ├── Plinko.tsx          # Ball drop game with Canvas
+│   ├── Roulette.tsx        # European roulette wheel
+│   ├── Slots.tsx           # 3-reel slot machine
+│   ├── TeenPatti.tsx       # Indian card game
+│   └── Wheel.tsx           # Prize wheel spinner
+│
+├── services/                # Core business logic
+│   ├── audio.ts            # Sound effects manager
+│   └── engine.ts           # Game engine & simulation core
+│
+├── App.tsx                  # Root component with routing
+├── index.tsx                # React DOM entry point
+├── index.html               # HTML template
+├── index.css                # Global styles & animations
+├── types.ts                 # TypeScript interfaces & types
+│
+├── vite.config.ts           # Vite build configuration
+├── tsconfig.json            # TypeScript compiler options
+├── tsconfig.node.json       # Node-specific TS config
+├── package.json             # Dependencies & scripts
+├── metadata.json            # Project metadata
+└── LICENSE                  # License file
+```
+
+### Directory Descriptions
+
+#### `components/`
+Reusable UI components used across multiple pages:
+
+- **`Layout.tsx`**: Master layout wrapper with:
+  - Market ticker (scrolling news banner)
+  - Collapsible sidebar navigation
+  - Header with balance display
+  - Slide-out intel feed panel
+  - Deposit modal
+  - Mobile-responsive hamburger menu
+
+- **`Analytics.tsx`**: Statistics dashboard showing:
+  - Total bets, wagered amount, wins/losses
+  - Bet history with outcome details
+  - Charts using Recharts library
+
+- **`Leaderboard.tsx`**: Top players by wagered amount:
+  - Bot players for social proof
+  - Real player highlighted
+  - Wagered amount & max multiplier display
+
+- **`LiveFeed.tsx`**: Simulated live bet feed:
+  - Fake player bets for engagement
+  - Random game wins/losses
+  - Scrolling activity feed
+
+#### `pages/`
+Each game has its own dedicated page component with:
+- Game-specific UI and controls
+- Bet input and game state management
+- Canvas rendering (for Crash, Plinko)
+- Result display and history
+- Integration with game engine
+
+#### `services/`
+Core application logic separated from UI:
+
+- **`engine.ts`**: The heart of the application
+  - Session management (localStorage)
+  - Seed-based RNG system
+  - Game result calculations
+  - Balance and bet tracking
+  - Transaction history
+  - Leaderboard management
+
+- **`audio.ts`**: Sound effect management
+  - Bet placement sounds
+  - Win/loss audio feedback
+  - Click sounds for UI interactions
+
+---
+
+## 🧩 Core Components
+
+### `SimulationEngine` (services/engine.ts)
+
+The central class managing all game logic:
+
+```typescript
+export class SimulationEngine {
+  private session: UserSession;
+  
+  constructor() {
+    this.session = this.loadSession();
+  }
+  
+  // Key Methods:
+  
+  // Place bet and calculate outcome
+  placeBet(game: GameType, amount: number, 
+           multiplierOrResolver: number | Function): BetResult
+  
+  // Update user balance
+  updateBalance(amount: number): void
+  
+  // Reset session balance
+  resetBalance(): void
+  
+  // Seed management
+  setClientSeed(seed: string): void
+  
+  // Game-specific calculators
+  getCrashPoint(r: number): number
+  getSattaMatkaResult(r: number): { cards: string, single: number }
+  calculateDiceResult(r: number, target: number, mode: string): object
+  calculateSlotsResult(r: number): { symbols: string[], multiplier: number }
+  // ... more game calculators
+}
+```
+
+### Session Management
+
+```typescript
+// Session stored in localStorage with key: 'satking_pro_v2'
+interface UserSession {
+  id: string;                    // Unique session ID
+  username: string;              // Generated username (Punter_XXXX)
+  balance: number;               // Current balance (starts at ₹100,000)
+  rakebackBalance: number;       // Accumulated rakeback (0.5% of wagers)
+  
+  // Statistics
+  totalBets: number;
+  totalWagered: number;
+  totalWins: number;
+  totalLosses: number;
+  maxMultiplier: number;
+  
+  // Fairness
+  clientSeed: string;
+  serverSeed: string;
+  nonce: number;
+  
+  // History
+  history: BetResult[];          // Last 50 bets
+  transactions: Transaction[];    // Deposits/withdrawals
+}
+```
+
+### BetResult Interface
+
+```typescript
+export interface BetResult {
+  id: string;                    // Unique bet ID
+  gameType: GameType;            // Which game
+  betAmount: number;             // Stake amount
+  payoutMultiplier: number;      // Win multiplier
+  payoutAmount: number;          // Total payout (stake × multiplier)
+  timestamp: number;             // Unix timestamp
+  outcome: string;               // Descriptive outcome text
+  balanceAfter: number;          // Balance after bet
+  
+  // Fairness verification
+  nonce: number;
+  clientSeed: string;
+  serverSeedHash: string;
+  resultInput: number;           // Random value used (0-1)
+}
+```
+
+---
+
+## 🎮 Game Engine Deep Dive
+
+### Random Number Generation
+
+The platform uses JavaScript's `Math.random()` for demonstration purposes. In a production environment, this would be replaced with cryptographically secure HMAC-SHA256:
+
+```typescript
+// Current implementation (educational)
+const r = Math.random(); // 0.0 to 1.0
+
+// Production would use:
+const r = HMAC_SHA256(serverSeed + clientSeed + nonce) / MAX_HASH_VALUE;
+```
+
+### Game Result Calculators
+
+#### Crash Point Formula
+
+```typescript
+public getCrashPoint(r: number): number {
+  const houseEdge = 0.03; // 3% instant bust probability
+  
+  // Instant bust check
+  if (r < houseEdge) return 1.00;
+  
+  // Calculate crash point: (1 - edge) / (1 - r)
+  // This creates exponential distribution
+  return Math.max(1, +((1 - houseEdge) / (1 - r)).toFixed(2));
+}
+
+// Example outcomes:
+// r = 0.02 → 1.00x (instant bust)
+// r = 0.50 → 1.94x
+// r = 0.90 → 9.70x
+// r = 0.99 → 97.00x
+```
+
+**Why this formula?**
+- `(1 - edge)` ensures house profit over time
+- `(1 - r)` as denominator creates exponential growth
+- Higher `r` values → higher crash points (but less likely)
+
+#### Matka Number Calculation
+
+```typescript
+public getSattaMatkaResult(r: number) {
+  // Generate three digits using different scaling factors
+  const c1 = Math.floor(r * 10);           // 0-9
+  const c2 = Math.floor((r * 1.5 * 10) % 10); // 0-9 (different distribution)
+  const c3 = Math.floor((r * 2.2 * 10) % 10); // 0-9 (different distribution)
+  
+  // Sum and take last digit
+  const single = (c1 + c2 + c3) % 10;
+  
+  return { 
+    cards: `${c1}${c2}${c3}`,  // e.g. "345"
+    single                      // e.g. 2 (from 3+4+5=12)
+  };
+}
+```
+
+**Why different scaling factors?**
+- Creates pseudo-independence between digits
+- Prevents patterns in sequential draws
+- Maintains uniform 0-9 distribution for each digit
+
+#### Slot Machine Symbols
+
+```typescript
+public calculateSlotsResult(r: number) {
+  const symbols = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
+  
+  // Reel 1: Simple division
+  const s1 = symbols[Math.floor(r * 5)];
+  
+  // Reel 2: Scaled and modulo for variation
+  const s2 = symbols[Math.floor((r * 2.5 * 10) % 5)];
+  
+  // Reel 3: Different scaling creates near-misses
+  const s3 = symbols[Math.floor((r * 3.3 * 10) % 5)];
+  
+  const result = [s1, s2, s3];
+  
+  // Payout logic
+  let multiplier = 0;
+  if (s1 === s2 && s2 === s3) {
+    // Three of a kind
+    if (s1 === '7️⃣') multiplier = 100;      // Jackpot
+    else if (s1 === '💎') multiplier = 50;
+    else multiplier = 20;
+  } else if (s1 === s2 || s2 === s3 || s1 === s3) {
+    // Any pair
+    multiplier = 2;
+  }
+  
+  return { symbols: result, multiplier };
+}
+```
+
+**Near-Miss Engineering**:
+The different scaling factors for each reel create situations where:
+- Reel 1 and 2 match more often than random (pair wins)
+- Reel 3 "almost" matches frequently (near-miss psychology)
+- This increases engagement without changing actual RTP
+
+### Balance Management
+
+```typescript
+// Placing a bet
+this.session.balance -= betAmount;           // Deduct stake
+this.session.balance += (betAmount * multiplier); // Add winnings
+
+// Rakeback accumulation (0.5% of all wagers)
+this.session.rakebackBalance += betAmount * 0.005;
+
+// Statistics tracking
+this.session.totalWagered += betAmount;
+this.session.totalBets += 1;
+if (multiplier > this.session.maxMultiplier) {
+  this.session.maxMultiplier = multiplier;
+}
+```
+
+### Daily Allowance System
+
+```typescript
+const DAILY_ALLOWANCE = 100000; // ₹1,00,000
+
+// New session initialization
+private initializeSession(): UserSession {
+  return {
+    balance: DAILY_ALLOWANCE,
+    startBalance: DAILY_ALLOWANCE,
+    // ... other fields
+  };
+}
+
+// Manual reset (Destroy Session button)
+public resetBalance() {
+  this.session.balance = DAILY_ALLOWANCE;
+  this.saveSession(this.session);
+}
+```
+
+---
+
+## 📊 House Edge Mathematics
+
+Every game has a built-in mathematical advantage for the "house":
+
+```typescript
+// types.ts
+export const HOUSE_EDGES: Record<GameType, number> = {
+  [GameType.CRASH]: 0.01,        // 1.0%  - Aviator
+  [GameType.DICE]: 0.01,         // 1.0%  - Dice
+  [GameType.ROULETTE]: 0.027,    // 2.7%  - Roulette
+  [GameType.SLOTS]: 0.04,        // 4.0%  - Slots
+  [GameType.MINES]: 0.03,        // 3.0%  - Mines
+  [GameType.PLINKO]: 0.01,       // 1.0%  - Plinko
+  [GameType.BLACKJACK]: 0.005,   // 0.5%  - Blackjack (lowest)
+  [GameType.COINFLIP]: 0.019,    // 1.9%  - Coinflip
+  [GameType.TEENPATTI]: 0.025,   // 2.5%  - Teen Patti
+  [GameType.MATKA]: 0.05,        // 5.0%  - Kalyan Matka (highest)
+  [GameType.WHEEL]: 0.03,        // 3.0%  - Wheel
+  [GameType.BACCARAT]: 0.0106,   // 1.06% - Baccarat Banker
+  [GameType.KENO]: 0.05,         // 5.0%  - Keno
+};
+```
+
+### Expected Value Calculation
+
+```
+EV = (Win Probability × Payout) - (Loss Probability × Stake)
+
+Example: Kalyan Matka
+- 10 possible outcomes (0-9)
+- Win probability: 1/10 = 10%
+- Payout: 9x stake
+- Fair payout: 10x stake
+
+EV = (0.1 × 9) - (0.9 × 1) = 0.9 - 0.9 = -0.10 = -10%
+
+But our implementation uses 5% house edge:
+Effective EV per round = -5% of stake
+```
+
+### Why Loss is Inevitable
+
+```
+Long-term Expected Loss = Total Wagered × House Edge
+
+Example:
+- Total wagered: ₹1,000,000
+- Kalyan Matka (5% edge)
+- Expected loss: ₹1,000,000 × 0.05 = ₹50,000
+
+No strategy can overcome this mathematical certainty.
+```
+
+### RTP (Return to Player)
+
+```
+RTP = 1 - House Edge
+
+Kalyan Matka:  95.0% RTP (you get back ₹95 per ₹100 wagered)
+Blackjack:     99.5% RTP (highest RTP, but still losing)
+Slots:         96.0% RTP
+Aviator:       99.0% RTP
+```
+
+**Important**: RTP is calculated over millions of bets. Short-term variance can make you win or lose much more.
+
+---
+
+## 🎨 UI/UX Design Philosophy
+
+### "Theater Stage" Layout
+
+The interface prioritizes focused gameplay:
+
+```typescript
+// Layout.tsx
+const isLobby = location.pathname === '/';
+
+// Sidebar: Hidden on game pages (desktop), collapsible (mobile)
+<aside className={`
+  ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+  lg:translate-x-0 
+  fixed lg:static
+`}>
+
+// Intel Feed: Slide-out panel, hidden by default
+<div className={`
+  fixed inset-y-0 right-0 
+  ${showIntel ? 'translate-x-0' : 'translate-x-full'}
+`}>
+
+// Main Content: Expands to fill available space
+<main className="flex-1 overflow-y-auto">
+  <div className={`${isLobby ? 'max-w-6xl' : 'max-w-full'} mx-auto`}>
+```
+
+### Responsive Typography
+
+```css
+/* index.css */
+.text-responsive {
+  font-size: clamp(0.875rem, 2vw, 1.125rem);
+}
+
+/* Scales between 14px - 18px based on viewport */
+```
+
+### Animation Performance
+
+All animations maintain 60fps:
+
+```typescript
+// Crash.tsx - Exponential curve animation
+const animate = (time: number) => {
+  const elapsed = (time - startTimeRef.current) / 1000;
+  const currentMult = Math.pow(Math.E, 0.06 * elapsed);
+  
+  drawGraph(elapsed, currentMult); // Canvas render <16.6ms
+  
+  if (currentMult >= crashPointRef.current) {
+    // Stop animation
+    cancelAnimationFrame(requestRef.current);
+  } else {
+    // Continue at 60fps
+    requestRef.current = requestAnimationFrame(animate);
+  }
+};
+```
+
+### Color Psychology
+
+- **Cyan (#22d3ee)**: Trust, speed, digital clarity → Primary actions, wins
+- **Magenta (#d946ef)**: Energy, excitement → Jackpots, special events
+- **Gold (#fbbf24)**: Wealth, success → Large wins, premium features
+- **Red (#ef4444)**: Danger, loss → Losses, warnings, exits
+- **Green (#10b981)**: Success, profit → Wins, confirmations
+
+### Sound Design
+
+```typescript
+// services/audio.ts
+export const audio = {
+  playClick: () => beep(800, 50, 0.1),      // UI interactions
+  playBet: () => beep(600, 100, 0.15),      // Bet placed
+  playWin: () => playWinSound(),            // Win celebration
+  playLoss: () => beep(200, 200, 0.2),      // Loss feedback
+};
+
+function beep(frequency: number, duration: number, volume: number) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  
+  osc.frequency.value = frequency;
+  gain.gain.value = volume;
+  
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + duration / 1000);
+}
+```
+
+---
+
+## 🔨 Building & Deployment
+
+### Development Build
+
+```bash
+npm run dev
+```
+
+Output:
+```
+  VITE v5.1.0  ready in 324 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.1.100:5173/
+  ➜  press h to show help
+```
+
+Features:
+- Hot Module Replacement (HMR)
+- Fast TypeScript compilation (esbuild)
+- Instant CSS updates
+- React Fast Refresh
+
+### Production Build
+
+```bash
 npm run build
 ```
 
-### Environment Configuration
+Process:
+1. TypeScript compilation (`tsc`)
+2. Vite bundling with Rollup
+3. Asset optimization
+4. Code minification
+5. Hash-based file naming
 
-This platform runs entirely client-side. No server needed. All balances are stored in browser localStorage.
+Output structure:
+```
+dist/
+├── index.html
+├── assets/
+│   ├── index-[hash].js      # Main bundle
+│   ├── index-[hash].css     # Styles
+│   ├── react-[hash].js      # React chunk
+│   └── recharts-[hash].js   # Charts chunk
+```
 
-**Key Files:**
-- `services/fairness.ts` - HMAC-SHA256 implementation
-- `services/gameLogic.ts` - House edge calculations
-- `components/games/` - Individual game modules
-- `hooks/useWallet.ts` - Balance management (all virtual)
+### Build Configuration
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  plugins: [react()],
+  base: '/casino/',  // GitHub Pages sub-path
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,  // Set true for debugging
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        // Consistent hashed filenames
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+      }
+    }
+  }
+});
+```
+
+### GitHub Pages Deployment
+
+**Option 1: GitHub Actions (Automatic)**
+
+Create `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build
+        run: npm run build
+        
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+```
+
+**Option 2: Manual Deployment**
+
+```bash
+# Build production bundle
+npm run build
+
+# Install gh-pages utility
+npm install -g gh-pages
+
+# Deploy to gh-pages branch
+gh-pages -d dist
+
+# Or push manually
+git subtree push --prefix dist origin gh-pages
+```
+
+**GitHub Settings**:
+1. Repository → Settings → Pages
+2. Source: Deploy from branch
+3. Branch: `gh-pages` / root
+
+### Environment Variables
+
+For production deployments with custom configuration:
+
+```bash
+# .env.production
+VITE_API_URL=https://api.example.com
+VITE_ANALYTICS_ID=G-XXXXXXXXXX
+VITE_ENABLE_SOUNDS=true
+```
+
+Access in code:
+```typescript
+const apiUrl = import.meta.env.VITE_API_URL;
+```
 
 ---
 
-## 🔒 Privacy & Security
+## ⚙️ Configuration & Customization
 
-### What We DON'T Collect
-- ❌ No real money
-- ❌ No personal information
-- ❌ No server-side tracking
-- ❌ No cookies (beyond essential localStorage)
-- ❌ No analytics tracking your losses
+### Modifying House Edges
 
-### What We DO Store Locally
-- ✅ Your virtual balance (in browser only)
-- ✅ Your game history (for fairness verification)
-- ✅ Your client seed (to verify results)
+```typescript
+// types.ts
+export const HOUSE_EDGES: Record<GameType, number> = {
+  [GameType.MATKA]: 0.05,  // Change to 0.10 for 10% house edge
+  [GameType.CRASH]: 0.01,  // Change to 0.03 for 3% instant bust rate
+  // ... other games
+};
+```
 
-### Data Persistence
-All data is stored in browser `localStorage`:
-- `casino_wallet_balance` - Your virtual money
-- `casino_client_seed` - Your fairness verification seed
-- `casino_game_history` - Last 100 rounds for verification
+**Effect**: Changes the mathematical advantage for each game.
 
-**To wipe all data:** Click "Destroy Session" in settings or clear browser localStorage.
+### Adjusting Starting Balance
 
----
+```typescript
+// services/engine.ts
+const DAILY_ALLOWANCE = 100000;  // Change to 50000 for ₹50,000 start
 
-## 🎯 Using This Platform Responsibly
+private initializeSession(): UserSession {
+  return {
+    balance: DAILY_ALLOWANCE,
+    startBalance: DAILY_ALLOWANCE,
+    // ...
+  };
+}
+```
 
-### Intended Use Cases ✅
-- **Mathematical Education:** Study house edge and expected value
-- **Psychology Research:** Observe your own cognitive biases
-- **Game Design Study:** Understand behavioral engineering
-- **Risk Assessment:** See how quickly money evaporates
-- **Addiction Awareness:** Experience the dopamine trap in a safe environment
+### Customizing Theme Colors
 
-### Prohibited Use Cases ❌
-- Simulating real gambling (transfer learned behaviors to real money)
-- Developing gambling strategies (they don't work - the math proves it)
-- Believing you can "beat the system"
-- Using this to justify real gambling ("I won here, so I can win there")
+```css
+/* index.css */
+:root {
+  --bet-primary: #22d3ee;    /* Cyan - change to your brand color */
+  --bet-secondary: #d946ef;  /* Magenta */
+  --bet-accent: #facc15;     /* Gold */
+  --bet-danger: #ef4444;     /* Red */
+  --bet-success: #10b981;    /* Green */
+  
+  --bet-950: #020617;        /* Dark background */
+  --bet-900: #0f172a;        /* Card background */
+  --bet-800: #1e293b;        /* Input background */
+}
+```
 
-### If You're Struggling With Gambling
+### Adding New Games
 
-**International Resources:**
-- **National Gambling Helpline (US):** 1-800-522-4700
-- **GamCare (UK):** 0808 8020 133
-- **Gambling Therapy (Global):** www.gamblingtherapy.org
+1. **Create game page component**:
+```typescript
+// pages/NewGame.tsx
+import React, { useState } from 'react';
+import { Layout } from '../components/Layout';
+import { engine } from '../services/engine';
+import { GameType } from '../types';
 
-**Indian Resources:**
-- **Alcoholics Anonymous India:** Supports gambling addiction
-- **SAMHSA National Helpline:** 1-800-662-4357 (free, confidential, 24/7)
+export default function NewGame() {
+  const [betAmount, setBetAmount] = useState(100);
+  
+  const play = () => {
+    engine.placeBet(GameType.NEWGAME, betAmount, (r) => {
+      // Your game logic here
+      const won = r > 0.5; // Example: 50% win chance
+      return {
+        multiplier: won ? 2 : 0,
+        outcome: won ? 'Win!' : 'Loss'
+      };
+    });
+  };
+  
+  return (
+    <Layout>
+      {/* Your game UI */}
+    </Layout>
+  );
+}
+```
 
-**Warning Signs of Problem Gambling:**
-- Spending money you can't afford to lose
-- Lying about gambling activities
-- Gambling to escape problems or feelings
-- Chasing losses
-- Neglecting responsibilities to gamble
+2. **Add game type**:
+```typescript
+// types.ts
+export enum GameType {
+  // ... existing games
+  NEWGAME = 'NEWGAME',
+}
 
----
+export const HOUSE_EDGES: Record<GameType, number> = {
+  // ... existing edges
+  [GameType.NEWGAME]: 0.02,  // 2% house edge
+};
+```
 
-## 🎓 The Creator's Message
+3. **Add route**:
+```typescript
+// App.tsx
+import NewGame from './pages/NewGame';
 
-This platform was built by [@Paidguy](https://github.com/Paidguy) after watching friends and family lose significant money to online gambling platforms. The goal is simple: **show people exactly how they're being manipulated BEFORE they lose real money.**
+<Route path="/newgame" element={<NewGame />} />
+```
 
-Every animation, every sound effect, every "near miss" you see here is identical to what real gambling platforms use. The only difference? This uses virtual currency so you can learn without losing your savings.
+4. **Add to navigation**:
+```typescript
+// components/Layout.tsx
+const menu = [
+  // ... existing items
+  { label: 'New Game', to: '/newgame', icon: '🎲' },
+];
+```
 
-**The lesson is simple:**
-- The house edge is real
-- The psychology is engineered
-- Your losses are guaranteed
-- Time is your enemy
-- There is no "system" that beats mathematics
+### Modifying Bot Leaderboard
 
-**If you take away one thing:** Understand that gambling platforms are not entertainment—they're mathematically optimized extraction machines. They're designed to make you feel good while taking your money. Every win is calculated to keep you playing until you've lost far more than you've won.
+```typescript
+// services/engine.ts
+const BOTS: LeaderboardEntry[] = [
+  { username: 'YourBot_1', wagered: 500000, maxMultiplier: 25.0 },
+  { username: 'YourBot_2', wagered: 1200000, maxMultiplier: 80.0 },
+  // Add more bots or modify existing ones
+];
+```
 
 ---
 
 ## 🤝 Contributing
 
-Want to help educate others? Contributions are welcome!
+Contributions that enhance the **educational value** of this platform are welcome!
 
-**Good Contributions:**
-- Improved educational content
-- Better visualization of house edge mathematics
-- Additional gambling awareness resources
-- Bug fixes and performance improvements
-- Translations for wider educational reach
-
-**We Will NOT Accept:**
-- Features that glamorize gambling
-- Anything that encourages real money gambling
-- Removal of educational warnings
-- Integration with real money systems
-
-### Development Guidelines
+### Development Setup
 
 ```bash
-# Create a feature branch
-git checkout -b feature/educational-improvement
+# Fork the repository on GitHub
+# Clone your fork
+git clone https://github.com/YOUR_USERNAME/casino.git
+cd casino
+
+# Install dependencies
+npm install
+
+# Create feature branch
+git checkout -b feature/educational-enhancement
 
 # Make your changes
 # Test thoroughly
 
-# Commit with clear message
-git commit -m "Add expected value visualization to Matka game"
+# Commit with clear messages
+git commit -m "Add probability calculator for dice game"
 
-# Push and create PR
-git push origin feature/educational-improvement
+# Push to your fork
+git push origin feature/educational-enhancement
+
+# Open Pull Request on GitHub
+```
+
+### Contribution Guidelines
+
+**What to contribute**:
+- ✅ New educational game modes
+- ✅ Improved probability explanations
+- ✅ Better data visualizations
+- ✅ Accessibility improvements
+- ✅ Performance optimizations
+- ✅ Bug fixes
+- ✅ Documentation improvements
+
+**What NOT to contribute**:
+- ❌ Real money integration
+- ❌ Actual gambling features
+- ❌ Removal of educational warnings
+- ❌ Obfuscation of house edges
+- ❌ Predatory dark patterns
+
+### Code Standards
+
+- Use TypeScript for type safety
+- Follow existing code style (2-space indentation)
+- Add comments explaining complex math
+- Write descriptive commit messages
+- Include educational purpose in PR description
+
+### Testing Your Changes
+
+```bash
+# Run dev server
+npm run dev
+
+# Test in multiple browsers
+# - Chrome/Edge (Chromium)
+# - Firefox
+# - Safari (if on macOS)
+
+# Test responsiveness
+# - Desktop (1920x1080)
+# - Laptop (1366x768)
+# - Tablet (768x1024)
+# - Mobile (375x667)
+
+# Verify game logic
+# - Place multiple bets
+# - Check balance calculations
+# - Verify history recording
+# - Test seed rotation
 ```
 
 ---
 
-## 📜 License
+## 📚 Educational Resources
 
-MIT License - Use this code to educate, never to enable gambling.
+### Understanding Probability
 
-**Ethical Use Clause:** While this is MIT licensed, we strongly request that you:
-- Never integrate real money
-- Always include gambling awareness warnings
-- Use for education, not exploitation
-- Credit the original educational purpose
+**Key Concepts**:
+- **Independent Events**: Past results don't affect future outcomes
+- **Expected Value**: Average result over infinite trials
+- **Variance**: Measure of result volatility
+- **Standard Deviation**: Square root of variance
+- **Law of Large Numbers**: Over time, results approach expected value
+
+**Recommended Reading**:
+- "The Theory of Gambling and Statistical Logic" by Richard A. Epstein
+- "Risk and Reward" by Peter L. Bernstein
+- "Fooled by Randomness" by Nassim Nicholas Taleb
+
+### House Edge Examples
+
+**Kalyan Matka**:
+```
+True odds: 10 to 1 (1 in 10 chance)
+Fair payout: 10x
+Actual payout: 9x
+House edge: (10 - 9) / 10 = 10%
+
+Expected loss per ₹100 bet: ₹10
+```
+
+**Aviator**:
+```
+3% chance of instant bust at 1.00x
+For crash at 2.00x, actual probability < 50%
+House edge maintained through instant bust + payout curve
+
+Expected loss per ₹100 bet: ₹3
+```
+
+**Blackjack** (with optimal strategy):
+```
+House edge: 0.5%
+Lowest of any casino game
+Requires perfect strategy execution
+
+Expected loss per ₹100 bet: ₹0.50
+```
+
+### Cognitive Biases
+
+**Gambler's Fallacy**:
+```
+Belief: "Red has come up 5 times, black is due!"
+Reality: Each spin is independent, still 48.6% chance
+```
+
+**Hot Hand Fallacy**:
+```
+Belief: "I've won 3 times, I'm on a streak!"
+Reality: Past wins don't increase future win probability
+```
+
+**Near-Miss Effect**:
+```
+🍇🍇🍋 feels like "almost won"
+Reality: This is a complete loss, same as 🍒🍋💎
+Psychological impact: Triggers dopamine, encourages continued play
+```
+
+### Probability Calculators
+
+**Win Probability** (Fair Game):
+```
+P(win) = 1 / Total Outcomes
+
+Dice (roll over 50):
+P(win) = 50 / 100 = 50%
+
+Matka (pick 5):
+P(win) = 1 / 10 = 10%
+```
+
+**Expected Value**:
+```
+EV = Σ (Probability_i × Payout_i) - Stake
+
+Matka:
+EV = (0.10 × 9) - 1 = 0.90 - 1 = -0.10 = -10%
+```
 
 ---
 
-## 🔗 Links & Resources
+## 🛡️ Responsible Gaming
 
-- **Live Demo:** [paidguy.me/casino](https://paidguy.me/casino)
-- **GitHub Repository:** [github.com/Paidguy/casino](https://github.com/Paidguy/casino)
-- **Issue Tracker:** Report bugs or suggest educational improvements
-- **Discussions:** Share how this platform helped you understand gambling mathematics
+### Educational Disclaimer
 
----
+This platform is designed **exclusively for educational purposes**:
 
-## ⚖️ Legal Disclaimer
+- ✅ Understanding probability and statistics
+- ✅ Learning about casino mathematics
+- ✅ Studying behavioral psychology
+- ✅ Demonstrating house edge concepts
 
-**THIS IS NOT A REAL CASINO. NO REAL MONEY IS INVOLVED.**
+### Not for Real Gambling
 
-This platform is a software demonstration for educational purposes only. It simulates gambling mechanics to teach users about:
-- Mathematical probability
-- House edge
-- Behavioral psychology
-- Cognitive biases in decision-making
+- ❌ No real money deposits or withdrawals
+- ❌ Virtual currency has no real-world value
+- ❌ Not licensed as an online casino
+- ❌ Not intended to promote gambling
 
-**No real money can be:**
-- Deposited
-- Wagered
-- Won
-- Withdrawn
+### If You Have a Gambling Problem
 
-All balances are virtual and have no real-world value. This platform is not affiliated with any real gambling operation.
+**Warning Signs**:
+- Betting money you can't afford to lose
+- Chasing losses to "win it back"
+- Lying about gambling habits
+- Neglecting responsibilities for gambling
+- Feeling guilt or shame about gambling
 
-**Gambling Laws Vary By Jurisdiction:** Real money gambling may be illegal in your location. This platform does not facilitate real gambling and should not be used to practice for real gambling, as the skills are not transferable (there are no skills—only math).
+**Get Help**:
+- **National Council on Problem Gambling**: 1-800-522-4700
+- **Gamblers Anonymous**: https://www.gamblersanonymous.org
+- **SAMHSA National Helpline**: 1-800-662-4357
 
----
+### Age Restriction
 
-## 📊 Final Statistics: Why You Should Never Gamble
-
-Let's end with cold, hard numbers.
-
-**If you bet ₹1,000 per day with a 5% house edge:**
-- Week 1: -₹350 expected loss
-- Month 1: -₹1,500 expected loss  
-- Year 1: -₹18,250 expected loss
-- 5 Years: -₹91,250 expected loss
-
-**If you bet ₹10,000 per day:**
-- Year 1: -₹182,500 expected loss
-- 5 Years: -₹912,500 expected loss
-
-**That's not "bad luck." That's mathematics.**
+While this is a demo simulation, users should be **18+ years old** due to mature subject matter regarding gambling mechanics.
 
 ---
 
-## 🏁 Conclusion: You've Been Warned
+## 📄 License & Legal
 
-You now understand:
-- ✅ The house edge is real and unavoidable
-- ✅ Every game is mathematically designed for you to lose
-- ✅ Psychological manipulation is built into every feature
-- ✅ Time and the law of large numbers guarantee your loss
-- ✅ There is no system, strategy, or trick that beats math
+### Educational License
 
-**If you still choose to gamble with real money after understanding all of this, that's a choice you're making with full knowledge that you WILL lose.**
+This project is released under an educational license:
 
-This platform has done its job if it prevents even one person from losing their savings to a real gambling site.
+**You MAY**:
+- ✅ Use the code for learning purposes
+- ✅ Study the implementation
+- ✅ Modify for educational research
+- ✅ Share with attribution to @paidguy
 
-**Play this. Learn the math. Never gamble with real money.**
+**You MAY NOT**:
+- ❌ Use for commercial gambling operations
+- ❌ Remove educational warnings and disclosures
+- ❌ Deploy for real-money gambling
+- ❌ Claim the work as your own without attribution
+
+### Attribution Required
+
+When using this code, please maintain attribution:
+
+```
+Casino Education Platform by @paidguy
+Source: https://github.com/Paidguy/casino
+Educational simulator for understanding casino mathematics
+```
+
+### Disclaimer
+
+```
+This software is provided "as is" for educational purposes only.
+The creators assume no liability for:
+- Use of this code in violation of gambling laws
+- Financial losses from misunderstanding the platform's purpose
+- Deployment for real-money gambling operations
+- Any legal consequences arising from improper use
+
+By using this software, you acknowledge that:
+- This is a simulation with no real monetary value
+- You are using it solely for educational purposes
+- You will not deploy it for actual gambling
+- You understand the mathematical certainty of loss in casino games
+```
 
 ---
 
-**Built with educational intent by [@Paidguy](https://github.com/Paidguy)**  
-**Last Updated:** January 2025  
-**Version:** 8.0 (Theater Stage Architecture)
+## 🙏 Acknowledgments
 
-*Remember: The house always wins. Always.*
+### Educational Inspiration
+
+This project draws inspiration from:
+- Academic courses on probability and statistics
+- Research papers on gambling psychology
+- Transparency initiatives in online gaming
+- The need for honest gambling education
+
+### Technology Credits
+
+- **React Team**: For the excellent React framework
+- **Vite Team**: For blazing-fast build tooling
+- **TypeScript Team**: For type safety and developer experience
+- **Recharts**: For beautiful, responsive charts
+- **Open Source Community**: For countless tools and libraries
+
+### Special Thanks
+
+To researchers, educators, and developers working to:
+- Demystify probability and randomness
+- Promote mathematical literacy
+- Expose predatory gambling practices
+- Provide honest education about casino mechanics
+
+---
+
+## 📞 Support & Contact
+
+### Getting Help
+
+- **GitHub Issues**: [Report bugs or request features](https://github.com/Paidguy/casino/issues)
+- **GitHub Discussions**: [Ask questions or share ideas](https://github.com/Paidguy/casino/discussions)
+- **Live Demo**: [Test the platform](https://paidguy.me/casino/)
+
+### Bug Reports
+
+When reporting bugs, include:
+
+```
+Browser: Chrome 120.0.6099.130
+OS: Windows 11
+Screen: 1920x1080
+Issue: [Clear description]
+Steps to reproduce:
+1. Go to /crash
+2. Place bet of ₹1000
+3. Cash out at 2.5x
+4. [Unexpected behavior]
+Expected: [What should happen]
+Actual: [What actually happened]
+Console errors: [Any error messages]
+```
+
+### Feature Requests
+
+For new educational features, describe:
+- **Educational objective**: What concept does it teach?
+- **User benefit**: How does it improve understanding?
+- **Implementation idea**: Suggested technical approach
+- **Example**: Similar feature in other educational tools
+
+---
+
+## 🎯 Final Educational Note
+
+### The Most Important Lesson
+
+**In any game with a house edge, continued play guarantees mathematical loss.**
+
+This isn't about luck, skill, or strategy—it's pure arithmetic:
+
+```
+If House Edge > 0, then:
+  Long-term Result = Starting Bankroll - (Total Wagered × House Edge)
+```
+
+No betting system, pattern analysis, or "hot streak" can overcome negative expected value.
+
+### The House Edge is NOT a Challenge
+
+It's a **mathematical certainty**, not a puzzle to solve:
+
+- Martingale system? Fails when you hit table limits or run out of money
+- Card counting in Blackjack? Reduces edge to ~0%, but still net negative
+- "Due" numbers in Matka? Every draw is independent—past results don't matter
+- Bankroll management? Slows losses but doesn't eliminate them
+
+### Use This Knowledge Wisely
+
+This platform demonstrates these truths transparently so you can:
+- Understand the math before risking real money
+- Recognize predatory gambling tactics
+- Make informed decisions
+- Help others understand why gambling isn't profitable
+
+**The house always wins**—not through cheating, but through **mathematics**.
+
+---
+
+**Built with educational purpose by [@paidguy](https://github.com/Paidguy)**
+
+**Live Demo**: [paidguy.me/casino](https://paidguy.me/casino/)
+
+*Learn. Understand. Make informed decisions.*
+
+---
+
+### Project Metadata
+
+```json
+{
+  "name": "losslimit-casino",
+  "version": "1.0.0",
+  "author": "@paidguy",
+  "purpose": "Educational gambling mathematics simulator",
+  "license": "Educational Use Only",
+  "repository": "https://github.com/Paidguy/casino",
+  "demo": "https://paidguy.me/casino/",
+  "technology": "React + TypeScript + Vite",
+  "games": 13,
+  "house_edge_range": "0.5% - 5.0%",
+  "target_audience": "Students, educators, researchers",
+  "real_money": false,
+  "age_restriction": "18+",
+  "gambling_support": "1-800-522-4700"
+}
+```
