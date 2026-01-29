@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
 import { audio } from '../services/audio';
@@ -15,6 +15,12 @@ export default function Blackjack() {
   
   const canDouble = gameState === 'PLAYER_TURN' && playerHand.length === 2;
   const [deck, setDeck] = useState<Card[]>([]);
+  const mounted = useRef<boolean>(true);
+
+  useEffect(() => {
+      mounted.current = true;
+      return () => { mounted.current = false; };
+  }, []);
 
   const generateDeck = () => {
      const suits = ['♠', '♥', '♦', '♣'];
@@ -57,8 +63,8 @@ export default function Blackjack() {
      setMessage('');
 
      if (getHandValue(p) === 21) {
-         // Instant blackjack check
          setTimeout(() => {
+             if (!mounted.current) return;
              if (getHandValue(dealer) === 21) finishGame('PUSH', p, dealer, betAmount);
              else finishGame('BLACKJACK', p, dealer, betAmount);
          }, 500);
@@ -100,15 +106,16 @@ export default function Blackjack() {
      let dHand = [...dealerHand];
      // Async loop for dealer draw
      const playDealer = async () => {
-         await new Promise(r => setTimeout(r, 800)); // Reveal delay
+         await new Promise(r => setTimeout(r, 800)); 
          
          while (getHandValue(dHand) < 17) {
+             if (!mounted.current) return;
              dHand.push(deck.pop()!);
              setDealerHand([...dHand]);
              audio.playSpin(); 
-             await new Promise(r => setTimeout(r, 800)); // Draw delay
+             await new Promise(r => setTimeout(r, 800)); 
          }
-         determineWinner(finalHand, dHand, finalBet);
+         if (mounted.current) determineWinner(finalHand, dHand, finalBet);
      };
      playDealer();
   };

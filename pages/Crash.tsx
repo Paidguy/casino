@@ -12,33 +12,39 @@ export default function Crash() {
   // Auto Bet State
   const [mode, setMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
   const [autoActive, setAutoActive] = useState(false);
-  const [autoBetCount, setAutoBetCount] = useState<number>(0); // 0 = infinite
+  const [autoBetCount, setAutoBetCount] = useState<number>(0);
   const [autoCashOutAt, setAutoCashOutAt] = useState<number>(2.00);
   const [autoBetsRemaining, setAutoBetsRemaining] = useState<number>(0);
 
-  // Refs for State Safety in Loops
+  // Refs for High-Speed Logic
   const autoStateRef = useRef({ active: false, count: 0, remaining: 0 });
   const multiplierRef = useRef<number>(1.00);
   const crashPointRef = useRef<number>(1);
   const startTimeRef = useRef<number>(0);
   const requestRef = useRef<number>(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Locks
   const isCashOutProcessing = useRef<boolean>(false);
+  const isGameRunning = useRef<boolean>(false);
+  const mounted = useRef<boolean>(true);
+
+  // UI State (Decoupled from logic for performance)
   const [displayMultiplier, setDisplayMultiplier] = useState<number>(1.00);
 
-  // Sync Ref
+  // Sync Auto Ref
   useEffect(() => {
     autoStateRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
   }, [autoActive, autoBetCount, autoBetsRemaining]);
 
-  // Clean up on unmount
+  // Mount/Unmount Cleanup
   useEffect(() => {
+      mounted.current = true;
       return () => {
+          mounted.current = false;
           if (requestRef.current) cancelAnimationFrame(requestRef.current);
-          // If unmounted while running, we must resolve the bet to prevent balance lock
-          // However, we can't easily refund here without causing issues. 
-          // Best effort: stop auto.
-          setAutoActive(false); 
+          isGameRunning.current = false;
+          setAutoActive(false);
       };
   }, []);
 
@@ -57,7 +63,7 @@ export default function Crash() {
                } else {
                    setAutoActive(false);
                }
-           }, 2000); // 2s cooldown between rounds
+           }, 2000); 
        } else {
            setAutoActive(false);
        }
@@ -67,8 +73,9 @@ export default function Crash() {
 
   // Auto Cashout Logic
   useEffect(() => {
+      // We check displayMultiplier here as a trigger, but validate against ref
       if (gameState === 'RUNNING' && mode === 'AUTO' && !isCashOutProcessing.current) {
-          if (displayMultiplier >= autoCashOutAt) {
+          if (multiplierRef.current >= autoCashOutAt) {
               cashOut();
           }
       }
@@ -90,45 +97,51 @@ export default function Crash() {
   }, [gameState]);
 
   const start = () => {
+    if (!mounted.current) return;
     const bal = engine.getSession().balance;
     if (betAmount > bal || betAmount <= 0) {
         setAutoActive(false); 
         return;
     }
     
-    try {
-      // 1. Visual Hold: Deduct balance immediately so user can't double spend
-      engine.updateBalance(-betAmount);
-      audio.playBet();
-      
-      // 2. Determine Fate
-      const r = engine.peekNextRandom();
-      crashPointRef.current = engine.getCrashPoint(r);
-      
-      // 3. Reset State
-      multiplierRef.current = 1.00;
-      startTimeRef.current = performance.now();
-      isCashOutProcessing.current = false;
-      setDisplayMultiplier(1.00);
-      setGameState('RUNNING');
-      
-      // 4. Start Animation
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-      requestRef.current = requestAnimationFrame(animate);
-    } catch (e) { console.error(e); }
+    // 1. Visual Hold
+    engine.updateBalance(-betAmount);
+    audio.playBet();
+    
+    // 2. Determine Fate
+    const r = engine.peekNextRandom();
+    crashPointRef.current = engine.getCrashPoint(r);
+    
+    // 3. Reset State
+    multiplierRef.current = 1.00;
+    startTimeRef.current = performance.now();
+    isCashOutProcessing.current = false;
+    isGameRunning.current = true;
+    
+    setDisplayMultiplier(1.00);
+    setGameState('RUNNING');
+    
+    // 4. Start Animation
+    if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    requestRef.current = requestAnimationFrame(animate);
   };
 
   const animate = (time: number) => {
-    if (isCashOutProcessing.current) return;
+    // Safety check: if cancelled but frame still fired
+    if (!isGameRunning.current || isCashOutProcessing.current) return;
 
     const elapsed = (time - startTimeRef.current) / 1000;
+    // Formula: 6% growth per second
     const currentMult = Math.pow(Math.E, 0.06 * elapsed);
     
     multiplierRef.current = currentMult;
     drawGraph(elapsed, currentMult);
 
-    // Throttle UI updates to 60fps equivalent but decouple slightly
-    setDisplayMultiplier(currentMult);
+    // Throttle React State Updates for performance (every ~30ms)
+    // We update UI slightly less often than the canvas draws
+    if (Math.random() > 0.3 && mounted.current) {
+        setDisplayMultiplier(currentMult);
+    }
 
     if (currentMult >= crashPointRef.current) {
       handleCrash(crashPointRef.current);
@@ -138,46 +151,59 @@ export default function Crash() {
   };
 
   const handleCrash = (finalMult: number) => {
+      isGameRunning.current = false;
       cancelAnimationFrame(requestRef.current);
-      multiplierRef.current = finalMult;
-      setDisplayMultiplier(finalMult);
-      setGameState('CRASHED');
-      audio.playLoss();
-      setHistory(prev => [finalMult, ...prev].slice(0, 8));
       
-      // LOGIC FIX: Refund the visual hold, then commit the real bet (loss)
-      // This ensures stats (wagered, loss count) are correct in engine
-      engine.updateBalance(betAmount); // Refund
+      if (mounted.current) {
+          multiplierRef.current = finalMult;
+          setDisplayMultiplier(finalMult);
+          setGameState('CRASHED');
+          setHistory(prev => [finalMult, ...prev].slice(0, 8));
+      }
+      
+      audio.playLoss();
+      
+      // LOGIC: Refund hold -> Place real bet (Loss)
+      engine.updateBalance(betAmount); 
       engine.placeBet(GameType.CRASH, betAmount, 0, `Crashed @ ${finalMult.toFixed(2)}x`);
       
-      setTimeout(() => setGameState('IDLE'), 3000); 
+      if (mounted.current) {
+          setTimeout(() => { if (mounted.current) setGameState('IDLE'); }, 3000); 
+      }
   };
 
   const cashOut = () => {
-    if (gameState !== 'RUNNING' || isCashOutProcessing.current) return;
+    // 1. CRITICAL: Stop everything immediately
+    if (!isGameRunning.current || isCashOutProcessing.current) return;
     
-    // 1. Lock immediately
     isCashOutProcessing.current = true;
+    isGameRunning.current = false;
     cancelAnimationFrame(requestRef.current); 
+    
     const finalMult = multiplierRef.current;
     
-    // Safety check: Did we crash in the last millisecond?
+    // 2. Sanity Check: Did it crash exactly when we clicked?
     if (finalMult > crashPointRef.current) {
         handleCrash(crashPointRef.current);
         return;
     }
 
-    // 2. Success State
-    setGameState('CASHED_OUT');
-    setDisplayMultiplier(finalMult);
-    audio.playWin();
-    setHistory(prev => [crashPointRef.current, ...prev].slice(0, 8));
+    // 3. Success
+    if (mounted.current) {
+        setGameState('CASHED_OUT');
+        setDisplayMultiplier(finalMult);
+        setHistory(prev => [crashPointRef.current, ...prev].slice(0, 8));
+    }
     
-    // 3. Logic Fix: Refund visual hold, then commit real bet (win)
-    engine.updateBalance(betAmount); // Refund
+    audio.playWin();
+    
+    // 4. LOGIC: Refund hold -> Place real bet (Win)
+    engine.updateBalance(betAmount); 
     engine.placeBet(GameType.CRASH, betAmount, finalMult, `Cashed out @ ${finalMult.toFixed(2)}x`);
     
-    setTimeout(() => setGameState('IDLE'), 2000);
+    if (mounted.current) {
+        setTimeout(() => { if (mounted.current) setGameState('IDLE'); }, 2000);
+    }
   };
 
   const drawGraph = (t: number, m: number) => {
@@ -202,8 +228,8 @@ export default function Crash() {
     ctx.lineTo(w - padding, h - padding);
     ctx.stroke();
 
-    // Line
-    const crashed = m >= crashPointRef.current && gameState === 'CRASHED';
+    // Curve
+    const crashed = m >= crashPointRef.current && !isGameRunning.current && gameState === 'CRASHED';
     ctx.strokeStyle = crashed ? '#ef4444' : '#facc15';
     ctx.lineWidth = 4 * window.devicePixelRatio;
     ctx.lineCap = 'round';
@@ -216,8 +242,6 @@ export default function Crash() {
     for (let i = 0; i <= steps; i++) {
         const stepT = (t / steps) * i;
         const stepM = Math.pow(Math.E, 0.06 * stepT);
-        
-        // Scale logic to keep line in view
         const scaleX = Math.max(10, t * 1.2); 
         const scaleY = Math.max(2, m * 1.2);
         
@@ -227,7 +251,7 @@ export default function Crash() {
     }
     ctx.stroke();
     
-    // Fill
+    // Fill Area
     ctx.fillStyle = crashed ? 'rgba(239, 68, 68, 0.15)' : 'rgba(250, 204, 21, 0.1)';
     ctx.lineTo(padding + (t / Math.max(10, t*1.2)) * graphW, h - padding);
     ctx.lineTo(padding, h - padding);
@@ -316,17 +340,19 @@ export default function Crash() {
               {mode === 'MANUAL' ? (
                 gameState === 'RUNNING' ? (
                     <button 
+                        type="button"
                         onClick={cashOut} 
-                        className="w-full py-4 bg-bet-success text-bet-950 font-black text-2xl rounded-xl shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest cursor-pointer cyan-glow"
+                        className="w-full py-4 bg-bet-success text-bet-950 font-black text-2xl rounded-xl shadow-[0_0_30px_rgba(34,197,94,0.4)] active:scale-90 active:bg-emerald-400 transition-all uppercase tracking-widest cursor-pointer cyan-glow touch-manipulation select-none"
                     >
                         Cash Out
                         <span className="block text-sm opacity-80">₹{(betAmount * displayMultiplier).toFixed(0)}</span>
                     </button>
                 ) : (
                     <button 
+                        type="button"
                         onClick={start} 
                         disabled={betAmount <= 0} 
-                        className="w-full py-4 bg-bet-accent text-black font-black text-lg rounded-xl shadow-lg transition-all uppercase tracking-widest hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 cursor-pointer"
+                        className="w-full py-4 bg-bet-accent text-black font-black text-lg rounded-xl shadow-lg transition-all uppercase tracking-widest hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 cursor-pointer touch-manipulation select-none"
                     >
                         Bet Lagao
                     </button>

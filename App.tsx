@@ -30,10 +30,7 @@ interface ErrorBoundaryState {
 
 // Simple Error Boundary to catch render crashes (blank screens)
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
+  public state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(error: any) {
     return { hasError: true };

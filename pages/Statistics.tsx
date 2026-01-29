@@ -24,7 +24,7 @@ export default function Statistics() {
       
       // Net Profit from Gameplay (Payout - Wagered)
       // We use totalPayout if available (added in recent engine update), else approximation
-      const totalPayout = session.totalPayout || (session.gameStats ? Object.values(session.gameStats).reduce((a, b: GameStats) => a + b.payout, 0) : 0);
+      const totalPayout = session.totalPayout || (session.gameStats ? Object.values(session.gameStats).reduce((a: number, b: GameStats) => a + b.payout, 0) : 0);
       const totalWagered = session.totalWagered || 0;
       const netProfit = totalPayout - totalWagered;
       const rtp = totalWagered > 0 ? (totalPayout / totalWagered) * 100 : 0;

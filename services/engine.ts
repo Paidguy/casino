@@ -178,7 +178,9 @@ export class SimulationEngine {
   public placeBet(game: GameType, amount: number, multiplierOrResolver: number | ((r: number) => { multiplier: number, outcome: string }), outcomeStr?: string): BetResult {
     const currentSession = this.session; 
     
+    // Safety check for invalid inputs
     if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount) || amount < 0) {
+        console.error("Invalid bet amount:", amount);
         return {
              id: 'ERR', gameType: game, betAmount: 0, payoutMultiplier: 0, payoutAmount: 0, timestamp: Date.now(), outcome: 'Error', balanceAfter: currentSession.balance, nonce: 0, clientSeed: '', serverSeedHash: '', resultInput: 0
         }; 
@@ -195,13 +197,19 @@ export class SimulationEngine {
 
     try {
         if (typeof multiplierOrResolver === 'function') {
-            const r = this.peekNextRandom(); // Use the rigged/RNG function
+            const r = this.peekNextRandom(); 
             const res = multiplierOrResolver(r);
             multiplier = res.multiplier;
             outcome = res.outcome;
         } else {
             multiplier = multiplierOrResolver;
             outcome = outcomeStr || '';
+        }
+        
+        // Sanitize multiplier
+        if (isNaN(multiplier) || !isFinite(multiplier)) {
+            multiplier = 0;
+            outcome = 'Error: Invalid Multiplier';
         }
     } catch (e) {
         console.error("Error calculating bet result:", e);
