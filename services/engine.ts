@@ -92,8 +92,9 @@ export class SimulationEngine {
         // Merge gameStats safely using helper
         const defaultStats = this.initializeGameStats();
         const mergedGameStats = { ...defaultStats, ...(parsed.gameStats || {}) };
+        // Ensure all game types are present with fresh stat objects
         Object.values(GameType).forEach(g => {
-            if (!mergedGameStats[g]) mergedGameStats[g] = defaultStats[g];
+            if (!mergedGameStats[g]) mergedGameStats[g] = { ...defaultStats[g] };
         });
 
         const mergedSettings: AdminSettings = {
@@ -249,7 +250,7 @@ export class SimulationEngine {
     // Ensure game stats exist using helper
     if (!this.session.gameStats[game]) {
         const defaultStats = this.initializeGameStats();
-        this.session.gameStats[game] = defaultStats[game];
+        this.session.gameStats[game] = { ...defaultStats[game] };
     }
     const gs = this.session.gameStats[game];
     gs.bets += 1;
