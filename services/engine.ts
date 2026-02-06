@@ -1,21 +1,21 @@
 import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction, LeaderboardEntry, GameStats } from '../types';
-
-const DAILY_ALLOWANCE = 100000;
-const STORAGE_KEY = 'satking_pro_v2';
-
-const BOTS: LeaderboardEntry[] = [
-  { username: 'Rahul_Satta_King', wagered: 850000, maxMultiplier: 45.0 },
-  { username: 'Mumbai_Khaiwal', wagered: 2200000, maxMultiplier: 120.0 },
-  { username: 'Delhi_Tiger_786', wagered: 1400000, maxMultiplier: 9.0 },
-  { username: 'Gully_Sniper_Boss', wagered: 95000, maxMultiplier: 22.0 },
-  { username: 'Kalyan_Expert_Punter', wagered: 3500000, maxMultiplier: 100.0 },
-];
+import { getSecureRandom, generateSecureId, generateSecureSeed } from '../utils/crypto';
+import { logError, BetValidationError } from '../utils/errorHandler';
+import {
+  DAILY_ALLOWANCE,
+  STORAGE_KEY,
+  MAX_HISTORY_SIZE,
+  MAX_TRANSACTIONS_SIZE,
+  BOT_LEADERBOARD,
+  SAVE_DEBOUNCE_MS,
+  RAKEBACK_RATE
+} from '../constants/game';
 
 export class SimulationEngine {
   private session: UserSession;
   private listenerMap = new Map<number, (session: UserSession) => void>();
   private listenerIdCounter = 0;
-  private saveTimeout: any = null;
+  private saveTimeout: ReturnType<typeof setTimeout> | null = null;
   private unloadHandler = () => this.saveSessionImmediate();
 
   constructor() {
@@ -24,6 +24,20 @@ export class SimulationEngine {
     if (typeof window !== 'undefined') {
         window.addEventListener('beforeunload', this.unloadHandler);
     }
+  }
+
+  /**
+   * Clean up event listeners and resources
+   * Call this before destroying the engine instance
+   */
+  public destroy(): void {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('beforeunload', this.unloadHandler);
+    }
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    this.listenerMap.clear();
   }
 
   public subscribe(listener: (session: UserSession) => void) {
@@ -47,7 +61,7 @@ export class SimulationEngine {
 
   private createDefaultSession(): UserSession {
     return {
-      id: Math.random().toString(36).substring(7),
+      id: generateSecureId(),
       username: 'Punter_' + Math.floor(1000 + Math.random() * 9000),
       balance: DAILY_ALLOWANCE,
       rakebackBalance: 0,
@@ -63,8 +77,8 @@ export class SimulationEngine {
       history: [],
       transactions: [],
       gameStats: this.initializeGameStats(),
-      clientSeed: Math.random().toString(36),
-      serverSeed: Math.random().toString(36),
+      clientSeed: generateSecureSeed(),
+      serverSeed: generateSecureSeed(),
       nonce: 0,
       settings: {
         isRigged: false,
@@ -124,8 +138,12 @@ export class SimulationEngine {
         };
       }
     } catch (e) {
-      console.error("Failed to load session, resetting:", e);
-      try { localStorage.removeItem(STORAGE_KEY); } catch(err) {}
+      logError("Session load", e, { storageKey: STORAGE_KEY });
+      try { 
+        localStorage.removeItem(STORAGE_KEY); 
+      } catch(err) {
+        logError("Failed to clear corrupted session", err);
+      }
     }
     return this.initializeSession();
   }
@@ -147,7 +165,7 @@ export class SimulationEngine {
     if (this.saveTimeout) clearTimeout(this.saveTimeout);
     this.saveTimeout = setTimeout(() => {
         this.saveSessionImmediate();
-    }, 2000);
+    }, SAVE_DEBOUNCE_MS);
   }
 
   public getSession(): UserSession {
@@ -160,9 +178,13 @@ export class SimulationEngine {
     this.saveSession(this.session);
   }
 
+  /**
+   * Generate a cryptographically secure random number
+   * Used for game outcomes to ensure fairness
+   */
   public peekNextRandom(): number {
-    const r = Math.random();
-    // Apply Admin Rigging logic
+    const r = getSecureRandom();
+    // Apply Admin Rigging logic (for simulation purposes only)
     if (this.session.settings.isRigged) {
         // If rigged, shift randomness towards loss (lower numbers usually mean loss in crash/dice)
         return r * 0.8; 
@@ -172,7 +194,7 @@ export class SimulationEngine {
 
   private logTransaction(type: Transaction['type'], amount: number, method: string) {
       const tx: Transaction = {
-          id: 'TX_' + Math.random().toString(36).substring(2, 9).toUpperCase(),
+          id: 'TX_' + generateSecureId().substring(0, 7).toUpperCase(),
           type,
           amount,
           timestamp: Date.now(),
@@ -180,7 +202,7 @@ export class SimulationEngine {
           method
       };
       // Optimize: avoid spreading entire array when at max capacity
-      if (this.session.transactions.length >= 100) {
+      if (this.session.transactions.length >= MAX_TRANSACTIONS_SIZE) {
           this.session.transactions.pop();
       }
       this.session.transactions.unshift(tx);
@@ -191,10 +213,10 @@ export class SimulationEngine {
     const currentSession = this.session; 
     
     // Safety check for invalid inputs
-    if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount) || amount < 0) {
-        console.error("Invalid bet amount:", amount);
+    if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount) || amount <= 0) {
+        logError("Invalid bet amount", new BetValidationError(`Invalid amount: ${amount}`), { game, amount });
         return {
-             id: 'ERR', gameType: game, betAmount: 0, payoutMultiplier: 0, payoutAmount: 0, timestamp: Date.now(), outcome: 'Error', balanceAfter: currentSession.balance, nonce: 0, clientSeed: '', serverSeedHash: '', resultInput: 0
+             id: 'ERR', gameType: game, betAmount: 0, payoutMultiplier: 0, payoutAmount: 0, timestamp: Date.now(), outcome: 'Invalid Bet Amount', balanceAfter: currentSession.balance, nonce: 0, clientSeed: '', serverSeedHash: '', resultInput: 0
         }; 
     }
     
@@ -224,7 +246,7 @@ export class SimulationEngine {
             outcome = 'Error: Invalid Multiplier';
         }
     } catch (e) {
-        console.error("Error calculating bet result:", e);
+        logError("Bet calculation", e, { game, amount });
         multiplier = 0;
         outcome = "System Error - Bet Refunded";
         amount = 0; 
@@ -240,7 +262,7 @@ export class SimulationEngine {
     this.session.totalWagered += amount;
     this.session.totalBets += 1;
     this.session.totalPayout += payout;
-    this.session.rakebackBalance += amount * 0.005;
+    this.session.rakebackBalance += amount * RAKEBACK_RATE;
     
     if (payout > amount) this.session.totalWins++;
     else this.session.totalLosses++;
@@ -259,7 +281,7 @@ export class SimulationEngine {
     if (payout > amount) gs.wins += 1;
 
     const record: BetResult = {
-      id: Math.random().toString(36).substring(7),
+      id: generateSecureId(),
       gameType: game,
       betAmount: amount,
       payoutMultiplier: multiplier,
@@ -270,12 +292,12 @@ export class SimulationEngine {
       nonce: this.session.nonce++,
       clientSeed: this.session.clientSeed,
       serverSeedHash: 'verified_' + this.session.serverSeed.substring(0, 8),
-      resultInput: Math.random()
+      resultInput: getSecureRandom()
     };
 
     const safeHistory = Array.isArray(this.session.history) ? this.session.history : [];
     // Optimize: avoid spreading entire array when at max capacity
-    if (safeHistory.length >= 50) {
+    if (safeHistory.length >= MAX_HISTORY_SIZE) {
         safeHistory.pop();
     }
     this.session.history = [record, ...safeHistory];
@@ -304,7 +326,7 @@ export class SimulationEngine {
   }
 
   public getLeaderboard() {
-    return [...BOTS, { username: this.session.username, wagered: this.session.totalWagered, maxMultiplier: this.session.maxMultiplier, isPlayer: true }]
+    return [...BOT_LEADERBOARD, { username: this.session.username, wagered: this.session.totalWagered, maxMultiplier: this.session.maxMultiplier, isPlayer: true }]
       .sort((a,b) => b.wagered - a.wagered);
   }
 
@@ -398,16 +420,28 @@ export class SimulationEngine {
     return { symbols: res, multiplier };
   }
 
+  /**
+   * Generate a mines grid using Fisher-Yates shuffle for better performance
+   * Time complexity: O(n) instead of potentially O(n²)
+   */
   public generateMinesGrid(r: number, minesCount: number): boolean[] {
-    const grid = Array(25).fill(false);
-    let placed = 0;
-    while (placed < minesCount) {
-      const idx = Math.floor(Math.random() * 25);
-      if (!grid[idx]) {
-        grid[idx] = true;
-        placed++;
-      }
+    const totalCells = 25;
+    const grid = Array(totalCells).fill(false);
+    
+    // Create array of indices and shuffle the required number
+    const indices = Array.from({length: totalCells}, (_, i) => i);
+    
+    // Fisher-Yates shuffle for the mine positions
+    for (let i = totalCells - 1; i >= totalCells - minesCount; i--) {
+      const j = Math.floor(getSecureRandom() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
     }
+    
+    // Place mines at shuffled positions
+    for (let i = totalCells - minesCount; i < totalCells; i++) {
+      grid[indices[i]] = true;
+    }
+    
     return grid;
   }
 

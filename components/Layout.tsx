@@ -1,10 +1,24 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserSession } from '../types';
 import { engine } from '../services/engine';
 import { audio } from '../services/audio';
 import { LiveFeed } from './LiveFeed';
 import { MarketingOverlay } from './MarketingOverlay';
+import { DEPOSIT_AMOUNTS } from '../constants/game';
+
+// --- Type Definitions ---
+
+interface MenuItem {
+  label: string;
+  to: string;
+  icon: string;
+}
+
+interface MenuCategory {
+  name: string;
+  items: MenuItem[];
+}
 
 // --- Atomic Components for Performance ---
 
@@ -30,6 +44,20 @@ const WalletWidget = () => {
         return engine.subscribe((s) => setBalance(s.balance));
     }, []);
 
+    const handleDeposit = useCallback((amount: number) => {
+      engine.deposit(amount, 'UPI');
+      setShowDeposit(false);
+      audio.playWin();
+    }, []);
+
+    const handleCustomDeposit = useCallback(() => {
+      const amt = parseInt(customDeposit);
+      if (amt > 0) {
+        handleDeposit(amt);
+        setCustomDeposit('');
+      }
+    }, [customDeposit, handleDeposit]);
+
     return (
         <>
             <div className="flex items-center gap-2 lg:gap-4">
@@ -41,6 +69,7 @@ const WalletWidget = () => {
                     <button 
                         onClick={() => { setShowDeposit(true); audio.playClick(); }} 
                         className="bg-bet-primary text-bet-950 px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg text-[9px] lg:text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all bazar-font shadow-lg"
+                        aria-label="Open deposit modal"
                     >
                         Refill
                     </button>
@@ -55,12 +84,24 @@ const WalletWidget = () => {
                                 <h2 className="text-2xl font-black text-white italic uppercase leading-none bazar-font tracking-widest">Instant <span className="text-bet-primary">Cash</span></h2>
                                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Authorized Gateway @paidguy</p>
                             </div>
-                            <button onClick={() => setShowDeposit(false)} className="w-8 h-8 bg-white/5 rounded-full text-white text-lg flex items-center justify-center hover:bg-bet-danger transition-colors">✕</button>
+                            <button 
+                              onClick={() => setShowDeposit(false)} 
+                              className="w-8 h-8 bg-white/5 rounded-full text-white text-lg flex items-center justify-center hover:bg-bet-danger transition-colors"
+                              aria-label="Close deposit modal"
+                            >
+                              ✕
+                            </button>
                         </div>
                         <div className="p-6 lg:p-8 space-y-4">
                             <div className="grid grid-cols-2 gap-3">
-                                {[10000, 50000, 100000, 500000].map(amt => (
-                                    <button key={amt} onClick={() => { engine.deposit(amt, 'UPI'); setShowDeposit(false); audio.playWin(); }} className="py-4 bg-bet-800 hover:bg-bet-primary hover:text-bet-950 border border-white/10 rounded-xl text-sm lg:text-base font-black text-white transition-all active:scale-95">₹{amt.toLocaleString()}</button>
+                                {DEPOSIT_AMOUNTS.map(amt => (
+                                    <button 
+                                      key={amt} 
+                                      onClick={() => handleDeposit(amt)} 
+                                      className="py-4 bg-bet-800 hover:bg-bet-primary hover:text-bet-950 border border-white/10 rounded-xl text-sm lg:text-base font-black text-white transition-all active:scale-95"
+                                    >
+                                      ₹{amt.toLocaleString()}
+                                    </button>
                                 ))}
                             </div>
                             <div className="relative pt-2">
@@ -71,18 +112,12 @@ const WalletWidget = () => {
                                     onChange={(e) => setCustomDeposit(e.target.value)}
                                     placeholder="Custom Amount"
                                     className="w-full bg-black border border-white/10 rounded-xl pl-8 pr-20 py-4 text-white font-black outline-none focus:border-bet-primary transition-all placeholder:text-slate-700 placeholder:font-bold"
+                                    aria-label="Custom deposit amount"
                                 />
                                 <button 
-                                    onClick={() => { 
-                                        const amt = parseInt(customDeposit);
-                                        if (amt > 0) {
-                                            engine.deposit(amt, 'UPI'); 
-                                            setShowDeposit(false); 
-                                            setCustomDeposit('');
-                                            audio.playWin(); 
-                                        }
-                                    }}
+                                    onClick={handleCustomDeposit}
                                     className="absolute right-2 top-2 bottom-2 bg-bet-primary text-bet-950 px-4 rounded-lg font-black uppercase text-[10px] tracking-widest hover:bg-white transition-colors"
+                                    aria-label="Add custom amount"
                                 >
                                     Add
                                 </button>
@@ -95,7 +130,7 @@ const WalletWidget = () => {
     );
 };
 
-const SidebarItem = memo(({ item, active, onClick }: { item: any, active: boolean, onClick: () => void }) => (
+const SidebarItem = memo(({ item, active, onClick }: { item: MenuItem, active: boolean, onClick: () => void }) => (
     <Link 
       to={item.to} 
       onClick={onClick}
@@ -106,8 +141,8 @@ const SidebarItem = memo(({ item, active, onClick }: { item: any, active: boolea
     </Link>
 ));
 
-const MemoizedSidebar = memo(({ open, setOpen, location }: { open: boolean, setOpen: (o: boolean) => void, location: any }) => {
-    const gameCategories = [
+const MemoizedSidebar = memo(({ open, setOpen, location }: { open: boolean, setOpen: (o: boolean) => void, location: ReturnType<typeof useLocation> }) => {
+    const gameCategories: MenuCategory[] = [
         {
             name: "Live Bazar",
             items: [
@@ -139,7 +174,7 @@ const MemoizedSidebar = memo(({ open, setOpen, location }: { open: boolean, setO
         }
     ];
 
-    const systemMenu = [
+    const systemMenu: MenuItem[] = [
         { label: 'My Statistics', to: '/statistics', icon: '📈' },
         { label: 'Ledger', to: '/transactions', icon: '📜' },
         { label: 'Fairness', to: '/fairness', icon: '🔒' },
@@ -154,7 +189,13 @@ const MemoizedSidebar = memo(({ open, setOpen, location }: { open: boolean, setO
                         <div className="w-8 h-8 bg-gradient-to-br from-bet-primary to-bet-secondary rounded-lg flex items-center justify-center text-white font-black text-lg shadow-xl animate-pulse-neon">S</div>
                         <div className="text-white font-black text-lg tracking-tighter uppercase italic bazar-font">SATTA<span className="text-bet-primary">KING</span></div>
                     </Link>
-                    <button onClick={() => setOpen(false)} className="lg:hidden text-slate-500 text-xl">✕</button>
+                    <button 
+                      onClick={() => setOpen(false)} 
+                      className="lg:hidden text-slate-500 text-xl"
+                      aria-label="Close sidebar"
+                    >
+                      ✕
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
@@ -185,11 +226,21 @@ const MemoizedSidebar = memo(({ open, setOpen, location }: { open: boolean, setO
                         </div>
                         <div className="w-2 h-2 rounded-full bg-bet-success animate-pulse shadow-[0_0_10px_#22c55e] shrink-0 ml-2"></div>
                     </div>
-                    <button onClick={() => engine.resetBalance()} className="w-full py-2.5 bg-bet-800 rounded-xl text-[9px] font-black uppercase text-slate-500 hover:bg-bet-danger hover:text-white transition-all border border-white/5">Destroy Session</button>
+                    <button 
+                      onClick={() => engine.resetBalance()} 
+                      className="w-full py-2.5 bg-bet-800 rounded-xl text-[9px] font-black uppercase text-slate-500 hover:bg-bet-danger hover:text-white transition-all border border-white/5"
+                      aria-label="Reset balance"
+                    >
+                      Destroy Session
+                    </button>
                 </div>
             </aside>
             {open && (
-                <div className="fixed inset-0 bg-black/80 z-[1000] lg:hidden backdrop-blur-sm" onClick={() => setOpen(false)}></div>
+                <div 
+                  className="fixed inset-0 bg-black/80 z-[1000] lg:hidden backdrop-blur-sm" 
+                  onClick={() => setOpen(false)}
+                  aria-label="Close sidebar overlay"
+                ></div>
             )}
         </>
     );
