@@ -46,6 +46,21 @@ export default function Statistics() {
       return { winRate, netProfit, rtp, gameDist, balanceHistory, totalPayout };
   }, [session]);
 
+  // Memoize expensive game stats table computation
+  const gameStatsRows = useMemo(() => {
+    return Object.entries((session.gameStats || {}) as Record<string, GameStats>)
+      .filter(([_, s]) => s.bets > 0)
+      .sort((a, b) => b[1].wagered - a[1].wagered)
+      .map(([game, s]) => ({
+        game,
+        bets: s.bets,
+        wagered: s.wagered,
+        payout: s.payout,
+        profit: s.payout - s.wagered,
+        rtp: s.wagered > 0 ? (s.payout / s.wagered) * 100 : 0
+      }));
+  }, [session.gameStats]);
+
   const StatCard = ({ label, value, sub, color, delay }: any) => (
       <div className={`bg-bet-900 p-8 rounded-[2.5rem] border border-white/5 shadow-xl transition-all duration-1000 transform ${animate ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`} style={{ transitionDelay: `${delay}ms` }}>
           <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">{label}</div>
@@ -192,32 +207,25 @@ export default function Statistics() {
                          </tr>
                      </thead>
                      <tbody className="divide-y divide-white/5 text-[11px] font-bold">
-                         {Object.entries((session.gameStats || {}) as Record<string, GameStats>)
-                            .filter(([_, s]) => s.bets > 0)
-                            .sort((a, b) => b[1].wagered - a[1].wagered)
-                            .map(([game, s]) => {
-                                const profit = s.payout - s.wagered;
-                                const gameRtp = s.wagered > 0 ? (s.payout / s.wagered) * 100 : 0;
-                                return (
-                                    <tr key={game} className="group hover:bg-white/[0.02] transition-colors">
-                                        <td className="px-8 py-5">
-                                            <div className="font-black text-white uppercase italic tracking-wide group-hover:text-bet-primary transition-colors">{game}</div>
-                                        </td>
-                                        <td className="px-6 py-5 text-right text-slate-400">{s.bets}</td>
-                                        <td className="px-6 py-5 text-right text-white tabular-nums">₹{s.wagered.toLocaleString()}</td>
-                                        <td className="px-6 py-5 text-right text-bet-accent tabular-nums">₹{s.payout.toLocaleString()}</td>
-                                        <td className={`px-6 py-5 text-right tabular-nums font-black ${profit >= 0 ? 'text-bet-success' : 'text-bet-danger'}`}>
-                                            {profit >= 0 ? '+' : ''}₹{Math.floor(profit).toLocaleString()}
-                                        </td>
-                                        <td className="px-8 py-5 text-right">
-                                            <div className={`inline-block px-2 py-1 rounded-md text-[9px] font-black ${gameRtp > 100 ? 'bg-bet-success/10 text-bet-success' : 'bg-slate-800 text-slate-400'}`}>
-                                                {gameRtp.toFixed(1)}%
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                         {Object.values(session.gameStats || {}).every((s: any) => s.bets === 0) && (
+                         {gameStatsRows.map(({ game, profit, rtp, bets, wagered, payout }) => (
+                             <tr key={game} className="group hover:bg-white/[0.02] transition-colors">
+                                 <td className="px-8 py-5">
+                                     <div className="font-black text-white uppercase italic tracking-wide group-hover:text-bet-primary transition-colors">{game}</div>
+                                 </td>
+                                 <td className="px-6 py-5 text-right text-slate-400">{bets}</td>
+                                 <td className="px-6 py-5 text-right text-white tabular-nums">₹{wagered.toLocaleString()}</td>
+                                 <td className="px-6 py-5 text-right text-bet-accent tabular-nums">₹{payout.toLocaleString()}</td>
+                                 <td className={`px-6 py-5 text-right tabular-nums font-black ${profit >= 0 ? 'text-bet-success' : 'text-bet-danger'}`}>
+                                     {profit >= 0 ? '+' : ''}₹{Math.floor(profit).toLocaleString()}
+                                 </td>
+                                 <td className="px-8 py-5 text-right">
+                                     <div className={`inline-block px-2 py-1 rounded-md text-[9px] font-black ${rtp > 100 ? 'bg-bet-success/10 text-bet-success' : 'bg-slate-800 text-slate-400'}`}>
+                                         {rtp.toFixed(1)}%
+                                     </div>
+                                 </td>
+                             </tr>
+                         ))}
+                         {gameStatsRows.length === 0 && (
                              <tr>
                                  <td colSpan={6} className="px-8 py-12 text-center text-slate-600 font-black uppercase tracking-widest text-xs">
                                      No gameplay data recorded yet.

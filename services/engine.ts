@@ -13,33 +13,39 @@ const BOTS: LeaderboardEntry[] = [
 
 export class SimulationEngine {
   private session: UserSession;
-  private listeners: ((session: UserSession) => void)[] = [];
+  private listenerMap = new Map<number, (session: UserSession) => void>();
+  private listenerIdCounter = 0;
   private saveTimeout: any = null;
+  private unloadHandler = () => this.saveSessionImmediate();
 
   constructor() {
     this.session = this.loadSession();
     // Ensure state is saved if user abruptly closes tab
     if (typeof window !== 'undefined') {
-        window.addEventListener('beforeunload', () => this.saveSessionImmediate());
+        window.addEventListener('beforeunload', this.unloadHandler);
     }
   }
 
   public subscribe(listener: (session: UserSession) => void) {
-    this.listeners.push(listener);
+    const id = this.listenerIdCounter++;
+    this.listenerMap.set(id, listener);
     try { listener({ ...this.session }); } catch (e) { console.error(e); }
-    return () => { this.listeners = this.listeners.filter(l => l !== listener); };
+    return () => { this.listenerMap.delete(id); };
   }
 
   private notify() {
-    this.listeners.forEach(l => { try { l({ ...this.session }); } catch (e) { console.error(e); } });
+    this.listenerMap.forEach(l => { try { l({ ...this.session }); } catch (e) { console.error(e); } });
+  }
+
+  private initializeGameStats(): Record<string, GameStats> {
+    const stats: Record<string, GameStats> = {};
+    Object.values(GameType).forEach(g => {
+      stats[g] = { bets: 0, wagered: 0, wins: 0, payout: 0 };
+    });
+    return stats;
   }
 
   private createDefaultSession(): UserSession {
-    const gameStats: Record<string, GameStats> = {};
-    Object.values(GameType).forEach(g => {
-        gameStats[g] = { bets: 0, wagered: 0, wins: 0, payout: 0 };
-    });
-
     return {
       id: Math.random().toString(36).substring(7),
       username: 'Punter_' + Math.floor(1000 + Math.random() * 9000),
@@ -56,7 +62,7 @@ export class SimulationEngine {
       maxMultiplier: 0,
       history: [],
       transactions: [],
-      gameStats,
+      gameStats: this.initializeGameStats(),
       clientSeed: Math.random().toString(36),
       serverSeed: Math.random().toString(36),
       nonce: 0,
@@ -83,10 +89,11 @@ export class SimulationEngine {
         const safeHistory = Array.isArray(parsed.history) ? parsed.history : [];
         const safeTransactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
 
-        // Merge gameStats safely
-        const mergedGameStats = { ...defaults.gameStats, ...(parsed.gameStats || {}) };
+        // Merge gameStats safely using helper
+        const defaultStats = this.initializeGameStats();
+        const mergedGameStats = { ...defaultStats, ...(parsed.gameStats || {}) };
         Object.values(GameType).forEach(g => {
-            if (!mergedGameStats[g]) mergedGameStats[g] = { bets: 0, wagered: 0, wins: 0, payout: 0 };
+            if (!mergedGameStats[g]) mergedGameStats[g] = defaultStats[g];
         });
 
         const mergedSettings: AdminSettings = {
@@ -171,7 +178,11 @@ export class SimulationEngine {
           status: 'COMPLETED',
           method
       };
-      this.session.transactions = [tx, ...this.session.transactions].slice(0, 100);
+      // Optimize: avoid spreading entire array when at max capacity
+      if (this.session.transactions.length >= 100) {
+          this.session.transactions.pop();
+      }
+      this.session.transactions.unshift(tx);
       this.saveSession(this.session);
   }
 
@@ -235,8 +246,10 @@ export class SimulationEngine {
 
     if (multiplier > this.session.maxMultiplier) this.session.maxMultiplier = multiplier;
 
+    // Ensure game stats exist using helper
     if (!this.session.gameStats[game]) {
-        this.session.gameStats[game] = { bets: 0, wagered: 0, wins: 0, payout: 0 };
+        const defaultStats = this.initializeGameStats();
+        this.session.gameStats[game] = defaultStats[game];
     }
     const gs = this.session.gameStats[game];
     gs.bets += 1;
@@ -260,7 +273,11 @@ export class SimulationEngine {
     };
 
     const safeHistory = Array.isArray(this.session.history) ? this.session.history : [];
-    this.session.history = [record, ...safeHistory].slice(0, 50);
+    // Optimize: avoid spreading entire array when at max capacity
+    if (safeHistory.length >= 50) {
+        safeHistory.pop();
+    }
+    this.session.history = [record, ...safeHistory];
     
     this.saveSession(this.session);
     return record;

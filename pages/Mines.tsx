@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Layout } from '../components/Layout';
 import { engine } from '../services/engine';
 import { audio } from '../services/audio';
@@ -32,8 +32,11 @@ export default function Mines() {
     return m;
   };
 
-  const revealedCount = revealed.filter(r => r).length;
-  const currentMult = getMultiplier(revealedCount);
+  // Memoize multiplier calculation to avoid recalculation on every render
+  const currentMult = useMemo(() => {
+    const revealedCount = revealed.filter(r => r).length;
+    return getMultiplier(revealedCount);
+  }, [revealed, minesCount]);
 
   // Auto Loop
   useEffect(() => {

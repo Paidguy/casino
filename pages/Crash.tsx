@@ -23,6 +23,7 @@ export default function Crash() {
   const startTimeRef = useRef<number>(0);
   const requestRef = useRef<number>(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastUIUpdateRef = useRef<number>(0);
   
   // Locks
   const isCashOutProcessing = useRef<boolean>(false);
@@ -81,20 +82,20 @@ export default function Crash() {
       }
   }, [displayMultiplier, gameState, mode, autoCashOutAt]);
 
-  // Canvas Resizing
+  // Canvas Resizing - Fixed: removed gameState dependency to avoid listener recreation
   useEffect(() => {
     const handleResize = () => {
         const canvas = canvasRef.current;
         if (canvas && canvas.parentElement) {
           canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
           canvas.height = canvas.parentElement.clientHeight * window.devicePixelRatio;
-          if (gameState !== 'RUNNING') drawGraph(0, 1);
+          if (!isGameRunning.current) drawGraph(0, 1);
         }
     };
     window.addEventListener('resize', handleResize);
     handleResize(); 
     return () => window.removeEventListener('resize', handleResize);
-  }, [gameState]);
+  }, []);
 
   const start = () => {
     if (!mounted.current) return;
@@ -137,10 +138,11 @@ export default function Crash() {
     multiplierRef.current = currentMult;
     drawGraph(elapsed, currentMult);
 
-    // Throttle React State Updates for performance (every ~30ms)
-    // We update UI slightly less often than the canvas draws
-    if (Math.random() > 0.3 && mounted.current) {
+    // Throttle React State Updates for performance (~30ms intervals)
+    // Fixed: Use time-based throttling instead of random
+    if (time - lastUIUpdateRef.current > 30 && mounted.current) {
         setDisplayMultiplier(currentMult);
+        lastUIUpdateRef.current = time;
     }
 
     if (currentMult >= crashPointRef.current) {
