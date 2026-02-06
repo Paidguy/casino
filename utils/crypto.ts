@@ -10,7 +10,7 @@ export function getSecureRandom(): number {
   const buffer = new Uint8Array(4);
   crypto.getRandomValues(buffer);
   const value = new DataView(buffer.buffer).getUint32(0);
-  return value / 0xFFFFFFFF;
+  return value / (0xFFFFFFFF + 1);
 }
 
 /**

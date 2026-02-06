@@ -62,7 +62,7 @@ export class SimulationEngine {
   private createDefaultSession(): UserSession {
     return {
       id: generateSecureId(),
-      username: 'Punter_' + Math.floor(1000 + Math.random() * 9000),
+      username: 'Punter_' + Math.floor(1000 + getSecureRandom() * 9000),
       balance: DAILY_ALLOWANCE,
       rakebackBalance: 0,
       isAdmin: false,
@@ -213,6 +213,7 @@ export class SimulationEngine {
     const currentSession = this.session; 
     
     // Safety check for invalid inputs
+    // Note: Reject zero and negative amounts for bet validity
     if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount) || amount <= 0) {
         logError("Invalid bet amount", new BetValidationError(`Invalid amount: ${amount}`), { game, amount });
         return {
@@ -467,7 +468,7 @@ export class SimulationEngine {
     // Note: _r parameter kept for interface compatibility but not used in rigging logic
     
     const path = [];
-    for (let i = 0; i < rows; i++) path.push(Math.random() > (this.session.settings.isRigged ? 0.4 : 0.5) ? 1 : 0);
+    for (let i = 0; i < rows; i++) path.push(getSecureRandom() > (this.session.settings.isRigged ? 0.4 : 0.5) ? 1 : 0);
     const finalBin = path.reduce((a, b) => a + b, 0);
     const MULTIPLIERS_16 = [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000];
     const multiplier = MULTIPLIERS_16[finalBin];
@@ -477,9 +478,9 @@ export class SimulationEngine {
   public calculateTeenPatti(_r: number) {
     // Standard edge
     // Note: _r parameter kept for interface compatibility but not used
-    const won = Math.random() > 0.55; 
+    const won = getSecureRandom() > 0.55; 
     const hands = ['Trail', 'Pure Sequence', 'Sequence', 'Color', 'Pair', 'High Card'];
-    const hand = hands[Math.floor(Math.random() * hands.length)] ?? 'High Card';
+    const hand = hands[Math.floor(getSecureRandom() * hands.length)] ?? 'High Card';
     return { won, hand };
   }
 }

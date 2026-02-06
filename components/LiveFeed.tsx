@@ -53,6 +53,7 @@ const TabButton = React.memo<TabButtonProps>(({ active, onClick, label }) => (
         {label}
     </button>
 ));
+TabButton.displayName = 'TabButton';
 
 export const LiveFeed = () => {
     const [tab, setTab] = useState<'BETS' | 'CHAT'>('BETS');
