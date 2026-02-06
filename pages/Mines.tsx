@@ -32,11 +32,13 @@ export default function Mines() {
     return m;
   };
 
+  // Extract revealedCount for use in multiple places
+  const revealedCount = revealed.filter(r => r).length;
+
   // Memoize multiplier calculation to avoid recalculation on every render
   const currentMult = useMemo(() => {
-    const revealedCount = revealed.filter(r => r).length;
     return getMultiplier(revealedCount);
-  }, [revealed, minesCount]);
+  }, [revealedCount, minesCount]);
 
   // Auto Loop
   useEffect(() => {
