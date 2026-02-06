@@ -1,4 +1,4 @@
-import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction, LeaderboardEntry, GameStats } from '../types';
+import { UserSession, BetResult, GameType, HOUSE_EDGES, AdminSettings, Transaction, GameStats } from '../types';
 import { getSecureRandom, generateSecureId, generateSecureSeed } from '../utils/crypto';
 import { logError, BetValidationError } from '../utils/errorHandler';
 import {
@@ -272,13 +272,18 @@ export class SimulationEngine {
     // Ensure game stats exist using helper
     if (!this.session.gameStats[game]) {
         const defaultStats = this.initializeGameStats();
-        this.session.gameStats[game] = { ...defaultStats[game] };
+        const defaultGameStat = defaultStats[game];
+        if (defaultGameStat) {
+          this.session.gameStats[game] = { ...defaultGameStat };
+        }
     }
     const gs = this.session.gameStats[game];
-    gs.bets += 1;
-    gs.wagered += amount;
-    gs.payout += payout;
-    if (payout > amount) gs.wins += 1;
+    if (gs) {
+      gs.bets += 1;
+      gs.wagered += amount;
+      gs.payout += payout;
+      if (payout > amount) gs.wins += 1;
+    }
 
     const record: BetResult = {
       id: generateSecureId(),
@@ -399,13 +404,18 @@ export class SimulationEngine {
     const symbols = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
     
     // In rigged mode, ensure s1 != s2
-    let s1 = symbols[Math.floor(r * 5)];
-    let s2 = symbols[Math.floor((r * 2.5 * 10) % 5)];
-    let s3 = symbols[Math.floor((r * 3.3 * 10) % 5)];
+    const s1Idx = Math.floor(r * 5);
+    const s2Idx = Math.floor((r * 2.5 * 10) % 5);
+    const s3Idx = Math.floor((r * 3.3 * 10) % 5);
+    
+    let s1 = symbols[s1Idx];
+    let s2 = symbols[s2Idx];
+    let s3 = symbols[s3Idx];
 
-    if (this.session.settings.isRigged && s1 === s2 && s2 === s3) {
+    if (this.session.settings.isRigged && s1 === s2 && s2 === s3 && s3) {
         // Force a loss
-        s3 = symbols[(symbols.indexOf(s3) + 1) % 5];
+        const nextIdx = (symbols.indexOf(s3) + 1) % 5;
+        s3 = symbols[nextIdx];
     }
 
     const res = [s1, s2, s3];
@@ -434,37 +444,42 @@ export class SimulationEngine {
     // Fisher-Yates shuffle for the mine positions
     for (let i = totalCells - 1; i >= totalCells - minesCount; i--) {
       const j = Math.floor(getSecureRandom() * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
+      const iVal = indices[i];
+      const jVal = indices[j];
+      if (iVal !== undefined && jVal !== undefined) {
+        [indices[i], indices[j]] = [jVal, iVal];
+      }
     }
     
     // Place mines at shuffled positions
     for (let i = totalCells - minesCount; i < totalCells; i++) {
-      grid[indices[i]] = true;
+      const idx = indices[i];
+      if (idx !== undefined) {
+        grid[idx] = true;
+      }
     }
     
     return grid;
   }
 
-  public calculatePlinkoResult(r: number, rows: number) {
+  public calculatePlinkoResult(_r: number, rows: number) {
     // If rigged, bias towards center (lower multipliers)
-    let biasedR = r;
-    if (this.session.settings.isRigged) {
-        // Skew probability distribution closer to 0.5 (center)
-        biasedR = (r + 0.5) / 2; 
-    }
-
+    // Note: _r parameter kept for interface compatibility but not used in rigging logic
+    
     const path = [];
     for (let i = 0; i < rows; i++) path.push(Math.random() > (this.session.settings.isRigged ? 0.4 : 0.5) ? 1 : 0);
     const finalBin = path.reduce((a, b) => a + b, 0);
     const MULTIPLIERS_16 = [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000];
-    return { path, multiplier: MULTIPLIERS_16[finalBin] };
+    const multiplier = MULTIPLIERS_16[finalBin];
+    return { path, multiplier: multiplier ?? 0.2 };
   }
 
-  public calculateTeenPatti(r: number) {
+  public calculateTeenPatti(_r: number) {
     // Standard edge
-    const won = r > 0.55; 
+    // Note: _r parameter kept for interface compatibility but not used
+    const won = Math.random() > 0.55; 
     const hands = ['Trail', 'Pure Sequence', 'Sequence', 'Color', 'Pair', 'High Card'];
-    const hand = hands[Math.floor(Math.random() * hands.length)];
+    const hand = hands[Math.floor(Math.random() * hands.length)] ?? 'High Card';
     return { won, hand };
   }
 }

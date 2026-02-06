@@ -32,11 +32,11 @@ interface ErrorBoundaryState {
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = { hasError: false };
 
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError(_error: unknown) {
     return { hasError: true };
   }
 
-  componentDidCatch(error: any, errorInfo: any) {
+  componentDidCatch(error: unknown, errorInfo: unknown) {
     console.error("Uncaught error:", error, errorInfo);
   }
 

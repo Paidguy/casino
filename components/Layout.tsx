@@ -1,6 +1,5 @@
 import React, { useState, useEffect, memo, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { UserSession } from '../types';
 import { engine } from '../services/engine';
 import { audio } from '../services/audio';
 import { LiveFeed } from './LiveFeed';

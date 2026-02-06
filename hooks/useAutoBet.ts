@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface UseAutoBetOptions {
-  betAmount: number;
   onBet: () => void;
   gameState: string;
   idleState?: string;
@@ -27,7 +26,6 @@ interface UseAutoBetReturn {
  * Provides consistent auto-bet behavior with proper state management
  */
 export function useAutoBet({
-  betAmount,
   onBet,
   gameState,
   idleState = 'IDLE',

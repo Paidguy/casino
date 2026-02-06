@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getSecureRandom } from '../utils/crypto';
 
 // Type definitions
@@ -60,27 +60,29 @@ export const LiveFeed = () => {
 
     // Memoize the item generator to avoid recreating on every render
     const generateItem = useCallback((type: 'BETS' | 'CHAT'): FeedItem => {
-        const randomUser = USERS[Math.floor(getSecureRandom() * USERS.length)];
+        const randomUser = USERS[Math.floor(getSecureRandom() * USERS.length)] ?? 'Punter_King';
         const user = `${randomUser}_${Math.floor(getSecureRandom() * 999)}`;
         const id = `${type}-${Date.now()}-${getSecureRandom()}`;
         
         if (type === 'CHAT') {
+            const message = MESSAGES[Math.floor(getSecureRandom() * MESSAGES.length)] ?? 'Good luck!';
             return {
                 id,
                 type: 'CHAT',
                 user,
-                content: MESSAGES[Math.floor(getSecureRandom() * MESSAGES.length)],
+                content: message,
                 level: Math.floor(getSecureRandom() * 99) + 1
             };
         } else {
             const won = getSecureRandom() > 0.6;
             const amount = Math.floor(getSecureRandom() * 8000) + 200;
             const mult = (getSecureRandom() * 12 + 1).toFixed(1);
+            const game = GAMES[Math.floor(getSecureRandom() * GAMES.length)] ?? 'Kalyan';
             return {
                 id,
                 type: 'BETS',
                 user,
-                game: GAMES[Math.floor(getSecureRandom() * GAMES.length)],
+                game,
                 amount,
                 mult,
                 won
