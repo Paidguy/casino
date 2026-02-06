@@ -34,7 +34,12 @@ export default function Blackjack() {
            d.push({ suit: s, value: v, numeric: n });
         }
      }
-     return d.sort(() => Math.random() - 0.5); 
+     // Fixed: Use proper Fisher-Yates shuffle instead of biased sort
+     for (let i = d.length - 1; i > 0; i--) {
+         const j = Math.floor(Math.random() * (i + 1));
+         [d[i], d[j]] = [d[j], d[i]];
+     }
+     return d;
   };
 
   const getHandValue = (hand: Card[]) => {
