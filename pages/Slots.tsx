@@ -25,6 +25,7 @@ export default function Slots() {
   }, [autoActive, autoBetCount, autoBetsRemaining]);
 
   const spin = () => {
+    if (spinning) return; // Prevent double-spins
     if (betAmount > engine.getSession().balance || betAmount <= 0) {
         if (autoRef.current.active) setAutoActive(false);
         return;
@@ -33,7 +34,7 @@ export default function Slots() {
     setResult(null);
     audio.playBet();
     audio.playSpin();
-    
+
     setTimeout(() => {
       engine.placeBet(GameType.SLOTS, betAmount, (r) => {
         const res = engine.calculateSlotsResult(r);

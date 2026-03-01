@@ -76,8 +76,8 @@ export default function Coinflip() {
           setAutoActive(false);
       } else {
           setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount);
-          if (!flipping) flip(); // Start first one immediately
           setAutoActive(true);
+          if (!flipping) setTimeout(() => flip(), 0); // Start first one immediately on next tick
       }
   };
 

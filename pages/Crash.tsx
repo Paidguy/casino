@@ -155,22 +155,22 @@ export default function Crash() {
   const handleCrash = (finalMult: number) => {
       isGameRunning.current = false;
       cancelAnimationFrame(requestRef.current);
-      
+
       if (mounted.current) {
           multiplierRef.current = finalMult;
           setDisplayMultiplier(finalMult);
           setGameState('CRASHED');
           setHistory(prev => [finalMult, ...prev].slice(0, 8));
       }
-      
+
       audio.playLoss();
-      
+
       // LOGIC: Refund hold -> Place real bet (Loss)
-      engine.updateBalance(betAmount); 
-      engine.placeBet(GameType.CRASH, betAmount, 0, `Crashed @ ${finalMult.toFixed(2)}x`);
-      
+      engine.updateBalance(betAmount);
+      engine.placeBet(GameType.CRASH, betAmount, (r) => ({ multiplier: 0, outcome: `Crashed @ ${finalMult.toFixed(2)}x` }));
+
       if (mounted.current) {
-          setTimeout(() => { if (mounted.current) setGameState('IDLE'); }, 3000); 
+          setTimeout(() => { if (mounted.current) setGameState('IDLE'); }, 3000);
       }
   };
 
@@ -198,11 +198,11 @@ export default function Crash() {
     }
     
     audio.playWin();
-    
+
     // 4. LOGIC: Refund hold -> Place real bet (Win)
-    engine.updateBalance(betAmount); 
-    engine.placeBet(GameType.CRASH, betAmount, finalMult, `Cashed out @ ${finalMult.toFixed(2)}x`);
-    
+    engine.updateBalance(betAmount);
+    engine.placeBet(GameType.CRASH, betAmount, (r) => ({ multiplier: finalMult, outcome: `Cashed out @ ${finalMult.toFixed(2)}x` }));
+
     if (mounted.current) {
         setTimeout(() => { if (mounted.current) setGameState('IDLE'); }, 2000);
     }

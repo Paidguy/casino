@@ -43,17 +43,17 @@ export default function Plinko() {
         setAutoActive(false);
         return;
     }
-    
+
     // Performance protection: Limit active balls
     if (ballsRef.current.length > 50) return;
 
     audio.playBet();
-    
+
     const r = engine.peekNextRandom();
     const { path, multiplier } = engine.calculatePlinkoResult(r, rows);
-    
-    engine.placeBet(GameType.PLINKO, betAmount, () => ({ multiplier, outcome: `Plinko @ ${multiplier}x` }), '');
-    
+
+    engine.placeBet(GameType.PLINKO, betAmount, (r) => ({ multiplier, outcome: `Plinko @ ${multiplier}x` }));
+
     ballsRef.current.push({ id: Math.random(), path, step: 0, progress: 0, finished: false });
   };
 
@@ -64,7 +64,7 @@ export default function Plinko() {
           interval = setInterval(() => {
               const { active, count, remaining } = autoStateRef.current;
               if (!active) return;
-              
+
               if (engine.getSession().balance < betAmount) {
                   setAutoActive(false);
                   return;
@@ -78,10 +78,10 @@ export default function Plinko() {
               } else {
                   setAutoActive(false);
               }
-          }, 200); 
+          }, 200);
       }
       return () => clearInterval(interval);
-  }, [autoActive]);
+  }, [autoActive, betAmount]);
 
   const getMultiColor = (m: number) => {
     if (m >= 100) return '#f43f5e';
@@ -183,8 +183,8 @@ export default function Plinko() {
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 pb-32">
         <div className="w-full lg:w-96 bg-bet-900 p-8 rounded-[2.5rem] border border-white/10 flex flex-col gap-10 shadow-3xl shrink-0">
           <div className="bg-black/40 p-1.5 rounded-2xl flex border border-white/5">
-             <button onClick={() => setAutoActive(false)} disabled={autoActive} className={`flex-1 py-3 text-[11px] font-black uppercase rounded-xl transition-all ${!autoActive ? 'bg-bet-primary text-bet-950 shadow-lg' : 'text-slate-500'}`}>Manual</button>
-             <button onClick={() => setAutoActive(false)} className={`flex-1 py-3 text-[11px] font-black uppercase rounded-xl transition-all ${autoActive ? 'bg-bet-primary text-bet-950 shadow-lg' : 'text-slate-500'}`}>Auto</button>
+             <button onClick={() => setAutoActive(false)} disabled={!autoActive} className={`flex-1 py-3 text-[11px] font-black uppercase rounded-xl transition-all ${!autoActive ? 'bg-bet-primary text-bet-950 shadow-lg' : 'text-slate-500'}`}>Manual</button>
+             <button onClick={toggleAuto} disabled={autoActive} className={`flex-1 py-3 text-[11px] font-black uppercase rounded-xl transition-all ${autoActive ? 'bg-bet-primary text-bet-950 shadow-lg' : 'text-slate-500'}`}>Auto</button>
           </div>
 
           <div className="space-y-4">
