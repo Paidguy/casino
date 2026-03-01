@@ -61,7 +61,7 @@ export default function Mines() {
           }
       }
       return () => clearTimeout(timeout);
-  }, [autoActive, isPlaying, gameOver]);
+  }, [autoActive, isPlaying, gameOver, betAmount]);
 
   // Restart delay after game over in Auto mode
   useEffect(() => {

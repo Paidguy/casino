@@ -93,8 +93,9 @@ export default function Keno() {
           // Manually trigger first draw if Idle
           if (gameState !== 'DRAWING') {
              draw();
-             if (autoBetCount > 0) setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount - 1);
-             else setAutoBetsRemaining(999999);
+             if (autoBetCount > 0) {
+                 setAutoBetsRemaining(prev => prev - 1);
+             }
           }
           setAutoActive(true);
       }
