@@ -17,11 +17,13 @@ export default function Baccarat() {
     audio.playBet();
 
     setTimeout(() => {
-      const pScore = Math.floor(Math.random() * 10);
-      const bScore = Math.floor(Math.random() * 10);
+      // Use engine's random system for consistency
+      const r = engine.peekNextRandom();
+      const pScore = Math.floor(r * 10);
+      const bScore = Math.floor(((r * 1.7 + 0.3) % 1) * 10);
       let winner = 'TIE';
       let multi = 9; // Tie multiplier
-      
+
       if (pScore > bScore) { winner = 'PLAYER'; multi = 2; }
       else if (bScore > pScore) { winner = 'BANKER'; multi = 1.95; }
 
@@ -30,7 +32,7 @@ export default function Baccarat() {
 
       setResult({ pScore, bScore, winner, won });
       setGameState('RESULT');
-      
+
       if (won) audio.playWin(); else audio.playLoss();
       engine.placeBet(GameType.BACCARAT, betAmount, finalMulti, `Baccarat: ${winner} won (${pScore} vs ${bScore})`);
     }, 1500);

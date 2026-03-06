@@ -103,7 +103,8 @@ export default function Mines() {
           setGameOver(true);
           setWin(false);
           audio.playLoss();
-          engine.placeBet(GameType.MINES, 0, 0, 'Mines: Hit Mine (Auto)');
+          // Fix: Use betAmount instead of 0 for proper bet tracking
+          engine.placeBet(GameType.MINES, betAmount, 0, 'Mines: Hit Mine (Auto)');
       } else {
           const mult = getMultiplier(3);
           engine.updateBalance(betAmount * mult);
@@ -142,7 +143,8 @@ export default function Mines() {
       setWin(false);
       setIsPlaying(false);
       audio.playLoss();
-      engine.placeBet(GameType.MINES, 0, 0, `Mines: Hit mine on step ${revealedCount + 1}`);
+      // Fix: Use betAmount instead of 0 for proper bet tracking
+      engine.placeBet(GameType.MINES, betAmount, 0, `Mines: Hit mine on step ${revealedCount + 1}`);
       setProcessing(false);
     } else {
       audio.playClick();

@@ -17,9 +17,12 @@ export default function TeenPatti() {
   const suits = ['♠', '♥', '♦', '♣'];
   const values = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
 
-  const getRandomCard = (): Card => {
-    const s = suits[Math.floor(Math.random() * 4)];
-    const v = values[Math.floor(Math.random() * 13)];
+  const getRandomCard = (seed: number, index: number): Card => {
+    // Use seeded random for consistent results
+    const suitIdx = Math.floor((seed * (index + 1) * 4.17) % 4);
+    const valueIdx = Math.floor((seed * (index + 1) * 13.73) % 13);
+    const s = suits[suitIdx];
+    const v = values[valueIdx];
     return { suit: s, value: v, color: s === '♥' || s === '♦' ? 'text-rose-500' : 'text-slate-900' };
   };
 
@@ -32,13 +35,14 @@ export default function TeenPatti() {
     setTimeout(() => {
       engine.placeBet(GameType.TEENPATTI, betAmount, (r) => {
         const { won, hand } = engine.calculateTeenPatti(r);
-        const pHand = [getRandomCard(), getRandomCard(), getRandomCard()];
-        const dHand = [getRandomCard(), getRandomCard(), getRandomCard()];
-        
+        // Use the random value to seed card generation
+        const pHand = [getRandomCard(r, 0), getRandomCard(r, 1), getRandomCard(r, 2)];
+        const dHand = [getRandomCard(r, 3), getRandomCard(r, 4), getRandomCard(r, 5)];
+
         setPlayerHand(pHand);
         setDealerHand(dHand);
         setGameState('RESULT');
-        
+
         if (won) {
           audio.playWin();
           setMessage(`WIN! ${hand}`);

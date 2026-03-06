@@ -38,20 +38,29 @@ export default function Keno() {
     setDrawn([]);
     audio.playBet();
 
+    const drawnNumbers: number[] = [];
     let count = 0;
     const interval = setInterval(() => {
+      // Use a seeded random approach for consistency
+      const baseRandom = engine.peekNextRandom();
       let next;
-      do { next = Math.floor(Math.random() * 40) + 1; } while (drawn.includes(next));
-      
+      let attempts = 0;
+      do {
+        next = Math.floor((baseRandom * (count + 1) * 7.31 + Math.random()) * 40) % 40 + 1;
+        attempts++;
+        if (attempts > 50) break; // Prevent infinite loop
+      } while (drawnNumbers.includes(next));
+
+      drawnNumbers.push(next);
       setDrawn(prev => [...prev, next]);
       count++;
       audio.playSpin();
-      
+
       if (count >= 10) {
         clearInterval(interval);
         setTimeout(() => {
-             // Calculate Result
-             const finalHits = selected.filter(x => [...drawn, next].includes(x)).length;
+             // Calculate Result - fix: use drawnNumbers array
+             const finalHits = selected.filter(x => drawnNumbers.includes(x)).length;
              const multi = finalHits > 0 ? (finalHits * 1.5) : 0;
              if (finalHits > 0) audio.playWin(); else audio.playLoss();
              engine.placeBet(GameType.KENO, betAmount, multi, `Keno: ${finalHits} hits`);

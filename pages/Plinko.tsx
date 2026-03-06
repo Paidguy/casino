@@ -35,6 +35,7 @@ export default function Plinko() {
       return () => {
           if (animationRef.current) cancelAnimationFrame(animationRef.current);
           setAutoActive(false); // Stop auto bet on unmount
+          ballsRef.current = []; // Clean up balls array
       };
   }, []);
 
@@ -44,8 +45,11 @@ export default function Plinko() {
         return;
     }
 
-    // Performance protection: Limit active balls
-    if (ballsRef.current.length > 50) return;
+    // Performance protection: Limit active balls with user feedback
+    if (ballsRef.current.length >= 50) {
+        console.warn("Maximum 50 active balls reached. Please wait for some to finish.");
+        return;
+    }
 
     audio.playBet();
 
@@ -152,15 +156,16 @@ export default function Plinko() {
             ctx.arc(x, y, 6, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
-            
+
             activeBalls.push(ball);
           } else {
              ball.finished = true;
              const finalBin = ball.path.reduce((a, b) => a + b, 0);
+             // Only play win sound for high multipliers to reduce audio spam
              if (MULTIPLIERS_16[finalBin] >= 10) audio.playWin();
           }
       });
-      
+
       ballsRef.current = activeBalls;
       animationRef.current = requestAnimationFrame(render);
     };

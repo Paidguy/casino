@@ -56,11 +56,17 @@ export default function Blackjack() {
      if (betAmount > engine.getSession().balance || betAmount <= 0) return;
      audio.playBet();
      engine.updateBalance(-betAmount);
-     
+
      const d = generateDeck();
+     // Ensure deck has enough cards
+     if (d.length < 4) {
+         console.error("Deck generation failed");
+         engine.updateBalance(betAmount); // Refund
+         return;
+     }
      const p = [d.pop()!, d.pop()!];
      const dealer = [d.pop()!, d.pop()!];
-     
+
      setDeck(d);
      setPlayerHand(p);
      setDealerHand(dealer);
@@ -78,6 +84,10 @@ export default function Blackjack() {
 
   const hit = () => {
      if (gameState !== 'PLAYER_TURN') return;
+     if (deck.length === 0) {
+         console.error("Deck depleted");
+         return;
+     }
      audio.playClick();
      const newHand = [...playerHand, deck.pop()!];
      setPlayerHand(newHand);
@@ -89,13 +99,17 @@ export default function Blackjack() {
   const doubleDown = () => {
      if (gameState !== 'PLAYER_TURN') return;
      if (betAmount > engine.getSession().balance) return;
+     if (deck.length === 0) {
+         console.error("Deck depleted");
+         return;
+     }
      audio.playBet();
      engine.updateBalance(-betAmount);
      const doubleBet = betAmount * 2;
-     
+
      const newHand = [...playerHand, deck.pop()!];
      setPlayerHand(newHand);
-     
+
      if (getHandValue(newHand) > 21) {
          finishGame('BUST', newHand, dealerHand, doubleBet);
      } else {
@@ -111,14 +125,18 @@ export default function Blackjack() {
      let dHand = [...dealerHand];
      // Async loop for dealer draw
      const playDealer = async () => {
-         await new Promise(r => setTimeout(r, 800)); 
-         
+         await new Promise(r => setTimeout(r, 800));
+
          while (getHandValue(dHand) < 17) {
              if (!mounted.current) return;
+             if (deck.length === 0) {
+                 console.error("Deck depleted during dealer draw");
+                 break;
+             }
              dHand.push(deck.pop()!);
              setDealerHand([...dHand]);
-             audio.playSpin(); 
-             await new Promise(r => setTimeout(r, 800)); 
+             audio.playSpin();
+             await new Promise(r => setTimeout(r, 800));
          }
          if (mounted.current) determineWinner(finalHand, dHand, finalBet);
      };
