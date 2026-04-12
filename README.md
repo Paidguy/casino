@@ -1,8 +1,14 @@
 # Casino Simulation Platform (Educational)
 
-A browser-based casino simulation built with React and TypeScript that demonstrates how RNG-driven games, payout formulas, and house edge mechanics work in practice.
+[![CI/CD Pipeline](https://github.com/Paidguy/casino/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/Paidguy/casino/actions/workflows/main.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE.md)
+[![Stars](https://img.shields.io/github/stars/Paidguy/casino?style=social)](https://github.com/Paidguy/casino/stargazers)
 
-This project exists to make casino math inspectable. Instead of hiding probabilities behind a closed backend, it exposes game logic, session state, and bet outcomes directly in the code so developers, students, and researchers can study expected value, variance, and fairness workflows in a safe virtual-money environment.
+A browser-based casino simulation built with React and TypeScript that demonstrates RNG-driven outcomes, payout calculations, and house-edge behavior in practice.
+
+The project exists to make casino game mathematics inspectable from source code. Instead of opaque game logic, it exposes engine behavior, state transitions, and session data so developers, students, and researchers can study expected value and variance in a virtual-money environment.
+
+---
 
 ## Who This Is For
 
@@ -10,6 +16,8 @@ This project exists to make casino math inspectable. Instead of hiding probabili
 - Students learning probability, expected value, and house edge behavior
 - Educators and researchers who need a practical demo of casino math
 - Contributors who want to improve transparency tooling and analytics UX
+
+---
 
 ## Key Features
 
@@ -21,6 +29,8 @@ This project exists to make casino math inspectable. Instead of hiding probabili
 - Statistics dashboard with RTP-style metrics, profit/loss summaries, and charts
 - GitHub Pages-ready Vite setup and CI workflow
 
+---
+
 ## Tech Stack
 
 - React 18
@@ -29,6 +39,8 @@ This project exists to make casino math inspectable. Instead of hiding probabili
 - React Router 6
 - Recharts
 - Tailwind (CDN config in `index.html`) plus project CSS utilities
+
+---
 
 ## Quick Start
 
@@ -53,6 +65,8 @@ npm run build
 npm run preview
 ```
 
+---
+
 ## Usage Examples
 
 ### 1. Run a game flow locally
@@ -71,11 +85,15 @@ npm run preview
 3. Place bets in any game
 4. Confirm nonce increments and history entries update consistently
 
+Note: the fairness view is a transparency feature in the current client-side simulation. Outcome generation is implemented with JavaScript randomness in the engine, not a server-verified cryptographic API.
+
 ### 3. Explore engine-level behavior
 
 - Core engine: `services/engine.ts`
 - Game types and house edges: `types.ts`
 - Route wiring for all games: `App.tsx`
+
+---
 
 ## Project Structure
 
@@ -87,6 +105,8 @@ App.tsx        Route map for all pages
 types.ts       Shared types and house-edge constants
 ```
 
+---
+
 ## Documentation
 
 Detailed documentation lives in `docs/`:
@@ -95,6 +115,8 @@ Detailed documentation lives in `docs/`:
 - `docs/api.md` - API surface and integration notes
 - `docs/configuration.md` - environment and project configuration
 - `docs/examples.md` - practical use cases and extension patterns
+
+---
 
 ## Contributing
 
@@ -123,6 +145,21 @@ npm run build
 - Prefer small PRs with a single purpose
 - Update docs when behavior or configuration changes
 - Do not introduce real-money/payment functionality
+
+---
+
+## Credits & Attribution
+
+- Original project direction, branding, and in-app attribution: **@paidguy**
+- Project branding references in codebase include `SattaKing.IND` and related UI labels
+- Community contributors: https://github.com/Paidguy/casino/graphs/contributors
+
+---
+
+## Acknowledgements
+
+- React, Vite, TypeScript, React Router, and Recharts maintainers
+- Open-source ecosystem used by this project
 
 ## License
 
