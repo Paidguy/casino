@@ -1,33 +1,53 @@
-# Casino Simulation Platform (Educational)
+<div align="center">
+
+# Casino Simulation Platform
+
+### Transparent browser-based casino simulation for learning probability, house edge, and game engine behavior.
 
 [![CI/CD Pipeline](https://github.com/Paidguy/casino/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/Paidguy/casino/actions/workflows/main.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE.md)
 [![Stars](https://img.shields.io/github/stars/Paidguy/casino?style=social)](https://github.com/Paidguy/casino/stargazers)
+[![Forks](https://img.shields.io/github/forks/Paidguy/casino?style=social)](https://github.com/Paidguy/casino/network/members)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 
-A browser-based casino simulation built with React and TypeScript that demonstrates RNG-driven outcomes, payout calculations, and house-edge behavior in practice.
-
-The project exists to make casino game mathematics inspectable from source code. Instead of opaque game logic, it exposes engine behavior, state transitions, and session data so developers, students, and researchers can study expected value and variance in a virtual-money environment.
+</div>
 
 ---
 
-## Who This Is For
+## What This Project Is
 
-- Developers building game simulations or RNG-heavy web apps
-- Students learning probability, expected value, and house edge behavior
-- Educators and researchers who need a practical demo of casino math
-- Contributors who want to improve transparency tooling and analytics UX
+- **Frontend-only** React + TypeScript casino simulation
+- **Educational and development-focused**, not a real-money platform
+- **Code-visible game logic** for inspecting outcomes, multipliers, and state updates
+
+---
+
+## Why It Exists
+
+- **Make casino mechanics transparent** instead of hidden behind closed systems
+- **Help developers and students** study RNG behavior, house edge, and variance
+- **Provide a safe sandbox** for experimentation using virtual balance and local state
 
 ---
 
 ## Key Features
 
-- 13 playable game modules (Crash, Dice, Roulette, Slots, Mines, Plinko, Blackjack, Coinflip, Teen Patti, Matka, Wheel, Baccarat, Keno)
-- Central simulation engine for balance updates, bet resolution, and per-game stats
-- Transparent house-edge constants in a typed configuration (`HOUSE_EDGES`)
-- Session persistence via `localStorage` with wager history and transaction logs
-- Fairness page with client seed controls and nonce visibility
-- Statistics dashboard with RTP-style metrics, profit/loss summaries, and charts
-- GitHub Pages-ready Vite setup and CI workflow
+- 🎮 **13 playable games**: Crash, Dice, Roulette, Slots, Mines, Plinko, Blackjack, Coinflip, Teen Patti, Matka, Wheel, Baccarat, Keno
+- ⚙️ **Unified simulation engine** for bet settlement, balance updates, and history
+- 📊 **Statistics and transaction views** for analyzing outcomes and session behavior
+- 🔎 **Transparency tools** including seed and nonce visibility on the Fairness page
+- 💾 **Local persistence** for session, transactions, and game stats
+- 🚀 **GitHub Pages CI/CD** via GitHub Actions workflow
+
+---
+
+## Demo / Preview
+
+- Live deployment: https://paidguy.github.io/casino/
+- Recommended preview path after launch: `Lobby -> Dice/Crash -> Statistics -> Fairness`
+- This repository currently does not include checked-in screenshots or GIF assets.
 
 ---
 
@@ -38,131 +58,138 @@ The project exists to make casino game mathematics inspectable from source code.
 - Vite 5
 - React Router 6
 - Recharts
-- Tailwind (CDN config in `index.html`) plus project CSS utilities
+- Tailwind CSS utilities (configured in `index.html`) plus project CSS
 
 ---
 
-## Quick Start
+## Installation & Setup
 
 ### Prerequisites
 
-- Node.js 18+
-- npm 9+
+- Node.js 18 or newer
+- npm 9 or newer
 
-### Install and Run
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Run development server
+
+```bash
+npm run dev
+```
+
+### 3. Build production bundle
+
+```bash
+npm run build
+```
+
+### 4. Preview production build locally
+
+```bash
+npm run preview
+```
+
+---
+
+## Usage
+
+### 1. Run locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the local URL shown by Vite (typically `http://localhost:5173`).
+### 2. Play and inspect
 
-### Build and Preview
+1. Start the app with `npm run dev`.
+2. Open Lobby and launch a game (for example, Dice).
+3. Place several bets.
+4. Open Statistics to review wagered amount, payouts, and per-game metrics.
 
-```bash
-npm run build
-npm run preview
-```
+### 3. Validate fairness/transparency flow
 
----
+1. Open Fairness.
+2. Update the client seed.
+3. Play rounds in any game.
+4. Confirm nonce progression and recorded outcomes.
 
-## Usage Examples
-
-### 1. Run a game flow locally
-
-1. Start the app with `npm run dev`
-2. Open the lobby and select a game (for example, Dice)
-3. Place a few bets and inspect:
-- live balance changes
-- bet history entries
-- per-game stats in Statistics
-
-### 2. Verify fairness-related state
-
-1. Open the Fairness page
-2. Change the client seed
-3. Place bets in any game
-4. Confirm nonce increments and history entries update consistently
-
-Note: the fairness view is a transparency feature in the current client-side simulation. Outcome generation is implemented with JavaScript randomness in the engine, not a server-verified cryptographic API.
-
-### 3. Explore engine-level behavior
-
-- Core engine: `services/engine.ts`
-- Game types and house edges: `types.ts`
-- Route wiring for all games: `App.tsx`
+Note: this repository is client-side. Fairness/transparency UI is for visibility and state tracing, while outcome generation runs in the browser engine.
 
 ---
 
 ## Project Structure
 
 ```text
-services/      Core simulation engine and audio manager
-pages/         Game and system screens
-components/    Shared UI elements and dashboards
-App.tsx        Route map for all pages
-types.ts       Shared types and house-edge constants
+services/      Simulation engine and audio manager
+pages/         Game pages and system pages
+components/    Shared UI components
+App.tsx        Route definitions
+types.ts       Shared models and house edges
+docs/          Architecture, API, config, and usage docs
 ```
 
 ---
 
 ## Documentation
 
-Detailed documentation lives in `docs/`:
-
-- `docs/architecture.md` - system design and data flow
-- `docs/api.md` - API surface and integration notes
-- `docs/configuration.md` - environment and project configuration
-- `docs/examples.md` - practical use cases and extension patterns
+- `docs/architecture.md` - architecture and runtime flow
+- `docs/api.md` - API and interface scope
+- `docs/configuration.md` - build/runtime configuration
+- `docs/examples.md` - practical use cases
 
 ---
 
 ## Contributing
 
-Contributions are welcome, especially around clarity, correctness, and developer onboarding.
+Contributions are welcome and encouraged.
 
-### Workflow
+### Recommended workflow
 
-1. Fork the repository
-2. Create a feature branch
-3. Make focused changes with clear commit messages
-4. Run local checks:
+1. Fork and create a branch.
+2. Keep changes focused and reviewable.
+3. Validate with:
 
 ```bash
 npm run build
 ```
 
-5. Open a pull request with:
-- problem statement
-- implementation summary
-- screenshots (if UI changed)
-- validation steps
+4. Open a pull request with:
+- what changed
+- why it changed
+- how it was validated
+- screenshots for UI changes
 
-### Contribution Guidelines
+### Contribution standards
 
-- Keep game logic deterministic and auditable
-- Prefer small PRs with a single purpose
-- Update docs when behavior or configuration changes
-- Do not introduce real-money/payment functionality
+- Keep game logic transparent and auditable
+- Update docs when behavior changes
+- Prefer small, single-purpose pull requests
+- Do not add real-money or payment functionality
 
 ---
 
 ## Credits & Attribution
 
-- Original project direction, branding, and in-app attribution: **@paidguy**
-- Project branding references in codebase include `SattaKing.IND` and related UI labels
-- Community contributors: https://github.com/Paidguy/casino/graphs/contributors
+- Original project direction and in-app attribution: **@paidguy**
+- Branding references in source include **SattaKing.IND** and related labels
+- Contributors: https://github.com/Paidguy/casino/graphs/contributors
 
 ---
 
 ## Acknowledgements
 
-- React, Vite, TypeScript, React Router, and Recharts maintainers
-- Open-source ecosystem used by this project
+- React, Vite, TypeScript, React Router, Recharts communities
+- Open-source maintainers whose tooling powers this project
+
+---
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0.
+Licensed under GNU General Public License v3.0.
 
-See `LICENSE.md` for full terms.
+See `LICENSE.md` for full text.
