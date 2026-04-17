@@ -45,19 +45,21 @@ export default function Wheel() {
     audio.playBet();
     audio.playSpin();
 
-    const randomIndex = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
+    // Use engine's random system for consistency
+    const r = engine.peekNextRandom();
+    const randomIndex = Math.floor(r * WHEEL_SEGMENTS.length);
     const targetSeg = WHEEL_SEGMENTS[randomIndex];
-    
+
     const segmentAngle = 360 / WHEEL_SEGMENTS.length;
     const targetRotationForSegment = 360 - (randomIndex * segmentAngle);
-    
+
     // For auto, we spin faster (2 rotations) vs 5 for manual
     const extraSpins = 360 * (mode === 'AUTO' ? 2 : 5);
-    
+
     const currentRotationMod = rotation % 360;
     let diff = targetRotationForSegment - currentRotationMod;
     if (diff < 0) diff += 360;
-    
+
     const newRotation = rotation + extraSpins + diff;
     setRotation(newRotation);
 
