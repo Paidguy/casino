@@ -1,5 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { getSecureRandom } from '../utils/crypto';
 
+// Type definitions
+interface TabButtonProps {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}
+
+interface ChatItem {
+  id: string;
+  type: 'CHAT';
+  user: string;
+  content: string;
+  level: number;
+}
+
+interface BetItem {
+  id: string;
+  type: 'BETS';
+  user: string;
+  game: string;
+  amount: number;
+  mult: string;
+  won: boolean;
+}
+
+type FeedItem = ChatItem | BetItem;
+
+// Constants
 const USERS = ['Punter_King', 'Mumbai_Don', 'Tiger_Satta', 'Gully_Boss', 'Bazar_Master', 'Rohan_Punter', 'Suresh_Kalyan', 'Bhai_Mumbai', 'Amit_Satta', 'Gali_King'];
 const GAMES = ['Kalyan', 'Udaan', 'Slots', 'Chakra', '3-Patti'];
 const MESSAGES = [
@@ -13,53 +42,66 @@ const MESSAGES = [
     "Best Matka site ever."
 ];
 
-const TabButton = ({ active, onClick, label }: any) => (
+const MAX_FEED_ITEMS = 20;
+
+const TabButton = React.memo<TabButtonProps>(({ active, onClick, label }) => (
     <button 
         onClick={onClick}
         className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-all bazar-font ${active ? 'bg-bet-primary text-bet-950 shadow-inner' : 'bg-bet-950 text-slate-600 hover:text-slate-300'}`}
+        aria-label={`Switch to ${label} tab`}
     >
         {label}
     </button>
-);
+));
+TabButton.displayName = 'TabButton';
 
 export const LiveFeed = () => {
     const [tab, setTab] = useState<'BETS' | 'CHAT'>('BETS');
-    const [items, setItems] = useState<any[]>([]);
+    const [items, setItems] = useState<FeedItem[]>([]);
 
-    useEffect(() => {
-        setItems(Array(12).fill(null).map(() => generateItem(tab)));
-
-        const interval = setInterval(() => {
-            setItems(prev => [generateItem(tab), ...prev].slice(0, 20));
-        }, tab === 'BETS' ? 1400 : 5000);
-
-        return () => clearInterval(interval);
-    }, [tab]);
-
-    const generateItem = (type: 'BETS' | 'CHAT') => {
-        const user = USERS[Math.floor(Math.random() * USERS.length)] + '_' + Math.floor(Math.random() * 999);
+    // Memoize the item generator to avoid recreating on every render
+    const generateItem = useCallback((type: 'BETS' | 'CHAT'): FeedItem => {
+        const randomUser = USERS[Math.floor(getSecureRandom() * USERS.length)] ?? 'Punter_King';
+        const user = `${randomUser}_${Math.floor(getSecureRandom() * 999)}`;
+        const id = `${type}-${Date.now()}-${getSecureRandom()}`;
         
         if (type === 'CHAT') {
+            const message = MESSAGES[Math.floor(getSecureRandom() * MESSAGES.length)] ?? 'Good luck!';
             return {
-                id: Math.random(),
+                id,
+                type: 'CHAT',
                 user,
-                content: MESSAGES[Math.floor(Math.random() * MESSAGES.length)],
-                level: Math.floor(Math.random() * 99) + 1
+                content: message,
+                level: Math.floor(getSecureRandom() * 99) + 1
             };
         } else {
-            const won = Math.random() > 0.6;
-            const amount = Math.floor(Math.random() * 8000) + 200;
-            const mult = (Math.random() * 12 + 1).toFixed(1);
+            const won = getSecureRandom() > 0.6;
+            const amount = Math.floor(getSecureRandom() * 8000) + 200;
+            const mult = (getSecureRandom() * 12 + 1).toFixed(1);
+            const game = GAMES[Math.floor(getSecureRandom() * GAMES.length)] ?? 'Kalyan';
             return {
-                id: Math.random(),
+                id,
+                type: 'BETS',
                 user,
-                game: GAMES[Math.floor(Math.random() * GAMES.length)],
+                game,
                 amount,
                 mult,
                 won
             };
         }
-    };
+    }, []);
+
+    // Generate initial items
+    useEffect(() => {
+        const initialItems = Array(12).fill(null).map(() => generateItem(tab));
+        setItems(initialItems);
+
+        const interval = setInterval(() => {
+            setItems(prev => [generateItem(tab), ...prev].slice(0, MAX_FEED_ITEMS));
+        }, tab === 'BETS' ? 1400 : 5000);
+
+        return () => clearInterval(interval);
+    }, [tab, generateItem]);
 
     return (
         <div className="flex flex-col h-full bg-bet-900 border-l border-white/10 w-full relative z-[10]">
@@ -72,7 +114,7 @@ export const LiveFeed = () => {
                 <div className="absolute inset-0 overflow-y-auto p-4 space-y-3 no-scrollbar pb-20">
                     {items.map(item => (
                         <div key={item.id} className="animate-fade-in">
-                            {tab === 'CHAT' ? (
+                            {item.type === 'CHAT' ? (
                                 <div className="text-[11px]">
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className="bg-bet-secondary text-[8px] px-1.5 py-0.5 rounded text-white font-black uppercase">Lvl {item.level}</span>
@@ -90,7 +132,7 @@ export const LiveFeed = () => {
                                     </div>
                                     <div className="text-right">
                                         <div className={`font-mono text-[10px] font-black ${item.won ? 'text-bet-primary' : 'text-slate-500'}`}>
-                                            {item.won ? `+₹${(item.amount * item.mult).toFixed(0)}` : `-₹${item.amount}`}
+                                            {item.won ? `+₹${(item.amount * parseFloat(item.mult)).toFixed(0)}` : `-₹${item.amount}`}
                                         </div>
                                         {item.won && <div className="text-[8px] text-bet-accent font-black uppercase tracking-widest">{item.mult}x</div>}
                                     </div>
@@ -105,8 +147,16 @@ export const LiveFeed = () => {
             {tab === 'CHAT' && (
                 <div className="p-3 bg-bet-950/80 border-t border-white/10 backdrop-blur-xl shrink-0">
                     <div className="relative">
-                        <input type="text" placeholder="Msg..." className="w-full bg-black border border-white/10 rounded-xl p-3 text-[10px] text-white focus:outline-none focus:border-bet-primary transition-all placeholder:text-slate-700 font-bold" />
-                        <button className="absolute right-3 top-2.5 text-bet-primary hover:text-white transition-colors">
+                        <input 
+                          type="text" 
+                          placeholder="Msg..." 
+                          className="w-full bg-black border border-white/10 rounded-xl p-3 text-[10px] text-white focus:outline-none focus:border-bet-primary transition-all placeholder:text-slate-700 font-bold" 
+                          aria-label="Chat message input"
+                        />
+                        <button 
+                          className="absolute right-3 top-2.5 text-bet-primary hover:text-white transition-colors"
+                          aria-label="Send message"
+                        >
                              <span className="text-xs">➤</span>
                         </button>
                     </div>

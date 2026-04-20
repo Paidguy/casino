@@ -1,6 +1,7 @@
 class AudioManager {
   private ctx: AudioContext | null = null;
   private enabled: boolean = false;
+  private unlockHandler: (() => void) | null = null;
 
   constructor() {
     try {
@@ -9,20 +10,39 @@ class AudioManager {
       
       if (typeof window !== 'undefined') {
         // Aggressive unlocking for Chrome Autoplay Policy
-        const unlock = () => {
+        this.unlockHandler = () => {
           this.checkAndResume();
-          if (this.ctx && this.ctx.state === 'running') {
-             window.removeEventListener('click', unlock);
-             window.removeEventListener('touchstart', unlock);
-             window.removeEventListener('keydown', unlock);
+          if (this.ctx && this.ctx.state === 'running' && this.unlockHandler) {
+             window.removeEventListener('click', this.unlockHandler);
+             window.removeEventListener('touchstart', this.unlockHandler);
+             window.removeEventListener('keydown', this.unlockHandler);
+             this.unlockHandler = null;
           }
         };
-        window.addEventListener('click', unlock);
-        window.addEventListener('touchstart', unlock);
-        window.addEventListener('keydown', unlock);
+        window.addEventListener('click', this.unlockHandler);
+        window.addEventListener('touchstart', this.unlockHandler);
+        window.addEventListener('keydown', this.unlockHandler);
       }
     } catch (e) {
       this.enabled = true;
+    }
+  }
+
+  /**
+   * Clean up audio context and event listeners
+   * Call this before destroying the audio manager
+   */
+  public destroy(): void {
+    if (typeof window !== 'undefined' && this.unlockHandler) {
+      window.removeEventListener('click', this.unlockHandler);
+      window.removeEventListener('touchstart', this.unlockHandler);
+      window.removeEventListener('keydown', this.unlockHandler);
+      this.unlockHandler = null;
+    }
+    
+    if (this.ctx) {
+      this.ctx.close().catch(() => {});
+      this.ctx = null;
     }
   }
 
