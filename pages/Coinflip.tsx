@@ -34,10 +34,17 @@ export default function Coinflip() {
     let currentStreak = streak;
 
     if (!isRoundActive) {
-      if (betAmount <= 0 || !engine.deductStake(betAmount)) return;
-      roundStake = betAmount;
+      const validStake = Math.max(10, betAmount || 100);
+      if (betAmount <= 0) setBetAmount(validStake);
+
+      if (engine.getSession().balance < validStake) {
+        engine.reloadBalance(Math.max(10000, validStake * 5));
+      }
+      if (!engine.deductStake(validStake)) return;
+
+      roundStake = validStake;
       currentStreak = 0;
-      setActiveStake(betAmount);
+      setActiveStake(validStake);
       setIsRoundActive(true);
       setStreak(0);
     }
@@ -51,7 +58,6 @@ export default function Coinflip() {
 
     if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
     flipTimerRef.current = setTimeout(() => {
-      // Offset by currentStreak so each flip in a streak gets an independent provably fair float
       const r = engine.peekNextRandom(currentStreak);
       const outcomeSide: 'HEADS' | 'TAILS' = r >= 0.5 ? 'HEADS' : 'TAILS';
       const won = chosenSide === outcomeSide;
@@ -94,20 +100,78 @@ export default function Coinflip() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[560px]">
+        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[560px]">
           {/* Left Stake Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Coins className="w-4 h-4 text-[#fbbf24]" />
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
-                    GOLD MOHUR TOSS
-                  </span>
+              {/* Primary Action Controls at Top for Mobile Thumb Reach */}
+              {isRoundActive && streak > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={cashOut}
+                    disabled={flipping}
+                    className="h-14 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg flex flex-col items-center justify-center leading-tight active:scale-[0.99]"
+                  >
+                    <span>CASHOUT STREAK</span>
+                    <span className="text-xs font-mono tabular-nums mt-0.5">
+                      {formatINR(activeStake * currentMultiplier)}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => flipCoin(side)}
+                    disabled={flipping}
+                    className="h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg flex flex-col items-center justify-center leading-tight active:scale-[0.99]"
+                  >
+                    <span>FLIP {side} AGAIN</span>
+                    <span className="text-[11px] font-mono mt-0.5">For {nextMultiplier}×</span>
+                  </button>
                 </div>
-                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
-                  98.0% RTP
-                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => flipCoin(side)}
+                  disabled={flipping}
+                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+                >
+                  {flipping ? 'Flipping...' : `Toss ${side} (${formatINR(betAmount, 0)})`}
+                </button>
+              )}
+
+              {/* Pick Heads or Tails */}
+              <div>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">
+                  Pick Side ({nextMultiplier.toFixed(2)}× Next)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => flipCoin('HEADS')}
+                    disabled={flipping}
+                    className={`h-11 rounded-xl font-extrabold text-xs border flex items-center justify-center gap-2 ${
+                      side === 'HEADS'
+                        ? 'bg-[#f59e0b] text-[#070b14] border-amber-300'
+                        : 'bg-[#070b14] text-white border-[#24324f] hover:bg-[#1e293b]'
+                    }`}
+                  >
+                    <span className="w-3 h-3 rounded-full bg-amber-300 inline-block" />
+                    <span>Heads (Gold)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => flipCoin('TAILS')}
+                    disabled={flipping}
+                    className={`h-11 rounded-xl font-extrabold text-xs border flex items-center justify-center gap-2 ${
+                      side === 'TAILS'
+                        ? 'bg-[#10b981] text-[#070b14] border-emerald-300'
+                        : 'bg-[#070b14] text-white border-[#24324f] hover:bg-[#1e293b]'
+                    }`}
+                  >
+                    <span className="w-3 h-3 rounded-full bg-emerald-300 inline-block" />
+                    <span>Tails (Emerald)</span>
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -155,41 +219,6 @@ export default function Coinflip() {
                 </div>
               </div>
 
-              {/* Pick Heads or Tails */}
-              <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">
-                  Pick Side ({nextMultiplier.toFixed(2)}× Next)
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => flipCoin('HEADS')}
-                    disabled={flipping || (!isRoundActive && betAmount <= 0)}
-                    className={`h-11 rounded-xl font-extrabold text-xs border flex items-center justify-center gap-2 ${
-                      side === 'HEADS'
-                        ? 'bg-[#f59e0b] text-[#070b14] border-amber-300'
-                        : 'bg-[#070b14] text-white border-[#24324f] hover:bg-[#1e293b]'
-                    }`}
-                  >
-                    <span className="w-3 h-3 rounded-full bg-amber-300 inline-block" />
-                    <span>Heads (Gold)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => flipCoin('TAILS')}
-                    disabled={flipping || (!isRoundActive && betAmount <= 0)}
-                    className={`h-11 rounded-xl font-extrabold text-xs border flex items-center justify-center gap-2 ${
-                      side === 'TAILS'
-                        ? 'bg-[#10b981] text-[#070b14] border-emerald-300'
-                        : 'bg-[#070b14] text-white border-[#24324f] hover:bg-[#1e293b]'
-                    }`}
-                  >
-                    <span className="w-3 h-3 rounded-full bg-emerald-300 inline-block" />
-                    <span>Tails (Emerald)</span>
-                  </button>
-                </div>
-              </div>
-
               {/* Streak Telemetry */}
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="bg-[#070b14] p-3 rounded-xl border border-[#24324f]">
@@ -205,33 +234,10 @@ export default function Coinflip() {
                   </span>
                 </div>
               </div>
-
-              {isRoundActive && streak > 0 ? (
-                <button
-                  type="button"
-                  onClick={cashOut}
-                  disabled={flipping}
-                  className="w-full h-14 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex flex-col items-center justify-center leading-tight"
-                >
-                  <span>CASHOUT STREAK</span>
-                  <span className="text-xs font-mono tabular-nums mt-0.5">
-                    {formatINR(activeStake * currentMultiplier)}
-                  </span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => flipCoin(side)}
-                  disabled={flipping || betAmount <= 0}
-                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
-                >
-                  {flipping ? 'Flipping...' : `Toss ${side} (${formatINR(betAmount, 0)})`}
-                </button>
-              )}
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
-              <span>Royal Mohur Streak</span>
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
+              <span>Royal Mohur Streak · 98.0% RTP</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
               </Link>
@@ -239,28 +245,36 @@ export default function Coinflip() {
           </div>
 
           {/* Right Coinflip Stage */}
-          <div className="flex-1 flex flex-col items-center justify-between p-5 sm:p-10 royal-surface">
+          <div className="flex-1 flex flex-col items-center justify-between p-4 sm:p-10 royal-surface">
             {/* History Badges */}
-            <div className="flex items-center justify-end gap-1.5 w-full h-8 overflow-x-auto no-scrollbar">
-              {history.map((h, i) => (
-                <span
-                  key={i}
-                  className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold shrink-0 ${
-                    h === 'HEADS'
-                      ? 'bg-[#f59e0b]/20 text-[#fbbf24] border border-[#f59e0b]/40'
-                      : 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40'
-                  }`}
-                >
-                  {h === 'HEADS' ? 'H' : 'T'}
-                </span>
-              ))}
+            <div className="flex items-center justify-between gap-2 w-full h-8 overflow-x-auto no-scrollbar">
+              <span className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#fbbf24] shrink-0">
+                <Coins className="w-4 h-4" /> GOLD MOHUR TOSS
+              </span>
+              <div className="flex items-center gap-1.5">
+                {history.map((h, i) => (
+                  <span
+                    key={i}
+                    className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold shrink-0 ${
+                      h === 'HEADS'
+                        ? 'bg-[#f59e0b]/20 text-[#fbbf24] border border-[#f59e0b]/40'
+                        : 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40'
+                    }`}
+                  >
+                    {h === 'HEADS' ? 'H' : 'T'}
+                  </span>
+                ))}
+              </div>
             </div>
 
             {/* Central 3D Coin */}
-            <div className="my-6 flex flex-col items-center gap-6">
-              <div
-                className={`w-44 h-44 sm:w-56 sm:h-56 rounded-full border-8 flex flex-col items-center justify-center shadow-2xl transition-transform duration-300 ${
-                  flipping ? 'animate-spin scale-95' : 'scale-100'
+            <div className="my-4 sm:my-6 flex flex-col items-center gap-5">
+              <button
+                type="button"
+                onClick={() => flipCoin(side)}
+                disabled={flipping}
+                className={`w-40 h-40 sm:w-56 sm:h-56 rounded-full border-8 flex flex-col items-center justify-center shadow-2xl transition-transform duration-300 cursor-pointer ${
+                  flipping ? 'animate-spin scale-95' : 'scale-100 hover:scale-105'
                 } ${
                   result === 'TAILS'
                     ? 'bg-gradient-to-br from-[#10b981] to-[#047857] border-emerald-200 text-[#070b14]'
@@ -271,9 +285,9 @@ export default function Coinflip() {
                   {flipping ? '₹' : result ? (result === 'HEADS' ? 'H' : 'T') : 'H'}
                 </span>
                 <span className="text-xs font-extrabold mt-2 tracking-widest">
-                  {flipping ? 'TOSSING' : result || 'HEADS'}
+                  {flipping ? 'TOSSING' : result || 'TAP TO TOSS'}
                 </span>
-              </div>
+              </button>
 
               {/* Streak Multiplier Chain Preview */}
               <div className="flex flex-wrap items-center justify-center gap-2 max-w-full px-2">

@@ -70,7 +70,14 @@ export default function Baccarat() {
   };
 
   const deal = () => {
-    if (dealing || betAmount <= 0 || betAmount > engine.getSession().balance) return;
+    if (dealing) return;
+    const validStake = Math.max(10, betAmount || 100);
+    if (betAmount <= 0) setBetAmount(validStake);
+
+    if (engine.getSession().balance < validStake) {
+      engine.reloadBalance(Math.max(10000, validStake * 5));
+    }
+
     setDealing(true);
     setOutcome(null);
     audio.playBet();
@@ -81,7 +88,7 @@ export default function Baccarat() {
     dealTimerRef.current = setTimeout(() => {
       engine.placeBet(
         GameType.BACCARAT,
-        betAmount,
+        validStake,
         () => {
           const cards = drawShoe();
           const pHand = [cards[0], cards[2]];
@@ -140,7 +147,7 @@ export default function Baccarat() {
             bTotal,
             winner,
             won: mult > 1,
-            payout: +(betAmount * mult).toFixed(2),
+            payout: +(validStake * mult).toFixed(2),
           });
           setDealing(false);
 
@@ -161,20 +168,47 @@ export default function Baccarat() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[560px]">
+        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[560px]">
           {/* Left Stake Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-[#fbbf24]" />
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
-                    BACCARAT ROYALE
-                  </span>
+              {/* Primary Action CTA at Top for Mobile Thumb Reach */}
+              <button
+                type="button"
+                onClick={deal}
+                disabled={dealing}
+                className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+              >
+                {dealing ? 'Dealing Shoe...' : `Deal ${betSide} (${formatINR(betAmount, 0)})`}
+              </button>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">Select Bet Position</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'PLAYER', label: 'Player', odds: '2.00×' },
+                    { id: 'TIE', label: 'Tie', odds: '9.00×' },
+                    { id: 'BANKER', label: 'Banker', odds: '1.95×' },
+                  ].map((pos) => (
+                    <button
+                      key={pos.id}
+                      type="button"
+                      onClick={() => {
+                        setBetSide(pos.id as any);
+                        audio.playClick();
+                      }}
+                      disabled={dealing}
+                      className={`py-3 rounded-xl border text-center transition-colors ${
+                        betSide === pos.id
+                          ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-white'
+                          : 'bg-[#070b14] border-[#24324f] text-[#94a3b8] hover:text-white'
+                      }`}
+                    >
+                      <div className="text-xs font-extrabold">{pos.label}</div>
+                      <div className="text-[11px] font-mono text-[#fbbf24] mt-0.5">{pos.odds}</div>
+                    </button>
+                  ))}
                 </div>
-                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
-                  98.94% RTP
-                </span>
               </div>
 
               <div>
@@ -222,44 +256,6 @@ export default function Baccarat() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">Select Bet Position</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'PLAYER', label: 'Player', odds: '2.00×' },
-                    { id: 'TIE', label: 'Tie', odds: '9.00×' },
-                    { id: 'BANKER', label: 'Banker', odds: '1.95×' },
-                  ].map((pos) => (
-                    <button
-                      key={pos.id}
-                      type="button"
-                      onClick={() => {
-                        setBetSide(pos.id as any);
-                        audio.playClick();
-                      }}
-                      disabled={dealing}
-                      className={`py-3 rounded-xl border text-center transition-colors ${
-                        betSide === pos.id
-                          ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-white'
-                          : 'bg-[#070b14] border-[#24324f] text-[#94a3b8] hover:text-white'
-                      }`}
-                    >
-                      <div className="text-xs font-extrabold">{pos.label}</div>
-                      <div className="text-[11px] font-mono text-[#fbbf24] mt-0.5">{pos.odds}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={deal}
-                disabled={dealing || betAmount <= 0}
-                className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
-              >
-                {dealing ? 'Dealing Shoe...' : `Deal Shoe (${formatINR(betAmount, 0)})`}
-              </button>
-
               <div className="p-3.5 bg-[#070b14] rounded-xl border border-[#24324f] text-xs text-[#94a3b8] space-y-1.5">
                 <div className="flex justify-between">
                   <span>Player / Banker Push on Tie</span>
@@ -267,12 +263,12 @@ export default function Baccarat() {
                 </div>
                 <div className="flex justify-between">
                   <span>Third Card Tableau</span>
-                  <span className="font-mono text-white">Punto Banco</span>
+                  <span className="font-mono text-white">Punto Banco (98.94% RTP)</span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
               <span>Punto Banco VIP</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
@@ -281,25 +277,28 @@ export default function Baccarat() {
           </div>
 
           {/* Right Baccarat Table Stage */}
-          <div className="flex-1 flex flex-col justify-between p-5 sm:p-10 felt-surface">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 my-auto">
+          <div className="flex-1 flex flex-col justify-between p-4 sm:p-10 felt-surface">
+            <div className="grid grid-cols-2 gap-3 sm:gap-8 my-auto">
               {/* Player Hand Box */}
               <div
-                className={`p-5 sm:p-6 rounded-2xl border-2 flex flex-col items-center space-y-4 transition-colors ${
+                onClick={() => !dealing && setBetSide('PLAYER')}
+                className={`p-3 sm:p-6 rounded-2xl border-2 flex flex-col items-center space-y-3 cursor-pointer transition-colors ${
                   outcome?.winner === 'PLAYER'
-                    ? 'bg-[#070b14]/75 border-[#10b981] shadow-xl'
+                    ? 'bg-[#070b14]/85 border-[#10b981] shadow-xl'
+                    : betSide === 'PLAYER'
+                    ? 'bg-[#070b14]/70 border-[#fbbf24]'
                     : 'bg-[#070b14]/45 border-[#24324f]'
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm font-extrabold uppercase tracking-wider text-white">PLAYER</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white">PLAYER</span>
                   {outcome && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-[#131c31] font-mono text-sm font-extrabold text-[#10b981]">
+                    <span className="px-2 py-0.5 rounded-full bg-[#131c31] font-mono text-xs sm:text-sm font-extrabold text-[#10b981]">
                       {outcome.pTotal}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center justify-center gap-2.5 min-h-[112px]">
+                <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5 min-h-[96px] sm:min-h-[112px]">
                   {playerCards.length > 0
                     ? playerCards.map((c, idx) => <CardTile key={idx} card={c} />)
                     : [0, 1].map((i) => <CardTile key={i} />)}
@@ -308,21 +307,24 @@ export default function Baccarat() {
 
               {/* Banker Hand Box */}
               <div
-                className={`p-5 sm:p-6 rounded-2xl border-2 flex flex-col items-center space-y-4 transition-colors ${
+                onClick={() => !dealing && setBetSide('BANKER')}
+                className={`p-3 sm:p-6 rounded-2xl border-2 flex flex-col items-center space-y-3 cursor-pointer transition-colors ${
                   outcome?.winner === 'BANKER'
-                    ? 'bg-[#070b14]/75 border-[#fbbf24] shadow-xl'
+                    ? 'bg-[#070b14]/85 border-[#fbbf24] shadow-xl'
+                    : betSide === 'BANKER'
+                    ? 'bg-[#070b14]/70 border-[#fbbf24]'
                     : 'bg-[#070b14]/45 border-[#24324f]'
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm font-extrabold uppercase tracking-wider text-white">BANKER</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white">BANKER</span>
                   {outcome && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-[#131c31] font-mono text-sm font-extrabold text-[#fbbf24]">
+                    <span className="px-2 py-0.5 rounded-full bg-[#131c31] font-mono text-xs sm:text-sm font-extrabold text-[#fbbf24]">
                       {outcome.bTotal}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center justify-center gap-2.5 min-h-[112px]">
+                <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5 min-h-[96px] sm:min-h-[112px]">
                   {bankerCards.length > 0
                     ? bankerCards.map((c, idx) => <CardTile key={idx} card={c} />)
                     : [0, 1].map((i) => <CardTile key={i} />)}
@@ -331,10 +333,10 @@ export default function Baccarat() {
             </div>
 
             {/* Result Banner */}
-            <div className="min-h-[52px] flex items-center justify-center mt-4">
+            <div className="min-h-[44px] flex items-center justify-center mt-3">
               {outcome && (
                 <div
-                  className={`px-5 sm:px-6 py-2.5 rounded-xl border font-extrabold text-xs sm:text-sm text-center ${
+                  className={`px-4 sm:px-6 py-2 rounded-xl border font-extrabold text-xs sm:text-sm text-center ${
                     outcome.won
                       ? 'bg-[#10b981]/20 border-[#10b981] text-[#10b981]'
                       : outcome.payout === betAmount

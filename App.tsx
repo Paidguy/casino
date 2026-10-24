@@ -1,5 +1,5 @@
-import React from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Lobby from './pages/Lobby';
 import Crash from './pages/Crash';
 import Dice from './pages/Dice';
@@ -20,6 +20,14 @@ import Keno from './pages/Keno';
 import Transactions from './pages/Transactions';
 import Statistics from './pages/Statistics';
 import { engine } from './services/engine';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+  }, [pathname]);
+  return null;
+}
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -58,6 +66,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             Local session storage encountered an outdated schema. Click below to restore your ₹25,000 INR wallet.
           </p>
           <button
+            type="button"
             onClick={this.handleHardReset}
             className="px-6 py-3 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] rounded-xl font-extrabold text-sm shadow-lg"
           >
@@ -75,6 +84,7 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <HashRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<Lobby />} />
           <Route path="/crash" element={<Crash />} />
@@ -95,6 +105,7 @@ const App: React.FC = () => {
           <Route path="/keno" element={<Keno />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/statistics" element={<Statistics />} />
+          <Route path="*" element={<Lobby />} />
         </Routes>
       </HashRouter>
     </ErrorBoundary>

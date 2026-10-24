@@ -88,7 +88,14 @@ export default function TeenPatti() {
   }, []);
 
   const deal = () => {
-    if (dealing || betAmount <= 0 || betAmount > engine.getSession().balance) return;
+    if (dealing) return;
+    const validStake = Math.max(10, betAmount || 100);
+    if (betAmount <= 0) setBetAmount(validStake);
+
+    if (engine.getSession().balance < validStake) {
+      engine.reloadBalance(Math.max(10000, validStake * 5));
+    }
+
     setDealing(true);
     setResult(null);
     setCardsSeen(playStyle === 'CHAAL');
@@ -119,7 +126,7 @@ export default function TeenPatti() {
     dealTimerRef.current = setTimeout(() => {
       engine.placeBet(
         GameType.TEENPATTI,
-        betAmount,
+        validStake,
         () => {
           const pEval = evaluateTeenPattiHand(pCards);
           const dEval = evaluateTeenPattiHand(dCards);
@@ -142,7 +149,7 @@ export default function TeenPatti() {
             dEval: dEval.name,
             won,
             mult,
-            payout: +(betAmount * mult).toFixed(2),
+            payout: +(validStake * mult).toFixed(2),
           });
           setDealing(false);
 
@@ -162,10 +169,22 @@ export default function TeenPatti() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[580px]">
+        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[580px]">
           {/* Left Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
+              {/* Primary Action CTA at Top for Mobile Thumb Reach */}
+              <button
+                type="button"
+                onClick={deal}
+                disabled={dealing}
+                className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+              >
+                {dealing
+                  ? 'Dealing 3 Cards...'
+                  : `${playStyle === 'BLIND' ? 'Play Blind Show' : 'Deal Chaal Hand'} (${formatINR(betAmount, 0)})`}
+              </button>
+
               {/* Seen Chaal vs Blind Mode */}
               <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
                 <button
@@ -237,17 +256,6 @@ export default function TeenPatti() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={deal}
-                disabled={dealing || betAmount <= 0}
-                className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
-              >
-                {dealing
-                  ? 'Dealing 3 Cards...'
-                  : `${playStyle === 'BLIND' ? 'Play Blind Show' : 'Deal Chaal Hand'} (${formatINR(betAmount, 0)})`}
-              </button>
-
               <div className="p-3.5 bg-[#070b14] rounded-xl border border-[#24324f] text-xs text-[#94a3b8] space-y-1.5">
                 <div className="font-bold text-[#fbbf24] mb-1">Teen Patti Royal Bhav</div>
                 <div className="flex justify-between">
@@ -269,7 +277,7 @@ export default function TeenPatti() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
               <span>97.5% RTP · Desi Cards</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Fairness
@@ -278,9 +286,9 @@ export default function TeenPatti() {
           </div>
 
           {/* Right Teen Patti Royal Felt Stage */}
-          <div className="flex-1 flex flex-col justify-between items-center p-5 sm:p-10 felt-surface">
+          <div className="flex-1 flex flex-col justify-between items-center p-4 sm:p-10 felt-surface">
             {/* Dealer Hand */}
-            <div className="flex flex-col items-center space-y-3">
+            <div className="flex flex-col items-center space-y-2.5">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-white/80">Maharaja Dealer</span>
                 {result && (
@@ -289,7 +297,7 @@ export default function TeenPatti() {
                   </span>
                 )}
               </div>
-              <div className="flex gap-2.5 sm:gap-3">
+              <div className="flex gap-2 sm:gap-3">
                 {dealerHand.length > 0
                   ? dealerHand.map((c, idx) => <CardView key={idx} card={c} />)
                   : [0, 1, 2].map((i) => <CardView key={i} />)}
@@ -297,10 +305,10 @@ export default function TeenPatti() {
             </div>
 
             {/* Result Banner */}
-            <div className="my-4 min-h-[48px] flex items-center justify-center">
+            <div className="my-3 min-h-[44px] flex items-center justify-center">
               {result && (
                 <div
-                  className={`px-4 sm:px-6 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm border shadow-xl text-center ${
+                  className={`px-4 sm:px-6 py-2 rounded-xl font-extrabold text-xs sm:text-sm border shadow-xl text-center ${
                     result.won
                       ? 'bg-[#070b14]/90 border-[#10b981] text-[#10b981]'
                       : 'bg-[#070b14]/90 border-[#f43f5e] text-[#f43f5e]'
@@ -314,8 +322,8 @@ export default function TeenPatti() {
             </div>
 
             {/* Player Hand */}
-            <div className="flex flex-col items-center space-y-3">
-              <div className="flex gap-2.5 sm:gap-3">
+            <div className="flex flex-col items-center space-y-2.5">
+              <div className="flex gap-2 sm:gap-3">
                 {playerHand.length > 0
                   ? playerHand.map((c, idx) => (
                       <CardView key={idx} card={c} blind={!cardsSeen && dealing} />

@@ -582,6 +582,10 @@ export class SimulationEngine {
     return refUtr;
   }
 
+  public reloadBalance(amount = 25000): string {
+    return this.deposit(amount, 'Instant Khata Top-Up');
+  }
+
   public withdraw(amount: number, method = 'IMPS / UPI Instant Payout'): { ok: boolean; utr: string } {
     if (amount <= 0 || isNaN(amount) || amount > this.session.balance) return { ok: false, utr: '' };
     const refUtr = generateUTR();

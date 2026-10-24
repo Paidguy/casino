@@ -11,7 +11,7 @@ type ABCard = { suit: '♠' | '♥' | '♦' | '♣'; rank: string };
 const CardMini: React.FC<{ card?: ABCard; highlight?: boolean }> = ({ card, highlight }) => {
   if (!card) {
     return (
-      <div className="w-16 h-24 sm:w-20 sm:h-28 rounded-xl bg-[#070b14]/60 border border-white/20 flex items-center justify-center">
+      <div className="w-14 h-20 sm:w-20 sm:h-28 rounded-xl bg-[#070b14]/60 border border-white/20 flex items-center justify-center">
         <span className="text-[10px] font-bold text-white/40">HUKUM</span>
       </div>
     );
@@ -19,7 +19,7 @@ const CardMini: React.FC<{ card?: ABCard; highlight?: boolean }> = ({ card, high
   const isRed = card.suit === '♥' || card.suit === '♦';
   return (
     <div
-      className={`w-16 h-24 sm:w-20 sm:h-28 rounded-xl bg-white shadow-lg flex flex-col justify-between p-2 select-none transition-transform ${
+      className={`w-14 h-20 sm:w-20 sm:h-28 rounded-xl bg-white shadow-lg flex flex-col justify-between p-2 select-none transition-transform ${
         highlight ? 'ring-4 ring-[#fbbf24] scale-105' : ''
       }`}
     >
@@ -27,7 +27,7 @@ const CardMini: React.FC<{ card?: ABCard; highlight?: boolean }> = ({ card, high
         {card.rank}
         <div>{card.suit}</div>
       </div>
-      <div className={`text-2xl self-center ${isRed ? 'text-[#e11d48]' : 'text-[#070b14]'}`}>
+      <div className={`text-xl sm:text-2xl self-center ${isRed ? 'text-[#e11d48]' : 'text-[#070b14]'}`}>
         {card.suit}
       </div>
       <div className={`text-xs font-extrabold font-mono leading-none self-end rotate-180 ${isRed ? 'text-[#e11d48]' : 'text-[#070b14]'}`}>
@@ -60,7 +60,14 @@ export default function AndarBahar() {
   }, []);
 
   const dealRound = () => {
-    if (dealing || betAmount <= 0 || betAmount > engine.getSession().balance) return;
+    if (dealing) return;
+    const validStake = Math.max(10, betAmount || 100);
+    if (betAmount <= 0) setBetAmount(validStake);
+
+    if (engine.getSession().balance < validStake) {
+      engine.reloadBalance(Math.max(10000, validStake * 5));
+    }
+
     setDealing(true);
     setResult(null);
     setAndarPile([]);
@@ -104,7 +111,7 @@ export default function AndarBahar() {
     dealTimerRef.current = setTimeout(() => {
       engine.placeBet(
         GameType.ANDARBAHAR,
-        betAmount,
+        validStake,
         () => {
           let mult = 0;
           if (selectedSide === 'ANDAR' && winningSide === 'ANDAR') mult = 1.95;
@@ -118,7 +125,7 @@ export default function AndarBahar() {
             winningSide,
             cardsDealt: matchStep,
             won,
-            payout: +(betAmount * mult).toFixed(2),
+            payout: +(validStake * mult).toFixed(2),
           });
           setDealing(false);
 
@@ -138,10 +145,52 @@ export default function AndarBahar() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[580px]">
+        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[580px]">
           {/* Left Bookie Controls */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
+              {/* Primary Action CTA at Top for Mobile Thumb Reach */}
+              <button
+                type="button"
+                onClick={dealRound}
+                disabled={dealing}
+                className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+              >
+                {dealing ? 'Dealing Andar Bahar...' : `Deal ${selectedSide} (${formatINR(betAmount, 0)})`}
+              </button>
+
+              {/* Select Andar / Bahar / Super 1-3 */}
+              <div>
+                <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">
+                  Select Betting Side
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'ANDAR', label: 'Andar', odds: '1.95×' },
+                    { id: 'BAHAR', label: 'Bahar', odds: '2.00×' },
+                    { id: 'SUPER_5', label: 'Fast 1–3', odds: '3.50×' },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSide(s.id as any);
+                        audio.playClick();
+                      }}
+                      disabled={dealing}
+                      className={`py-3 rounded-xl border text-center transition-colors ${
+                        selectedSide === s.id
+                          ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-white'
+                          : 'bg-[#070b14] border-[#24324f] text-[#94a3b8]'
+                      }`}
+                    >
+                      <div className="text-xs font-extrabold">{s.label}</div>
+                      <div className="text-[11px] font-mono text-[#fbbf24] mt-0.5">{s.odds}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
                   <span>Lagaya Stake (INR)</span>
@@ -189,47 +238,6 @@ export default function AndarBahar() {
                 </div>
               </div>
 
-              {/* Select Andar / Bahar / Super 1-3 */}
-              <div>
-                <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">
-                  Select Betting Side
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'ANDAR', label: 'Andar', odds: '1.95×' },
-                    { id: 'BAHAR', label: 'Bahar', odds: '2.00×' },
-                    { id: 'SUPER_5', label: 'Fast 1–3', odds: '3.50×' },
-                  ].map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedSide(s.id as any);
-                        audio.playClick();
-                      }}
-                      disabled={dealing}
-                      className={`py-3 rounded-xl border text-center transition-colors ${
-                        selectedSide === s.id
-                          ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-white'
-                          : 'bg-[#070b14] border-[#24324f] text-[#94a3b8]'
-                      }`}
-                    >
-                      <div className="text-xs font-extrabold">{s.label}</div>
-                      <div className="text-[11px] font-mono text-[#fbbf24] mt-0.5">{s.odds}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={dealRound}
-                disabled={dealing || betAmount <= 0}
-                className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
-              >
-                {dealing ? 'Dealing Andar Bahar...' : `Deal Cards (${formatINR(betAmount, 0)})`}
-              </button>
-
               <div className="p-3.5 bg-[#070b14] rounded-xl border border-[#24324f] text-xs text-[#94a3b8] space-y-1.5">
                 <div className="font-bold text-[#fbbf24] mb-1">How Andar Bahar Works</div>
                 <p className="leading-relaxed">
@@ -238,7 +246,7 @@ export default function AndarBahar() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
               <span>98.0% RTP · Andar Bahar Live</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Fairness
@@ -247,7 +255,7 @@ export default function AndarBahar() {
           </div>
 
           {/* Right Andar Bahar Felt Table */}
-          <div className="flex-1 flex flex-col justify-between p-5 sm:p-10 felt-surface">
+          <div className="flex-1 flex flex-col justify-between p-4 sm:p-10 felt-surface">
             {/* Center Hukum (Joker) Card */}
             <div className="flex flex-col items-center space-y-2">
               <span className="text-xs font-extrabold text-[#fbbf24] tracking-wider">
@@ -257,16 +265,19 @@ export default function AndarBahar() {
             </div>
 
             {/* Andar vs Bahar Dealing Boxes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 my-6">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 my-4">
               <div
-                className={`p-4 sm:p-5 rounded-2xl border-2 flex flex-col items-center space-y-3 ${
+                onClick={() => !dealing && setSelectedSide('ANDAR')}
+                className={`p-3 sm:p-5 rounded-2xl border-2 flex flex-col items-center space-y-2.5 cursor-pointer transition-colors ${
                   result?.winningSide === 'ANDAR'
                     ? 'bg-[#070b14]/85 border-[#10b981]'
+                    : selectedSide === 'ANDAR'
+                    ? 'bg-[#070b14]/75 border-[#fbbf24]'
                     : 'bg-[#070b14]/60 border-white/20'
                 }`}
               >
-                <div className="text-sm font-extrabold text-white">ANDAR (1.95×)</div>
-                <div className="flex flex-wrap justify-center gap-2 min-h-[112px]">
+                <div className="text-xs sm:text-sm font-extrabold text-white">ANDAR (1.95×)</div>
+                <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 min-h-[84px] sm:min-h-[112px]">
                   {andarPile.length > 0 ? (
                     andarPile.map((c, idx) => (
                       <CardMini
@@ -284,14 +295,17 @@ export default function AndarBahar() {
               </div>
 
               <div
-                className={`p-4 sm:p-5 rounded-2xl border-2 flex flex-col items-center space-y-3 ${
+                onClick={() => !dealing && setSelectedSide('BAHAR')}
+                className={`p-3 sm:p-5 rounded-2xl border-2 flex flex-col items-center space-y-2.5 cursor-pointer transition-colors ${
                   result?.winningSide === 'BAHAR'
                     ? 'bg-[#070b14]/85 border-[#10b981]'
+                    : selectedSide === 'BAHAR'
+                    ? 'bg-[#070b14]/75 border-[#fbbf24]'
                     : 'bg-[#070b14]/60 border-white/20'
                 }`}
               >
-                <div className="text-sm font-extrabold text-white">BAHAR (2.00×)</div>
-                <div className="flex flex-wrap justify-center gap-2 min-h-[112px]">
+                <div className="text-xs sm:text-sm font-extrabold text-white">BAHAR (2.00×)</div>
+                <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 min-h-[84px] sm:min-h-[112px]">
                   {baharPile.length > 0 ? (
                     baharPile.map((c, idx) => (
                       <CardMini
@@ -310,10 +324,10 @@ export default function AndarBahar() {
             </div>
 
             {/* Outcome Banner */}
-            <div className="min-h-[48px] flex items-center justify-center">
+            <div className="min-h-[44px] flex items-center justify-center">
               {result && (
                 <div
-                  className={`px-4 sm:px-6 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm border shadow-xl text-center ${
+                  className={`px-4 sm:px-6 py-2 rounded-xl font-extrabold text-xs sm:text-sm border shadow-xl text-center ${
                     result.won
                       ? 'bg-[#070b14] border-[#10b981] text-[#10b981]'
                       : 'bg-[#070b14] border-[#24324f] text-white'

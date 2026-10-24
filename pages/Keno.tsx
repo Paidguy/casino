@@ -71,14 +71,29 @@ export default function Keno() {
   const hitsCount = selected.filter((x) => drawn.includes(x)).length;
 
   const draw = () => {
-    if (
-      gameState === 'DRAWING' ||
-      betAmount > engine.getSession().balance ||
-      selected.length === 0 ||
-      betAmount <= 0
-    ) {
-      if (autoRef.current.active) setAutoActive(false);
-      return;
+    if (gameState === 'DRAWING') return;
+
+    let activePicks = selected;
+    if (activePicks.length === 0) {
+      const pool = Array.from({ length: 40 }, (_, i) => i + 1);
+      const picks: number[] = [];
+      while (picks.length < 5) {
+        const idx = Math.floor(Math.random() * pool.length);
+        picks.push(pool.splice(idx, 1)[0]);
+      }
+      activePicks = picks.sort((a, b) => a - b);
+      setSelected(activePicks);
+    }
+
+    const validStake = Math.max(10, betAmount || 100);
+    if (betAmount <= 0) setBetAmount(validStake);
+
+    if (engine.getSession().balance < validStake) {
+      if (autoRef.current.active) {
+        setAutoActive(false);
+        return;
+      }
+      engine.reloadBalance(Math.max(10000, validStake * 5));
     }
 
     setGameState('DRAWING');
@@ -97,7 +112,7 @@ export default function Keno() {
 
     if (engine.getSession().settings.instantBet) {
       setDrawn(finalDrawn);
-      finalizeKeno(finalDrawn);
+      finalizeKeno(finalDrawn, activePicks, validStake);
       return;
     }
 
@@ -110,14 +125,14 @@ export default function Keno() {
 
       if (step >= 10) {
         if (drawIntervalRef.current) clearInterval(drawIntervalRef.current);
-        finalizeKeno(finalDrawn);
+        finalizeKeno(finalDrawn, activePicks, validStake);
       }
     }, 65);
   };
 
-  const finalizeKeno = (finalDrawn: number[]) => {
-    const hits = selected.filter((x) => finalDrawn.includes(x)).length;
-    const table = KENO_PAYOUTS[risk][selected.length] || [];
+  const finalizeKeno = (finalDrawn: number[], activePicks: number[], validStake: number) => {
+    const hits = activePicks.filter((x) => finalDrawn.includes(x)).length;
+    const table = KENO_PAYOUTS[risk][activePicks.length] || [];
     const mult = table[hits] ?? 0;
 
     setLastMultiplier(mult);
@@ -126,9 +141,9 @@ export default function Keno() {
 
     engine.placeBet(
       GameType.KENO,
-      betAmount,
+      validStake,
       mult,
-      `Keno (${risk}): ${hits}/${selected.length} hits (${mult}x)`
+      `Keno (${risk}): ${hits}/${activePicks.length} hits (${mult}x)`
     );
     setGameState('RESULT');
   };
@@ -157,7 +172,7 @@ export default function Keno() {
     if (autoActive) {
       setAutoActive(false);
     } else {
-      if (selected.length === 0) return;
+      if (selected.length === 0) autoPick();
       setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount);
       setAutoActive(true);
     }
@@ -166,20 +181,56 @@ export default function Keno() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[580px]">
+        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[580px]">
           {/* Left Stake Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#fbbf24]" />
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
-                    KENO 40 BAZAR
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
-                  99.0% RTP
-                </span>
+              {/* Primary Action CTA at Top for Mobile Thumb Reach */}
+              {mode === 'MANUAL' ? (
+                <button
+                  type="button"
+                  onClick={draw}
+                  disabled={gameState === 'DRAWING'}
+                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+                >
+                  {gameState === 'DRAWING'
+                    ? 'Drawing...'
+                    : `Draw Numbers (${formatINR(betAmount, 0)})`}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleAuto}
+                  className={`w-full h-14 font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center ${
+                    autoActive
+                      ? 'bg-[#f43f5e] text-white'
+                      : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
+                  }`}
+                >
+                  {autoActive
+                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
+                    : 'Start Autobet'}
+                </button>
+              )}
+
+              {/* Auto Pick & Clear */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={autoPick}
+                  disabled={gameState === 'DRAWING' || autoActive}
+                  className="h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
+                >
+                  <Shuffle className="w-3.5 h-3.5 text-[#fbbf24]" /> Auto Pick 10
+                </button>
+                <button
+                  type="button"
+                  onClick={clearTable}
+                  disabled={gameState === 'DRAWING' || autoActive || selected.length === 0}
+                  className="h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-[#f43f5e]" /> Clear Table
+                </button>
               </div>
 
               <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
@@ -270,26 +321,6 @@ export default function Keno() {
                 </div>
               </div>
 
-              {/* Auto Pick & Clear */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={autoPick}
-                  disabled={gameState === 'DRAWING' || autoActive}
-                  className="h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
-                >
-                  <Shuffle className="w-3.5 h-3.5 text-[#fbbf24]" /> Auto Pick
-                </button>
-                <button
-                  type="button"
-                  onClick={clearTable}
-                  disabled={gameState === 'DRAWING' || autoActive || selected.length === 0}
-                  className="h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-[#f43f5e]" /> Clear Table
-                </button>
-              </div>
-
               {mode === 'AUTO' && (
                 <div>
                   <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">
@@ -305,32 +336,6 @@ export default function Keno() {
                 </div>
               )}
 
-              {mode === 'MANUAL' ? (
-                <button
-                  type="button"
-                  onClick={draw}
-                  disabled={gameState === 'DRAWING' || selected.length === 0 || betAmount <= 0}
-                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
-                >
-                  {gameState === 'DRAWING' ? 'Drawing...' : `Draw Numbers (${formatINR(betAmount, 0)})`}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={toggleAuto}
-                  disabled={selected.length === 0}
-                  className={`w-full h-14 font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center ${
-                    autoActive
-                      ? 'bg-[#f43f5e] text-white'
-                      : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
-                  }`}
-                >
-                  {autoActive
-                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
-                    : 'Start Autobet'}
-                </button>
-              )}
-
               {lastMultiplier !== null && (
                 <div className="p-3 rounded-xl bg-[#070b14] border border-[#24324f] flex items-center justify-between text-xs">
                   <span className="text-[#94a3b8]">Last Draw Payout</span>
@@ -341,8 +346,8 @@ export default function Keno() {
               )}
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
-              <span>40-Number Lotto Draw</span>
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
+              <span>40-Number Lotto Draw · 99.0% RTP</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
               </Link>
@@ -350,22 +355,31 @@ export default function Keno() {
           </div>
 
           {/* Right 40-Tile Keno Stage */}
-          <div className="flex-1 flex flex-col justify-between p-4 sm:p-8 space-y-6 royal-surface min-w-0">
+          <div className="flex-1 flex flex-col justify-between p-3 sm:p-8 space-y-4 royal-surface min-w-0">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-extrabold uppercase tracking-wider text-[#fbbf24] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" /> KENO 40 BAZAR
+              </span>
+              <span className="text-[#94a3b8] font-mono">
+                {selected.length}/10 Selected
+              </span>
+            </div>
+
             {/* 8x5 Grid of 40 Tiles */}
-            <div className="grid grid-cols-5 sm:grid-cols-8 gap-1.5 sm:gap-2.5 max-w-2xl w-full mx-auto my-auto">
+            <div className="grid grid-cols-8 gap-1.5 sm:gap-2.5 max-w-2xl w-full mx-auto my-auto">
               {Array.from({ length: 40 }, (_, i) => i + 1).map((n) => {
                 const isSelected = selected.includes(n);
                 const isDrawn = drawn.includes(n);
                 const isHit = isSelected && isDrawn;
 
                 let btnStyle =
-                  'bg-[#131c31] hover:bg-[#1e293b] text-white border-b-4 border-[#070b14]';
+                  'bg-[#131c31] hover:bg-[#1e293b] text-white border-b-2 sm:border-b-4 border-[#070b14]';
                 if (isHit) {
-                  btnStyle = 'bg-[#10b981] text-[#070b14] border-b-4 border-[#059669] shadow-lg';
+                  btnStyle = 'bg-[#10b981] text-[#070b14] border-b-2 sm:border-b-4 border-[#059669] shadow-lg';
                 } else if (isDrawn) {
                   btnStyle = 'bg-[#070b14] text-[#f43f5e] border border-[#f43f5e]/50';
                 } else if (isSelected) {
-                  btnStyle = 'bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] border-b-4 border-[#b45309]';
+                  btnStyle = 'bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] border-b-2 sm:border-b-4 border-[#b45309]';
                 }
 
                 return (
@@ -374,7 +388,7 @@ export default function Keno() {
                     type="button"
                     onClick={() => toggleNumber(n)}
                     disabled={gameState === 'DRAWING' || autoActive}
-                    className={`h-11 sm:h-14 rounded-xl font-mono font-extrabold text-sm sm:text-base flex items-center justify-center transition-colors ${btnStyle}`}
+                    className={`h-9 sm:h-14 rounded-lg sm:rounded-xl font-mono font-extrabold text-xs sm:text-base flex items-center justify-center transition-colors ${btnStyle}`}
                   >
                     {n}
                   </button>
@@ -385,12 +399,12 @@ export default function Keno() {
             {/* Dynamic Payout Multiplier Ladder */}
             <div className="space-y-2 max-w-2xl w-full mx-auto overflow-x-auto no-scrollbar">
               {selected.length === 0 ? (
-                <div className="bg-[#131c31] py-3 px-4 rounded-xl text-center text-xs font-medium text-[#94a3b8]">
-                  Select 1 to 10 numbers on the board to view payout multipliers
+                <div className="bg-[#131c31] py-2.5 px-4 rounded-xl text-center text-xs font-medium text-[#94a3b8]">
+                  Tap 1 to 10 numbers on the board (or click Draw to auto-pick 5)
                 </div>
               ) : (
                 <div
-                  className="grid gap-1.5 min-w-[300px]"
+                  className="grid gap-1 min-w-[280px]"
                   style={{ gridTemplateColumns: `repeat(${payoutTable.length}, minmax(0, 1fr))` }}
                 >
                   {payoutTable.map((mult, hitsIdx) => {
@@ -398,7 +412,7 @@ export default function Keno() {
                     return (
                       <div
                         key={hitsIdx}
-                        className={`rounded-xl py-2 px-1 text-center border transition-colors ${
+                        className={`rounded-lg py-1.5 px-1 text-center border transition-colors ${
                           isActiveHit
                             ? 'bg-[#10b981] text-[#070b14] border-white font-extrabold'
                             : 'bg-[#131c31] text-white border-[#24324f]'
@@ -408,7 +422,7 @@ export default function Keno() {
                           {mult}×
                         </div>
                         <div
-                          className={`text-[10px] mt-0.5 ${
+                          className={`text-[9px] sm:text-[10px] mt-0.5 ${
                             isActiveHit ? 'text-[#070b14]' : 'text-[#94a3b8]'
                           }`}
                         >

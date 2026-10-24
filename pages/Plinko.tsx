@@ -17,6 +17,7 @@ interface Ball {
 }
 
 export default function Plinko() {
+  const [balance, setBalance] = useState<number>(engine.getSession().balance);
   const [betAmount, setBetAmount] = useState<number>(500);
   const [risk, setRisk] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('HIGH');
   const [rows, setRows] = useState<number>(16);
@@ -33,6 +34,10 @@ export default function Plinko() {
   const bucketTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoStateRef = useRef({ active: false, count: 0, remaining: 0 });
   const paramsRef = useRef({ betAmount: 500, risk: 'HIGH' as 'LOW' | 'MEDIUM' | 'HIGH', rows: 16 });
+
+  useEffect(() => {
+    return engine.subscribe((s) => setBalance(s.balance));
+  }, []);
 
   useEffect(() => {
     autoStateRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
@@ -54,9 +59,13 @@ export default function Plinko() {
 
   const dropBall = () => {
     const { betAmount: curBet, risk: curRisk, rows: curRows } = paramsRef.current;
-    if (curBet > engine.getSession().balance || curBet <= 0) {
-      setAutoActive(false);
-      return;
+    if (curBet <= 0) return;
+    if (engine.getSession().balance < curBet) {
+      if (autoStateRef.current.active) {
+        setAutoActive(false);
+        return;
+      }
+      engine.resetBalance();
     }
     if (ballsRef.current.length > 40) return;
 
@@ -126,9 +135,9 @@ export default function Plinko() {
       ctx.clearRect(0, 0, width, height);
 
       const startX = width / 2;
-      const startY = 44;
-      const spacingX = Math.min(42, (width - 60) / (rows + 2));
-      const spacingY = (height - 80) / rows;
+      const startY = 38;
+      const spacingX = Math.min(40, (width - 48) / (rows + 2));
+      const spacingY = (height - 68) / rows;
 
       for (let r = 0; r < rows; r++) {
         const pegsInRow = r + 3;
@@ -146,7 +155,7 @@ export default function Plinko() {
       }
 
       const activeBalls: Ball[] = [];
-      const speed = engine.getSession().settings.instantBet ? 0.24 : 0.11;
+      const speed = engine.getSession().settings.instantBet ? 0.25 : 0.12;
 
       ballsRef.current.forEach((ball) => {
         if (ball.finished) return;
@@ -172,7 +181,7 @@ export default function Plinko() {
           const y2 = startY + (currentLevel + 1) * spacingY;
 
           const x = x1 + (x2 - x1) * ball.progress;
-          const arc = 10 * Math.sin(ball.progress * Math.PI);
+          const arc = 9 * Math.sin(ball.progress * Math.PI);
           const y = y1 + (y2 - y1) * ball.progress - arc;
 
           ctx.beginPath();
@@ -215,10 +224,39 @@ export default function Plinko() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[580px]">
+        {/* flex-col-reverse on mobile puts the Plinko Pyramid on TOP and Drop Ball button right below */}
+        <div className="flex flex-col-reverse lg:flex-row min-h-[540px]">
           {/* Left Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
+              {/* Primary CTA at top of control panel */}
+              {mode === 'MANUAL' ? (
+                <button
+                  type="button"
+                  onClick={dropBall}
+                  disabled={betAmount <= 0}
+                  className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
+                >
+                  {balance < betAmount
+                    ? `Refill ₹25,000 & Drop Ball (${formatINR(betAmount, 0)})`
+                    : `Drop Golden Ball (${formatINR(betAmount, 0)})`}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleAuto}
+                  className={`w-full h-14 font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center ${
+                    autoActive
+                      ? 'bg-[#f43f5e] text-white'
+                      : 'bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14]'
+                  }`}
+                >
+                  {autoActive
+                    ? `Stop Cascade (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
+                    : 'Start Auto Cascade'}
+                </button>
+              )}
+
               {/* Manual / Auto Tabs */}
               <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
                 <button
@@ -346,32 +384,6 @@ export default function Plinko() {
                   />
                 </div>
               )}
-
-              {/* Primary CTA */}
-              {mode === 'MANUAL' ? (
-                <button
-                  type="button"
-                  onClick={dropBall}
-                  disabled={betAmount <= 0}
-                  className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
-                >
-                  Drop Golden Ball ({formatINR(betAmount, 0)})
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={toggleAuto}
-                  className={`w-full h-14 font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center ${
-                    autoActive
-                      ? 'bg-[#f43f5e] text-white'
-                      : 'bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14]'
-                  }`}
-                >
-                  {autoActive
-                    ? `Stop Cascade (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
-                    : 'Start Auto Cascade'}
-                </button>
-              )}
             </div>
 
             <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
@@ -382,14 +394,14 @@ export default function Plinko() {
             </div>
           </div>
 
-          {/* Right Plinko Stage */}
-          <div className="flex-1 flex flex-col items-center justify-between p-3 sm:p-6 relative royal-surface overflow-hidden">
-            {/* Recent Hits Pill Strip on Right */}
-            <div className=" absolute right-4 top-1/2 -translate-y-1/2 hidden sm:flex flex-col gap-1.5 z-10">
-              {recentHits.map((m, idx) => (
+          {/* Right Plinko Stage (Top on Mobile, Right on Desktop) */}
+          <div className="flex-1 flex flex-col items-center justify-between p-2.5 sm:p-6 relative royal-surface overflow-hidden">
+            {/* Recent Hits Pill Strip */}
+            <div className="absolute right-3 top-3 sm:top-1/2 sm:-translate-y-1/2 flex sm:flex-col gap-1 z-10">
+              {recentHits.slice(0, 4).map((m, idx) => (
                 <div
                   key={idx}
-                  className="w-14 py-1.5 rounded-lg text-center font-mono text-xs font-extrabold tabular-nums shadow"
+                  className="px-2 sm:w-14 py-1 sm:py-1.5 rounded-lg text-center font-mono text-[10px] sm:text-xs font-extrabold tabular-nums shadow"
                   style={{
                     backgroundColor: m >= 10 ? '#f43f5e' : m >= 2 ? '#f59e0b' : '#eab308',
                     color: m >= 10 ? '#ffffff' : '#070b14',
@@ -404,19 +416,19 @@ export default function Plinko() {
               ref={canvasRef}
               width={720}
               height={460}
-              className="w-full max-w-[660px] h-[320px] sm:h-[440px] pointer-events-none"
+              className="w-full max-w-[660px] h-[250px] sm:h-[420px] pointer-events-none"
             />
 
             {/* Multiplier Buckets */}
             <div
-              className="flex gap-0.5 sm:gap-1 w-full justify-center px-1 sm:px-2 relative z-10"
+              className="flex gap-0.5 sm:gap-1 w-full justify-center px-0.5 sm:px-2 relative z-10"
               style={{ maxWidth: `${Math.min(640, (rows + 2) * 44)}px` }}
             >
               {multipliers.map((m, i) => (
                 <div
                   key={i}
-                  className={`flex-1 h-8 sm:h-9 flex items-center justify-center text-[8px] sm:text-xs font-mono font-extrabold rounded sm:rounded-md shadow transition-transform tabular-nums ${
-                    activeBucket === i ? 'translate-y-1.5 brightness-125' : ''
+                  className={`flex-1 h-7 sm:h-9 flex items-center justify-center text-[7px] sm:text-xs font-mono font-extrabold rounded sm:rounded-md shadow transition-transform tabular-nums ${
+                    activeBucket === i ? 'translate-y-1 brightness-125' : ''
                   }`}
                   style={{
                     backgroundColor: getBucketColor(i, multipliers.length),

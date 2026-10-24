@@ -93,10 +93,16 @@ export default function Blackjack() {
 
   const startGame = () => {
     if (gameState === 'PLAYER_TURN' || gameState === 'DEALER_TURN') return;
-    if (betAmount <= 0 || !engine.deductStake(betAmount)) return;
+    const validStake = Math.max(10, betAmount || 100);
+    if (betAmount <= 0) setBetAmount(validStake);
+
+    if (engine.getSession().balance < validStake) {
+      engine.reloadBalance(Math.max(10000, validStake * 5));
+    }
+    if (!engine.deductStake(validStake)) return;
 
     audio.playBet();
-    setActiveStake(betAmount);
+    setActiveStake(validStake);
     const d = generateDeck();
     const p = [d.pop()!, d.pop()!];
     const dealer = [d.pop()!, d.pop()!];
@@ -111,8 +117,8 @@ export default function Blackjack() {
       if (bjTimerRef.current) clearTimeout(bjTimerRef.current);
       bjTimerRef.current = setTimeout(() => {
         if (!mounted.current) return;
-        if (getHandValue(dealer) === 21) finishGame('PUSH', p, dealer, betAmount);
-        else finishGame('BLACKJACK', p, dealer, betAmount);
+        if (getHandValue(dealer) === 21) finishGame('PUSH', p, dealer, validStake);
+        else finishGame('BLACKJACK', p, dealer, validStake);
       }, 450);
     }
   };
@@ -136,6 +142,9 @@ export default function Blackjack() {
 
   const doubleDown = () => {
     if (gameState !== 'PLAYER_TURN' || playerHand.length !== 2) return;
+    if (engine.getSession().balance < activeStake) {
+      engine.reloadBalance(Math.max(10000, activeStake * 4));
+    }
     if (!engine.deductStake(activeStake)) return;
 
     audio.playBet();
@@ -221,20 +230,54 @@ export default function Blackjack() {
     );
   };
 
-  const canDouble =
-    gameState === 'PLAYER_TURN' &&
-    playerHand.length === 2 &&
-    engine.getSession().balance >= activeStake;
-
+  const canDouble = gameState === 'PLAYER_TURN' && playerHand.length === 2;
   const isRoundActive = gameState === 'PLAYER_TURN' || gameState === 'DEALER_TURN';
 
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[580px]">
+        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[580px]">
           {/* Left Stake Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
+              {/* Primary Action Controls at Top for Mobile Thumb Reach */}
+              {gameState === 'PLAYER_TURN' ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={hit}
+                    className="h-14 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg active:scale-[0.99]"
+                  >
+                    HIT CARD
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => stand()}
+                    className="h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg active:scale-[0.99]"
+                  >
+                    STAND ({getHandValue(playerHand)})
+                  </button>
+                  {canDouble && (
+                    <button
+                      type="button"
+                      onClick={doubleDown}
+                      className="col-span-2 h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#f59e0b] text-[#fbbf24] font-extrabold text-xs uppercase rounded-xl"
+                    >
+                      Double Down (2× Stake)
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={startGame}
+                  disabled={gameState === 'DEALER_TURN'}
+                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+                >
+                  {gameState === 'DEALER_TURN' ? 'Dealer Drawing...' : `Deal Hand (${formatINR(betAmount, 0)})`}
+                </button>
+              )}
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Crown className="w-4 h-4 text-[#fbbf24]" />
@@ -307,43 +350,6 @@ export default function Blackjack() {
                 </div>
               </div>
 
-              {/* Action Controls */}
-              <div className="grid grid-cols-2 gap-2.5 pt-1">
-                <button
-                  type="button"
-                  onClick={hit}
-                  disabled={gameState !== 'PLAYER_TURN'}
-                  className="h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] text-white font-extrabold text-xs rounded-xl"
-                >
-                  Hit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => stand()}
-                  disabled={gameState !== 'PLAYER_TURN'}
-                  className="h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] text-white font-extrabold text-xs rounded-xl"
-                >
-                  Stand
-                </button>
-                <button
-                  type="button"
-                  onClick={doubleDown}
-                  disabled={!canDouble}
-                  className="col-span-2 h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#f59e0b]/40 text-[#fbbf24] font-extrabold text-xs rounded-xl"
-                >
-                  Double Down (2×)
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={startGame}
-                disabled={isRoundActive || betAmount <= 0}
-                className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
-              >
-                {isRoundActive ? 'Hand in Progress...' : `Deal Hand (${formatINR(betAmount, 0)})`}
-              </button>
-
               <div className="p-3.5 bg-[#070b14] rounded-xl border border-[#24324f] text-xs text-[#94a3b8] space-y-1.5">
                 <div className="flex justify-between">
                   <span>Blackjack Pays</span>
@@ -356,7 +362,7 @@ export default function Blackjack() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
               <span>4-Deck Provably Fair Shoe</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
@@ -365,9 +371,9 @@ export default function Blackjack() {
           </div>
 
           {/* Right Blackjack Table Stage */}
-          <div className="flex-1 flex flex-col justify-between items-center p-5 sm:p-10 relative felt-surface">
+          <div className="flex-1 flex flex-col justify-between items-center p-4 sm:p-10 relative felt-surface">
             {/* Dealer Zone */}
-            <div className="flex flex-col items-center space-y-3">
+            <div className="flex flex-col items-center space-y-2.5">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-extrabold uppercase tracking-wider text-white/80">
                   Maharaja Dealer
@@ -380,7 +386,7 @@ export default function Blackjack() {
                   </span>
                 )}
               </div>
-              <div className="flex items-center justify-center -space-x-5 sm:-space-x-8 min-h-[144px]">
+              <div className="flex items-center justify-center -space-x-5 sm:-space-x-8 min-h-[112px] sm:min-h-[144px]">
                 {dealerHand.length > 0
                   ? dealerHand.map((card, i) => (
                       <CardComponent
@@ -394,7 +400,7 @@ export default function Blackjack() {
             </div>
 
             {/* Center Banner / Rules Ribbon */}
-            <div className="my-4 min-h-[48px] flex items-center justify-center">
+            <div className="my-3 min-h-[44px] flex items-center justify-center">
               {outcomeBanner ? (
                 <div
                   className={`px-5 py-2 rounded-xl font-extrabold text-xs sm:text-sm border shadow-xl text-center ${
@@ -416,8 +422,8 @@ export default function Blackjack() {
             </div>
 
             {/* Player Zone */}
-            <div className="flex flex-col items-center space-y-3">
-              <div className="flex items-center justify-center -space-x-5 sm:-space-x-8 min-h-[144px]">
+            <div className="flex flex-col items-center space-y-2.5">
+              <div className="flex items-center justify-center -space-x-5 sm:-space-x-8 min-h-[112px] sm:min-h-[144px]">
                 {playerHand.length > 0
                   ? playerHand.map((card, i) => <CardComponent key={i} card={card} />)
                   : [0, 1].map((i) => <CardComponent key={i} hidden />)}

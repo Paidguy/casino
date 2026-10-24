@@ -54,10 +54,19 @@ export default function Slots() {
   }, []);
 
   const spin = () => {
-    const curBet = betRef.current;
-    if (spinning || curBet > engine.getSession().balance || curBet <= 0) {
-      if (autoRef.current.active) setAutoActive(false);
-      return;
+    if (spinning) return;
+    const validStake = Math.max(10, betRef.current || 100);
+    if (betRef.current <= 0) {
+      setBetAmount(validStake);
+      betRef.current = validStake;
+    }
+
+    if (engine.getSession().balance < validStake) {
+      if (autoRef.current.active) {
+        setAutoActive(false);
+        return;
+      }
+      engine.reloadBalance(Math.max(10000, validStake * 5));
     }
 
     setSpinning(true);
@@ -71,7 +80,7 @@ export default function Slots() {
     spinTimerRef.current = setTimeout(() => {
       engine.placeBet(
         GameType.SLOTS,
-        curBet,
+        validStake,
         (r) => {
           const res = engine.calculateSlotsResult(r);
           setGrid(res.grid);
@@ -122,21 +131,35 @@ export default function Slots() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[580px]">
+        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[580px]">
           {/* Left Stake Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#fbbf24]" />
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
-                    DIWALI GOLD SLOTS
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
-                  97.0% RTP
-                </span>
-              </div>
+              {/* Primary Action CTA at Top for Mobile Thumb Reach */}
+              {mode === 'MANUAL' ? (
+                <button
+                  type="button"
+                  onClick={spin}
+                  disabled={spinning}
+                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+                >
+                  {spinning ? 'Spinning Reels...' : `Spin Reels (${formatINR(betAmount, 0)})`}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleAuto}
+                  className={`w-full h-14 font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center ${
+                    autoActive
+                      ? 'bg-[#f43f5e] text-white'
+                      : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
+                  }`}
+                >
+                  {autoActive
+                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
+                    : 'Start Autobet'}
+                </button>
+              )}
 
               <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
                 <button
@@ -221,31 +244,6 @@ export default function Slots() {
                 </div>
               )}
 
-              {mode === 'MANUAL' ? (
-                <button
-                  type="button"
-                  onClick={spin}
-                  disabled={spinning || betAmount <= 0}
-                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
-                >
-                  {spinning ? 'Spinning Reels...' : `Spin Reels (${formatINR(betAmount, 0)})`}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={toggleAuto}
-                  className={`w-full h-14 font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center ${
-                    autoActive
-                      ? 'bg-[#f43f5e] text-white'
-                      : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
-                  }`}
-                >
-                  {autoActive
-                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
-                    : 'Start Autobet'}
-                </button>
-              )}
-
               {/* Paytable Summary */}
               <div className="pt-3 border-t border-[#24324f] space-y-1.5">
                 <div className="text-xs font-bold text-[#94a3b8] mb-1">Symbol Multipliers (3 / 4 / 5)</div>
@@ -266,8 +264,8 @@ export default function Slots() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
-              <span>5-Reel Gold Matrix</span>
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
+              <span>5-Reel Gold Matrix · 97.0% RTP</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
               </Link>
@@ -276,12 +274,13 @@ export default function Slots() {
 
           {/* Right 5x3 Video Slot Stage */}
           <div className="flex-1 flex flex-col items-center justify-between p-4 sm:p-10 royal-surface">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-[#fbbf24] text-center">
-              5 REELS · 5 PAYLINES · 💎 KOHINOOR WILD SUBSTITUTES ALL
+            <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#fbbf24] text-center">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>5 REELS · 5 PAYLINES · 💎 KOHINOOR WILD</span>
             </div>
 
             {/* 5x3 Reel Matrix */}
-            <div className="my-6 w-full max-w-2xl bg-[#131c31] p-3 sm:p-6 rounded-2xl border-2 border-[#f59e0b]/40 shadow-2xl">
+            <div className="my-4 w-full max-w-2xl bg-[#131c31] p-3 sm:p-6 rounded-2xl border-2 border-[#f59e0b]/40 shadow-2xl">
               <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
                 {grid.map((col, cIdx) => (
                   <div key={cIdx} className="flex flex-col gap-1.5 sm:gap-3">
@@ -308,7 +307,7 @@ export default function Slots() {
             </div>
 
             {/* Payout Banner */}
-            <div className="min-h-[48px] flex items-center justify-center">
+            <div className="min-h-[44px] flex items-center justify-center">
               {result && (
                 <div
                   className={`px-5 sm:px-6 py-2 rounded-xl font-extrabold text-xs sm:text-sm font-mono tabular-nums border text-center ${

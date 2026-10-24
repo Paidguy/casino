@@ -90,9 +90,16 @@ export default function Wheel() {
   const uniqueMultipliers = Array.from(new Set(segments.map((s) => s.multi))).sort((a, b) => a - b);
 
   const spin = () => {
-    if (spinning || betAmount > engine.getSession().balance || betAmount <= 0) {
-      if (autoRef.current.active) setAutoActive(false);
-      return;
+    if (spinning) return;
+    const validStake = Math.max(10, betAmount || 100);
+    if (betAmount <= 0) setBetAmount(validStake);
+
+    if (engine.getSession().balance < validStake) {
+      if (autoRef.current.active) {
+        setAutoActive(false);
+        return;
+      }
+      engine.reloadBalance(Math.max(10000, validStake * 5));
     }
 
     setSpinning(true);
@@ -126,7 +133,7 @@ export default function Wheel() {
       else audio.playLoss();
       engine.placeBet(
         GameType.WHEEL,
-        betAmount,
+        validStake,
         targetSeg.multi,
         `Wheel (${risk}): ${targetSeg.multi.toFixed(2)}x`
       );
@@ -174,21 +181,35 @@ export default function Wheel() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[580px]">
+        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[580px]">
           {/* Left Stake Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#fbbf24]" />
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
-                    NAVRATNA WHEEL
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
-                  99.0% RTP
-                </span>
-              </div>
+              {/* Primary Action CTA at Top for Mobile Thumb Reach */}
+              {mode === 'MANUAL' ? (
+                <button
+                  type="button"
+                  onClick={spin}
+                  disabled={spinning}
+                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+                >
+                  {spinning ? 'Spinning...' : `Spin Wheel (${formatINR(betAmount, 0)})`}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleAuto}
+                  className={`w-full h-14 font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center ${
+                    autoActive
+                      ? 'bg-[#f43f5e] text-white'
+                      : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
+                  }`}
+                >
+                  {autoActive
+                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
+                    : 'Start Autobet'}
+                </button>
+              )}
 
               <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
                 <button
@@ -312,35 +333,10 @@ export default function Wheel() {
                   />
                 </div>
               )}
-
-              {mode === 'MANUAL' ? (
-                <button
-                  type="button"
-                  onClick={spin}
-                  disabled={spinning || betAmount <= 0}
-                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
-                >
-                  {spinning ? 'Spinning...' : `Spin Wheel (${formatINR(betAmount, 0)})`}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={toggleAuto}
-                  className={`w-full h-14 font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center ${
-                    autoActive
-                      ? 'bg-[#f43f5e] text-white'
-                      : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
-                  }`}
-                >
-                  {autoActive
-                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
-                    : 'Start Autobet'}
-                </button>
-              )}
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
-              <span>Up to 29.7× Jackpot</span>
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
+              <span>Up to 29.7× Jackpot · 99.0% RTP</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
               </Link>
@@ -348,9 +344,14 @@ export default function Wheel() {
           </div>
 
           {/* Right Wheel Stage */}
-          <div className="flex-1 flex flex-col items-center justify-between p-5 sm:p-10 royal-surface">
+          <div className="flex-1 flex flex-col items-center justify-between p-4 sm:p-10 royal-surface">
+            <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#fbbf24] mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>NAVRATNA MULTIPLIER WHEEL</span>
+            </div>
+
             {/* Wheel Ring */}
-            <div className="relative w-64 h-64 sm:w-80 sm:h-80 my-auto flex items-center justify-center">
+            <div className="relative w-56 h-56 sm:w-80 sm:h-80 my-auto flex items-center justify-center">
               {/* Top Pointer */}
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[18px] border-t-[#fbbf24] drop-shadow" />
 
@@ -367,11 +368,11 @@ export default function Wheel() {
               />
 
               {/* Inner Hub */}
-              <div className="absolute w-44 h-44 sm:w-56 sm:h-56 rounded-full bg-[#070b14] border-8 border-[#f59e0b]/40 flex flex-col items-center justify-center z-20 shadow-inner">
+              <div className="absolute w-36 h-36 sm:w-56 sm:h-56 rounded-full bg-[#070b14] border-8 border-[#f59e0b]/40 flex flex-col items-center justify-center z-20 shadow-inner">
                 {result ? (
                   <>
                     <div
-                      className="text-3xl sm:text-4xl font-extrabold font-mono tabular-nums"
+                      className="text-2xl sm:text-4xl font-extrabold font-mono tabular-nums"
                       style={{ color: result.multi > 0 ? result.color : '#64748b' }}
                     >
                       {result.multi.toFixed(2)}×
@@ -387,7 +388,7 @@ export default function Wheel() {
             </div>
 
             {/* Bottom Unique Multiplier Legend Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full max-w-xl pt-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full max-w-xl pt-4">
               {uniqueMultipliers.map((m) => {
                 const segColor = segments.find((s) => s.multi === m)?.color || '#131c31';
                 const count = segments.filter((s) => s.multi === m).length;
@@ -395,15 +396,15 @@ export default function Wheel() {
                 return (
                   <div
                     key={m}
-                    className={`bg-[#131c31] rounded-xl p-3 border-b-4 text-center transition-transform ${
+                    className={`bg-[#131c31] rounded-xl p-2.5 sm:p-3 border-b-4 text-center transition-transform ${
                       isHit ? '-translate-y-1 brightness-125' : ''
                     }`}
                     style={{ borderBottomColor: segColor }}
                   >
-                    <div className="font-mono font-extrabold text-sm text-white tabular-nums">
+                    <div className="font-mono font-extrabold text-xs sm:text-sm text-white tabular-nums">
                       {m.toFixed(2)}×
                     </div>
-                    <div className="text-[11px] text-[#94a3b8] mt-0.5">
+                    <div className="text-[10px] sm:text-[11px] text-[#94a3b8] mt-0.5">
                       {count}/{segments.length} chance
                     </div>
                   </div>

@@ -52,9 +52,16 @@ export default function Dice() {
   };
 
   const handleRoll = () => {
-    if (rolling || betAmount > engine.getSession().balance || betAmount <= 0) {
-      if (autoRef.current.active) setAutoActive(false);
-      return;
+    if (rolling) return;
+    const validStake = Math.max(10, betAmount || 100);
+    if (betAmount <= 0) setBetAmount(validStake);
+
+    if (engine.getSession().balance < validStake) {
+      if (autoRef.current.active) {
+        setAutoActive(false);
+        return;
+      }
+      engine.reloadBalance(Math.max(10000, validStake * 5));
     }
 
     const delay = engine.getSession().settings.instantBet ? 20 : 120;
@@ -65,7 +72,7 @@ export default function Dice() {
     rollTimerRef.current = setTimeout(() => {
       engine.placeBet(
         GameType.DICE,
-        betAmount,
+        validStake,
         (r) => {
           const { roll, won } = engine.calculateDiceResult(r, target, rollOver ? 'over' : 'under');
           setLastRoll(roll);
@@ -121,21 +128,35 @@ export default function Dice() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[560px]">
+        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[560px]">
           {/* Left Stake Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Dices className="w-4 h-4 text-[#fbbf24]" />
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
-                    CHAUSAR DICE PRO
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
-                  99.0% RTP
-                </span>
-              </div>
+              {/* Primary Action CTA at Top for Mobile Thumb Reach */}
+              {mode === 'MANUAL' ? (
+                <button
+                  type="button"
+                  onClick={handleRoll}
+                  disabled={rolling}
+                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+                >
+                  {rolling ? 'Rolling...' : `Roll Dice (${formatINR(betAmount, 0)})`}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleAuto}
+                  className={`w-full h-14 font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center ${
+                    autoActive
+                      ? 'bg-[#f43f5e] text-white'
+                      : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
+                  }`}
+                >
+                  {autoActive
+                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
+                    : 'Start Autobet'}
+                </button>
+              )}
 
               <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
                 <button
@@ -228,35 +249,10 @@ export default function Dice() {
                   +{formatINR(profitOnWin)}
                 </div>
               </div>
-
-              {mode === 'MANUAL' ? (
-                <button
-                  type="button"
-                  onClick={handleRoll}
-                  disabled={rolling || betAmount <= 0}
-                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
-                >
-                  {rolling ? 'Rolling...' : `Roll Dice (${formatINR(betAmount, 0)})`}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={toggleAuto}
-                  className={`w-full h-14 font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center ${
-                    autoActive
-                      ? 'bg-[#f43f5e] text-white'
-                      : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
-                  }`}
-                >
-                  {autoActive
-                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
-                    : 'Start Autobet'}
-                </button>
-              )}
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
-              <span>1% House Edge</span>
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
+              <span>1% House Edge · 99.0% RTP</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
               </Link>
@@ -266,23 +262,28 @@ export default function Dice() {
           {/* Right Interactive Dice Stage */}
           <div className="flex-1 flex flex-col justify-between p-4 sm:p-8 royal-surface min-w-0">
             {/* Top Recent Roll Badges */}
-            <div className="flex items-center justify-end gap-1.5 overflow-x-auto no-scrollbar h-8">
-              {history.map((h, i) => (
-                <span
-                  key={i}
-                  className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold tabular-nums shrink-0 ${
-                    h.won
-                      ? 'bg-[#10b981] text-[#070b14]'
-                      : 'bg-[#131c31] text-[#94a3b8]'
-                  }`}
-                >
-                  {h.roll.toFixed(2)}
-                </span>
-              ))}
+            <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar h-8">
+              <span className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#fbbf24] shrink-0">
+                <Dices className="w-4 h-4" /> CHAUSAR DICE PRO
+              </span>
+              <div className="flex items-center gap-1.5">
+                {history.map((h, i) => (
+                  <span
+                    key={i}
+                    className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold tabular-nums shrink-0 ${
+                      h.won
+                        ? 'bg-[#10b981] text-[#070b14]'
+                        : 'bg-[#131c31] text-[#94a3b8]'
+                    }`}
+                  >
+                    {h.roll.toFixed(2)}
+                  </span>
+                ))}
+              </div>
             </div>
 
             {/* Central 0-100 Slider Track */}
-            <div className="my-auto py-14 sm:py-16 px-3 sm:px-8 max-w-3xl w-full mx-auto">
+            <div className="my-auto py-12 sm:py-16 px-3 sm:px-8 max-w-3xl w-full mx-auto">
               <div className="relative">
                 <div className="flex justify-between text-xs font-mono font-bold text-[#94a3b8] mb-3 px-2">
                   <span>0</span>
@@ -348,24 +349,24 @@ export default function Dice() {
             </div>
 
             {/* Bottom 3-Column Linked Parameter Bar */}
-            <div className="bg-[#131c31] p-3.5 sm:p-4 rounded-xl border border-[#24324f] grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-[#131c31] p-3.5 sm:p-4 rounded-xl border border-[#24324f] grid grid-cols-3 gap-2 sm:gap-3">
               <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Multiplier</label>
-                <div className="flex h-10 items-center bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b]/60 rounded-lg px-3">
+                <label className="block text-[11px] sm:text-xs font-semibold text-[#94a3b8] mb-1">Multiplier</label>
+                <div className="flex h-10 items-center bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b]/60 rounded-lg px-2 sm:px-3">
                   <input
                     type="number"
                     step="0.01"
                     value={multiplier}
                     onChange={(e) => handleMultiplierChange(Number(e.target.value))}
                     disabled={autoActive || rolling}
-                    className="w-full bg-transparent text-sm font-mono font-bold text-white outline-none tabular-nums"
+                    className="w-full bg-transparent text-xs sm:text-sm font-mono font-bold text-white outline-none tabular-nums min-w-0"
                   />
                   <span className="text-xs font-bold text-[#fbbf24] ml-1">×</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">
+                <label className="block text-[11px] sm:text-xs font-semibold text-[#94a3b8] mb-1">
                   {rollOver ? 'Roll Over' : 'Roll Under'}
                 </label>
                 <button
@@ -375,16 +376,16 @@ export default function Dice() {
                     audio.playClick();
                   }}
                   disabled={autoActive || rolling}
-                  className="w-full h-10 flex items-center justify-between bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-lg px-3 text-sm font-mono font-bold text-white tabular-nums"
+                  className="w-full h-10 flex items-center justify-between bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-lg px-2 sm:px-3 text-xs sm:text-sm font-mono font-bold text-white tabular-nums"
                 >
-                  <span>{target.toFixed(2)}</span>
-                  <RefreshCw className="w-4 h-4 text-[#fbbf24]" />
+                  <span>{target.toFixed(0)}</span>
+                  <RefreshCw className="w-3.5 h-3.5 text-[#fbbf24]" />
                 </button>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Win Chance</label>
-                <div className="flex h-10 items-center bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b]/60 rounded-lg px-3">
+                <label className="block text-[11px] sm:text-xs font-semibold text-[#94a3b8] mb-1">Win Chance</label>
+                <div className="flex h-10 items-center bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b]/60 rounded-lg px-2 sm:px-3">
                   <input
                     type="number"
                     step="1"
@@ -393,7 +394,7 @@ export default function Dice() {
                     value={clampedChance}
                     onChange={(e) => setWinChance(Math.min(98, Math.max(1, Number(e.target.value))))}
                     disabled={autoActive || rolling}
-                    className="w-full bg-transparent text-sm font-mono font-bold text-white outline-none tabular-nums"
+                    className="w-full bg-transparent text-xs sm:text-sm font-mono font-bold text-white outline-none tabular-nums min-w-0"
                   />
                   <span className="text-xs font-bold text-[#fbbf24] ml-1">%</span>
                 </div>

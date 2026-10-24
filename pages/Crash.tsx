@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { engine, formatINR } from '../services/engine';
 import { audio } from '../services/audio';
 import { GameType } from '../types';
-import { ShieldCheck, Users, Plane } from 'lucide-react';
+import { ShieldCheck, Users, Plane, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface SimPlayer {
@@ -22,6 +22,7 @@ const BOT_NAMES = [
 ];
 
 export default function Crash() {
+  const [balance, setBalance] = useState<number>(engine.getSession().balance);
   const [betAmount, setBetAmount] = useState<number>(500);
   const [cashOutAt, setCashOutAt] = useState<number>(2.0);
   const [autoCashOutEnabled, setAutoCashOutEnabled] = useState<boolean>(false);
@@ -39,6 +40,7 @@ export default function Crash() {
   const multiplierRef = useRef<number>(1.0);
   const crashPointRef = useRef<number>(1.0);
   const startTimeRef = useRef<number>(0);
+  const lastActionTimeRef = useRef<number>(0);
   const requestRef = useRef<number>(0);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,6 +54,10 @@ export default function Crash() {
 
   const [displayMultiplier, setDisplayMultiplier] = useState<number>(1.0);
   const [cashedMultiplier, setCashedMultiplier] = useState<number | null>(null);
+
+  useEffect(() => {
+    return engine.subscribe((s) => setBalance(s.balance));
+  }, []);
 
   useEffect(() => {
     autoStateRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
@@ -89,7 +95,7 @@ export default function Crash() {
           } else {
             setAutoActive(false);
           }
-        }, 950);
+        }, 900);
       } else {
         setAutoActive(false);
       }
@@ -107,8 +113,8 @@ export default function Crash() {
       if (!canvas || !canvas.parentElement) return;
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = Math.max(300, Math.floor(rect.width * dpr));
-      canvas.height = Math.max(240, Math.floor(rect.height * dpr));
+      canvas.width = Math.max(280, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(220, Math.floor(rect.height * dpr));
       if (!isGameRunning.current) {
         drawGraph(0, multiplierRef.current, gameState === 'CRASHED');
       }
@@ -126,11 +132,20 @@ export default function Crash() {
   }, [gameState]);
 
   const startRound = () => {
+    const now = Date.now();
+    if (now - lastActionTimeRef.current < 200) return;
     if (!mounted.current || isGameRunning.current) return;
-    if (betAmount <= 0 || !engine.deductStake(betAmount)) {
+
+    if (betAmount <= 0) return;
+    if (engine.getSession().balance < betAmount) {
+      engine.resetBalance();
+    }
+    if (!engine.deductStake(betAmount)) {
       setAutoActive(false);
       return;
     }
+
+    lastActionTimeRef.current = now;
 
     if (resetTimerRef.current) {
       clearTimeout(resetTimerRef.current);
@@ -237,12 +252,15 @@ export default function Crash() {
       if (mounted.current && !isGameRunning.current) {
         setGameState('IDLE');
       }
-    }, 1400);
+    }, 1100);
   };
 
   const executeCashOut = (targetMult?: number) => {
+    const now = Date.now();
+    if (!targetMult && now - lastActionTimeRef.current < 200) return;
     if (!isGameRunning.current || isCashOutProcessing.current || hasCashedOutRef.current) return;
 
+    lastActionTimeRef.current = now;
     const rawMult = targetMult ?? multiplierRef.current;
     const finalMult = Math.min(crashPointRef.current, Math.max(1.01, +rawMult.toFixed(2)));
 
@@ -273,14 +291,13 @@ export default function Crash() {
     const h = canvas.height;
 
     ctx.clearRect(0, 0, w, h);
-    const padLeft = 48 * dpr;
-    const padRight = 28 * dpr;
-    const padTop = 32 * dpr;
-    const padBottom = 36 * dpr;
+    const padLeft = 44 * dpr;
+    const padRight = 24 * dpr;
+    const padTop = 26 * dpr;
+    const padBottom = 30 * dpr;
     const graphW = Math.max(10, w - padLeft - padRight);
     const graphH = Math.max(10, h - padTop - padBottom);
 
-    // Radar Grid Lines
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1 * dpr;
     ctx.fillStyle = '#64748b';
@@ -331,7 +348,6 @@ export default function Crash() {
     }
     ctx.stroke();
 
-    // Gradient Fill under Aviator curve
     const grad = ctx.createLinearGradient(0, padTop, 0, padTop + graphH);
     if (crashed) {
       grad.addColorStop(0, 'rgba(244, 63, 94, 0.28)');
@@ -349,7 +365,6 @@ export default function Crash() {
     ctx.closePath();
     ctx.fill();
 
-    // Glowing Aviator Jet Tip Marker
     ctx.beginPath();
     ctx.fillStyle = crashed ? '#f43f5e' : hasCashedOutRef.current ? '#10b981' : '#fbbf24';
     ctx.arc(endX, endY, 6.5 * dpr, 0, Math.PI * 2);
@@ -367,15 +382,98 @@ export default function Crash() {
   };
 
   const expectedProfit = Math.max(0, betAmount * cashOutAt - betAmount);
-  const isRoundBusy = gameState === 'RUNNING' || isGameRunning.current;
+  const isRoundBusy = gameState === 'RUNNING';
 
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[560px]">
+        {/* flex-col-reverse on mobile puts the Aviator Radar Stage on TOP and Controls immediately below */}
+        <div className="flex flex-col-reverse lg:flex-row min-h-[520px]">
           {/* Left Bookie Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
+              {/* Primary CTA Button — Placed at the very top on mobile so it sits directly beneath the plane canvas */}
+              <div className="order-first">
+                {mode === 'MANUAL' ? (
+                  gameState === 'RUNNING' ? (
+                    cashedMultiplier !== null ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full h-14 bg-[#10b981]/20 border-2 border-[#10b981] text-[#10b981] font-extrabold text-xs sm:text-sm rounded-xl flex flex-col items-center justify-center leading-tight"
+                      >
+                        <span>CASHED OUT @ {cashedMultiplier.toFixed(2)}×</span>
+                        <span className="text-xs font-mono tabular-nums mt-0.5">
+                          WON +{formatINR(activeStakeRef.current * cashedMultiplier)}
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => executeCashOut()}
+                        className="w-full h-14 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex flex-col items-center justify-center leading-tight select-none"
+                      >
+                        <span>CASH OUT NOW</span>
+                        <span className="text-xs font-mono tabular-nums mt-0.5">
+                          {formatINR(activeStakeRef.current * displayMultiplier)} (
+                          {displayMultiplier.toFixed(2)}×)
+                        </span>
+                      </button>
+                    )
+                  ) : gameState === 'CRASHED' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+                        setGameState('IDLE');
+                        startRound();
+                      }}
+                      className="w-full h-14 bg-[#f43f5e]/20 hover:bg-[#f43f5e]/30 border border-[#f43f5e] text-[#f43f5e] font-extrabold text-xs sm:text-sm rounded-xl flex flex-col items-center justify-center leading-tight"
+                    >
+                      <span>FLEW AWAY @ {displayMultiplier.toFixed(2)}×</span>
+                      <span className="text-[11px] text-white mt-0.5">Tap to Launch Next Flight</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={startRound}
+                      disabled={betAmount <= 0}
+                      className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
+                    >
+                      {balance < betAmount
+                        ? `Refill ₹25,000 & Fly (${formatINR(betAmount, 0)})`
+                        : `Place Aviator Bet (${formatINR(betAmount, 0)})`}
+                    </button>
+                  )
+                ) : (
+                  <div className="space-y-2">
+                    {gameState === 'RUNNING' && cashedMultiplier === null && (
+                      <button
+                        type="button"
+                        onClick={() => executeCashOut()}
+                        className="w-full h-12 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 font-mono tabular-nums"
+                      >
+                        <span>MANUAL CASH OUT</span>
+                        <span>({formatINR(activeStakeRef.current * displayMultiplier)})</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={toggleAuto}
+                      className={`w-full h-14 font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center ${
+                        autoActive
+                          ? 'bg-[#f43f5e] text-white'
+                          : 'bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14]'
+                      }`}
+                    >
+                      {autoActive
+                        ? `Stop Auto (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
+                        : 'Start Auto Pilot'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Manual / Auto Tabs */}
               <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
                 <button
@@ -464,7 +562,9 @@ export default function Crash() {
                   >
                     <span
                       className={`w-7 h-4 rounded-full p-0.5 transition-colors flex items-center ${
-                        mode === 'AUTO' || autoCashOutEnabled ? 'bg-[#10b981]' : 'bg-[#070b14] border border-[#24324f]'
+                        mode === 'AUTO' || autoCashOutEnabled
+                          ? 'bg-[#10b981]'
+                          : 'bg-[#070b14] border border-[#24324f]'
                       }`}
                     >
                       <span
@@ -477,8 +577,8 @@ export default function Crash() {
                   </button>
                   <span className="font-mono text-[#10b981] tabular-nums">
                     {mode === 'AUTO' || autoCashOutEnabled
-                      ? `Chance: ${Math.min(98, 99 / Math.max(1.01, cashOutAt)).toFixed(1)}%`
-                      : 'Manual Flight'}
+                      ? `Target: ${cashOutAt.toFixed(2)}×`
+                      : 'Manual Mode'}
                   </span>
                 </div>
                 <div
@@ -535,102 +635,6 @@ export default function Crash() {
                 </div>
               )}
 
-              {/* Profit on Win Readout */}
-              <div>
-                <div className="flex justify-between text-xs font-medium text-[#94a3b8] mb-1.5">
-                  <span>
-                    {isRoundBusy && !cashedMultiplier
-                      ? 'Live Cashout Value'
-                      : 'Target Munafa (Profit)'}
-                  </span>
-                </div>
-                <div className="h-11 bg-[#070b14] border border-[#24324f] rounded-xl px-3 flex items-center text-sm font-mono font-extrabold text-[#10b981] tabular-nums">
-                  {isRoundBusy && !cashedMultiplier
-                    ? formatINR(activeStakeRef.current * displayMultiplier)
-                    : `+${formatINR(expectedProfit)}`}
-                </div>
-              </div>
-
-              {/* Primary CTA Button — Fixed h-14 (56px) to eliminate any layout shift */}
-              {mode === 'MANUAL' ? (
-                gameState === 'RUNNING' ? (
-                  cashedMultiplier !== null ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full h-14 bg-[#10b981]/20 border-2 border-[#10b981] text-[#10b981] font-extrabold text-xs sm:text-sm rounded-xl flex flex-col items-center justify-center leading-tight"
-                    >
-                      <span>CASHED OUT @ {cashedMultiplier.toFixed(2)}×</span>
-                      <span className="text-xs font-mono tabular-nums mt-0.5">
-                        WON +{formatINR(activeStakeRef.current * cashedMultiplier)}
-                      </span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        executeCashOut();
-                      }}
-                      onClick={() => executeCashOut()}
-                      className="w-full h-14 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex flex-col items-center justify-center leading-tight select-none"
-                    >
-                      <span>CASH OUT NOW</span>
-                      <span className="text-xs font-mono tabular-nums mt-0.5">
-                        {formatINR(activeStakeRef.current * displayMultiplier)}
-                      </span>
-                    </button>
-                  )
-                ) : gameState === 'CRASHED' ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full h-14 bg-[#f43f5e]/20 border border-[#f43f5e]/50 text-[#f43f5e] font-extrabold text-sm rounded-xl flex items-center justify-center"
-                  >
-                    ROUND ENDED @ {displayMultiplier.toFixed(2)}×
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={startRound}
-                    disabled={betAmount <= 0}
-                    className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
-                  >
-                    Place Aviator Bet ({formatINR(betAmount, 0)})
-                  </button>
-                )
-              ) : (
-                <div className="space-y-2">
-                  {gameState === 'RUNNING' && cashedMultiplier === null && (
-                    <button
-                      type="button"
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        executeCashOut();
-                      }}
-                      onClick={() => executeCashOut()}
-                      className="w-full h-12 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 font-mono tabular-nums"
-                    >
-                      <span>MANUAL CASH OUT</span>
-                      <span>({formatINR(activeStakeRef.current * displayMultiplier)})</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={toggleAuto}
-                    className={`w-full h-14 font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center ${
-                      autoActive
-                        ? 'bg-[#f43f5e] text-white'
-                        : 'bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14]'
-                    }`}
-                  >
-                    {autoActive
-                      ? `Stop Auto (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
-                      : 'Start Auto Pilot'}
-                  </button>
-                </div>
-              )}
-
               {/* Live Indian Punters in Flight */}
               <div className="pt-3 border-t border-[#24324f] space-y-2">
                 <div className="flex items-center justify-between text-xs text-[#94a3b8]">
@@ -641,7 +645,7 @@ export default function Crash() {
                     {simPlayers.length + (gameState === 'RUNNING' ? 1 : 0)}
                   </span>
                 </div>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar">
+                <div className="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar">
                   {simPlayers.map((p) => (
                     <div
                       key={p.name}
@@ -671,19 +675,19 @@ export default function Crash() {
             </div>
           </div>
 
-          {/* Right Interactive Aviator Stage */}
-          <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 relative min-h-[380px] sm:min-h-[460px] royal-surface">
+          {/* Right Interactive Aviator Stage (Top on Mobile, Right on Desktop) */}
+          <div className="flex-1 flex flex-col justify-between p-3.5 sm:p-6 relative min-h-[270px] sm:min-h-[420px] royal-surface">
             {/* Top History Multipliers */}
             <div className="flex items-center justify-between gap-2 z-10">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#fbbf24] shrink-0">
                 <Plane className="w-4 h-4 text-[#f43f5e]" />
-                <span>AVIATOR LIVE RADAR</span>
+                <span>AVIATOR RADAR</span>
               </div>
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                 {history.map((h, i) => (
                   <span
                     key={i}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold tabular-nums shrink-0 ${
+                    className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-mono font-bold tabular-nums shrink-0 ${
                       h >= 2.0
                         ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40'
                         : 'bg-[#131c31] text-[#94a3b8] border border-[#24324f]'
@@ -696,12 +700,12 @@ export default function Crash() {
             </div>
 
             {/* Canvas & Central Multiplier Readout */}
-            <div className="relative flex-1 flex items-center justify-center my-3 sm:my-4 min-h-[260px]">
+            <div className="relative flex-1 flex items-center justify-center my-2 sm:my-4 min-h-[190px] sm:min-h-[260px]">
               <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
               <div className="relative z-10 text-center select-none px-4">
                 <div
-                  className={`text-5xl sm:text-7xl font-extrabold font-mono tabular-nums tracking-tight ${
+                  className={`text-4xl sm:text-7xl font-extrabold font-mono tabular-nums tracking-tight ${
                     gameState === 'CRASHED'
                       ? 'text-[#f43f5e]'
                       : cashedMultiplier !== null
@@ -712,15 +716,15 @@ export default function Crash() {
                   {displayMultiplier.toFixed(2)}×
                 </div>
 
-                <div className="h-12 mt-3 flex items-center justify-center">
+                <div className="h-10 mt-2 flex items-center justify-center">
                   {gameState === 'CRASHED' && (
-                    <div className="inline-block px-4 py-1.5 rounded-xl bg-[#f43f5e]/20 border border-[#f43f5e]/50 text-[#f43f5e] text-xs font-extrabold">
+                    <div className="inline-block px-3.5 py-1 rounded-xl bg-[#f43f5e]/20 border border-[#f43f5e]/50 text-[#f43f5e] text-xs font-extrabold">
                       FLEW AWAY @ {displayMultiplier.toFixed(2)}×
                     </div>
                   )}
 
                   {cashedMultiplier !== null && (
-                    <div className="inline-block px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl bg-[#10b981]/20 border border-[#10b981] text-[#10b981] text-xs sm:text-sm font-extrabold font-mono tabular-nums">
+                    <div className="inline-block px-3.5 py-1.5 rounded-xl bg-[#10b981]/20 border border-[#10b981] text-[#10b981] text-xs font-extrabold font-mono tabular-nums">
                       CASHED OUT +{formatINR(activeStakeRef.current * cashedMultiplier)} @{' '}
                       {cashedMultiplier.toFixed(2)}×
                     </div>
@@ -730,7 +734,7 @@ export default function Crash() {
             </div>
 
             {/* Bottom Stage Bar */}
-            <div className="flex items-center justify-between text-xs text-[#94a3b8] pt-2 border-t border-[#24324f]">
+            <div className="flex items-center justify-between text-[11px] sm:text-xs text-[#94a3b8] pt-2 border-t border-[#24324f]">
               <span>
                 {mode === 'AUTO' || autoCashOutEnabled
                   ? `Auto Cashout: ${cashOutAt.toFixed(2)}× (${formatINR(betAmount * cashOutAt)})`

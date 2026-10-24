@@ -53,7 +53,14 @@ export default function Matka() {
   };
 
   const play = () => {
-    if (isDrawing || betAmount <= 0 || betAmount > engine.getSession().balance) return;
+    if (isDrawing) return;
+    const validStake = Math.max(10, betAmount || 100);
+    if (betAmount <= 0) setBetAmount(validStake);
+
+    if (engine.getSession().balance < validStake) {
+      engine.reloadBalance(Math.max(10000, validStake * 5));
+    }
+
     setIsDrawing(true);
     setResult(null);
     audio.playBet();
@@ -64,7 +71,7 @@ export default function Matka() {
     drawTimerRef.current = setTimeout(() => {
       engine.placeBet(
         GameType.MATKA,
-        betAmount,
+        validStake,
         (r) => {
           const res = engine.getSattaMatkaResult(r);
           let mult = 0;
@@ -93,7 +100,7 @@ export default function Matka() {
             jodi: res.jodi,
             pannaType: res.pannaType,
             won,
-            payout: +(betAmount * mult).toFixed(2),
+            payout: +(validStake * mult).toFixed(2),
           });
           setHistory((prev) =>
             [
@@ -124,10 +131,20 @@ export default function Matka() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[580px]">
+        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[580px]">
           {/* Left Bookie Matka Slip Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
+              {/* Primary Action Button at Top for Mobile Thumb Reach */}
+              <button
+                type="button"
+                onClick={play}
+                disabled={isDrawing}
+                className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+              >
+                {isDrawing ? 'Drawing Matka Pot...' : `Lock Matka Parchi (${formatINR(betAmount, 0)})`}
+              </button>
+
               {/* Bazar Market Selector */}
               <div>
                 <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">
@@ -316,18 +333,9 @@ export default function Matka() {
                   {formatINR(betAmount * getActiveMultiplier())}
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={play}
-                disabled={isDrawing || betAmount <= 0}
-                className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
-              >
-                {isDrawing ? 'Drawing Matka Pot...' : `Lock Matka Parchi (${formatINR(betAmount, 0)})`}
-              </button>
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
               <span>95.0% RTP · Official Matka</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
@@ -336,7 +344,7 @@ export default function Matka() {
           </div>
 
           {/* Right Kalyan Matka Stage */}
-          <div className="flex-1 flex flex-col justify-between p-4 sm:p-8 lg:p-10 space-y-6 royal-surface min-w-0">
+          <div className="flex-1 flex flex-col justify-between p-4 sm:p-8 lg:p-10 space-y-5 royal-surface min-w-0">
             {/* Top Draw Chart History */}
             <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
               <span className="text-xs font-bold text-[#fbbf24] flex items-center gap-1.5 shrink-0">
@@ -356,55 +364,55 @@ export default function Matka() {
             </div>
 
             {/* 3-Card Panna & Jodi Draw Display */}
-            <div className="my-auto flex flex-col items-center space-y-6">
-              <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4">
+            <div className="my-auto flex flex-col items-center space-y-5">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
                 {(result ? result.cards.split('') : ['1', '4', '8']).map((digit, idx) => (
                   <div
                     key={idx}
-                    className="w-16 h-24 sm:w-20 sm:h-28 rounded-2xl bg-[#131c31] border-2 border-[#f59e0b]/60 flex flex-col items-center justify-center font-mono text-3xl sm:text-4xl font-extrabold text-white shadow-xl"
+                    className="w-14 h-20 sm:w-20 sm:h-28 rounded-2xl bg-[#131c31] border-2 border-[#f59e0b]/60 flex flex-col items-center justify-center font-mono text-2xl sm:text-4xl font-extrabold text-white shadow-xl"
                   >
-                    <span className="text-[10px] text-[#94a3b8] font-sans mb-1">PATTI {idx + 1}</span>
+                    <span className="text-[9px] sm:text-[10px] text-[#94a3b8] font-sans mb-0.5">
+                      PATTI {idx + 1}
+                    </span>
                     <span>{isDrawing ? '•' : digit}</span>
                   </div>
                 ))}
 
-                <div className="text-xl sm:text-2xl font-bold text-[#fbbf24]">→</div>
+                <div className="text-lg sm:text-2xl font-bold text-[#fbbf24]">→</div>
 
                 <div
-                  className={`w-20 h-24 sm:w-24 sm:h-28 rounded-2xl border-2 flex flex-col items-center justify-center shadow-xl ${
+                  className={`w-16 h-20 sm:w-24 sm:h-28 rounded-2xl border-2 flex flex-col items-center justify-center shadow-xl ${
                     result?.won
                       ? 'bg-[#10b981] text-[#070b14] border-white'
                       : 'bg-[#f59e0b] text-[#070b14] border-[#fef08a]'
                   }`}
                 >
-                  <span className="text-[10px] font-extrabold uppercase">ANK / JODI</span>
-                  <span className="font-mono text-2xl sm:text-4xl font-extrabold">
+                  <span className="text-[9px] sm:text-[10px] font-extrabold uppercase">ANK / JODI</span>
+                  <span className="font-mono text-xl sm:text-4xl font-extrabold">
                     {isDrawing ? '••' : result ? (betMode === 'JODI' ? result.jodi : result.single) : '3 / 37'}
                   </span>
                 </div>
               </div>
 
-              <div className="min-h-[40px] flex items-center justify-center">
-                {result && (
-                  <div
-                    className={`px-4 sm:px-5 py-2 rounded-xl font-mono text-xs sm:text-sm font-extrabold border text-center ${
-                      result.won
-                        ? 'bg-[#10b981]/20 border-[#10b981] text-[#10b981]'
-                        : 'bg-[#131c31] border-[#24324f] text-[#94a3b8]'
-                    }`}
-                  >
-                    {result.won
-                      ? `PASS! Won +${formatINR(result.payout)} (${result.cards}-${result.jodi}-${result.closeCards})`
-                      : `Declared: ${result.cards}-${result.jodi}-${result.closeCards} (${result.pannaType} PANNA)`}
-                  </div>
-                )}
-              </div>
+              {result && (
+                <div
+                  className={`px-4 py-2 rounded-xl font-mono text-xs sm:text-sm font-extrabold border text-center ${
+                    result.won
+                      ? 'bg-[#10b981]/20 border-[#10b981] text-[#10b981]'
+                      : 'bg-[#131c31] border-[#24324f] text-[#94a3b8]'
+                  }`}
+                >
+                  {result.won
+                    ? `PASS! Won +${formatINR(result.payout)} (${result.cards}-${result.jodi}-${result.closeCards})`
+                    : `Declared: ${result.cards}-${result.jodi}-${result.closeCards} (${result.pannaType} PANNA)`}
+                </div>
+              )}
 
               {/* 0-9 Ank Selection Grid */}
               {betMode === 'ANK' && (
                 <div className="w-full max-w-xl space-y-2">
                   <div className="text-xs font-semibold text-[#94a3b8] text-center">
-                    Select Lucky Single Ank (0–9) · Pays 9.50× Bhav
+                    Tap Lucky Single Ank (0–9) · Pays 9.50× Bhav
                   </div>
                   <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
                     {Array.from({ length: 10 }, (_, i) => i).map((num) => (
@@ -416,7 +424,7 @@ export default function Matka() {
                           audio.playClick();
                         }}
                         disabled={isDrawing}
-                        className={`h-12 sm:h-14 rounded-xl font-mono font-extrabold text-base sm:text-lg border transition-colors ${
+                        className={`h-11 sm:h-14 rounded-xl font-mono font-extrabold text-base sm:text-lg border transition-colors ${
                           selectedAnk === num
                             ? 'bg-[#f59e0b] text-[#070b14] border-white shadow-lg'
                             : 'bg-[#131c31] hover:bg-[#1d2a47] text-white border-[#24324f]'

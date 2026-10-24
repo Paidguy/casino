@@ -103,16 +103,16 @@ export const WalletModal = ({
     if (vaultDirection === 'TO_VAULT') {
       if (engine.transferToVault(amt)) {
         audio.playClick();
-        showNotice(`Locked ${formatINR(amt)} in Tijori Safe`);
+        showNotice(`Locked ${formatINR(amt)} in Tijori Safe Vault`);
       } else {
         showNotice('Insufficient active balance');
       }
     } else {
       if (engine.withdrawFromVault(amt)) {
         audio.playClick();
-        showNotice(`Unlocked ${formatINR(amt)} to Active Wallet`);
+        showNotice(`Unlocked ${formatINR(amt)} from Tijori Safe to Wallet`);
       } else {
-        showNotice('Insufficient Tijori Safe balance');
+        showNotice('Insufficient Tijori Vault balance');
       }
     }
   };
@@ -121,55 +121,58 @@ export const WalletModal = ({
     const claimed = engine.claimRakeback();
     if (claimed > 0) {
       audio.playWin();
-      showNotice(`Claimed ${formatINR(claimed)} VIP Chhoot Rebate`);
+      showNotice(`Claimed ${formatINR(claimed)} VIP Chhoot / Rebate`);
     } else {
-      showNotice('Place bets to accumulate VIP Chhoot Rebate');
+      showNotice('Place bets on any game to accumulate instant VIP Chhoot');
     }
   };
 
   return (
     <div
-      className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+      className="fixed inset-0 z-[1300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-[#0d1322] w-full max-w-xl rounded-2xl border border-[#24324f] shadow-2xl overflow-hidden"
+        className="bg-[#0d1322] border border-[#24324f] rounded-2xl w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-4 sm:px-6 py-4 bg-[#070b14] border-b border-[#24324f] flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Wallet className="w-5 h-5 text-[#f59e0b] shrink-0" />
-            <h2 className="text-sm sm:text-base font-bold text-white font-display truncate">
-              Instant INR Cashier · UPI / Paytm / IMPS
-            </h2>
+        <div className="px-4 sm:px-6 py-3.5 bg-[#070b14] border-b border-[#24324f] flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5">
+            <Wallet className="w-5 h-5 text-[#f59e0b]" />
+            <div>
+              <h2 className="text-sm sm:text-base font-extrabold text-white tracking-tight">
+                Instant INR Cashier & Tijori Safe
+              </h2>
+              <p className="text-[11px] text-[#94a3b8]">
+                Zero-Fee UPI QR · Paytm · IMPS 24×7 Express Settlement
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-[#131c31] text-[#94a3b8] hover:text-white flex items-center justify-center shrink-0"
+            className="text-[#94a3b8] hover:text-white p-1.5 rounded-lg hover:bg-[#131c31]"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-5 max-h-[82vh] overflow-y-auto custom-scrollbar">
-          {/* Balances Overview */}
-          <div className="grid grid-cols-2 gap-3 bg-[#070b14] p-3.5 sm:p-4 rounded-xl border border-[#24324f]">
-            <div className="min-w-0">
-              <div className="text-[11px] sm:text-xs text-[#94a3b8] mb-1 truncate">Active Play Wallet (INR)</div>
-              <div className="text-lg sm:text-xl font-extrabold font-mono text-[#fbbf24] tabular-nums truncate">
+        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-2 gap-3 bg-[#070b14] p-3.5 rounded-xl border border-[#24324f]">
+            <div>
+              <span className="text-xs text-[#94a3b8] block mb-0.5">Active Peti Balance</span>
+              <span className="text-base sm:text-xl font-extrabold font-mono text-[#fbbf24] tabular-nums">
                 {formatINR(session.balance)}
-              </div>
+              </span>
             </div>
-            <div className="border-l border-[#24324f] pl-3 sm:pl-4 min-w-0">
-              <div className="text-[11px] sm:text-xs text-[#94a3b8] mb-1 truncate">Tijori Safe Lock</div>
-              <div className="text-lg sm:text-xl font-extrabold font-mono text-[#10b981] tabular-nums truncate">
+            <div className="border-l border-[#24324f] pl-3.5">
+              <span className="text-xs text-[#94a3b8] block mb-0.5">Tijori Safe Lock</span>
+              <span className="text-base sm:text-xl font-extrabold font-mono text-[#10b981] tabular-nums">
                 {formatINR(session.vaultBalance)}
-              </div>
+              </span>
             </div>
           </div>
 
-          {/* Segmented Control */}
           <div className="grid grid-cols-4 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
             {(['DEPOSIT', 'WITHDRAW', 'VAULT', 'VIP'] as const).map((t) => (
               <button
@@ -178,17 +181,18 @@ export const WalletModal = ({
                 onClick={() => {
                   setTab(t);
                   setFeedback(null);
+                  audio.playClick();
                 }}
-                className={`py-2 text-[11px] sm:text-xs font-bold rounded-lg whitespace-nowrap ${
+                className={`py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
                   tab === t
-                    ? 'bg-[#f59e0b] text-[#070b14] shadow-sm'
+                    ? 'bg-[#f59e0b] text-[#070b14] shadow'
                     : 'text-[#94a3b8] hover:text-white'
                 }`}
               >
                 {t === 'DEPOSIT'
-                  ? 'Deposit'
+                  ? 'Add INR'
                   : t === 'WITHDRAW'
-                  ? 'Withdraw'
+                  ? 'Nikasi'
                   : t === 'VAULT'
                   ? 'Tijori'
                   : 'VIP Chhoot'}
@@ -197,7 +201,7 @@ export const WalletModal = ({
           </div>
 
           {feedback && (
-            <div className="px-4 py-3 rounded-xl bg-[#10b981]/15 border border-[#10b981]/40 text-[#10b981] text-xs font-semibold flex items-center gap-2">
+            <div className="px-3.5 py-2.5 rounded-xl bg-[#10b981]/15 border border-[#10b981]/40 text-[#10b981] text-xs font-semibold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{feedback}</span>
             </div>
@@ -205,89 +209,70 @@ export const WalletModal = ({
 
           {tab === 'DEPOSIT' && (
             <div className="space-y-4">
-              {/* Payment Rail Selector */}
-              <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-2">
-                  Select Indian Payment Gateway (0% Fee · Instant Settlement)
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPayMethod('UPI_QR')}
-                    className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all ${
-                      payMethod === 'UPI_QR'
-                        ? 'bg-[#131c31] border-[#f59e0b] text-white'
-                        : 'bg-[#070b14] border-[#24324f] text-[#94a3b8]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <QrCode className="w-4 h-4 text-[#f59e0b]" />
-                      <span className="text-[10px] font-mono text-[#10b981]">INSTANT</span>
-                    </div>
-                    <div className="text-xs font-bold">UPI / GPay</div>
-                    <div className="text-[10px] text-[#64748b] truncate">PhonePe · BHIM</div>
-                  </button>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'UPI_QR', label: 'UPI / GPay / PhonePe', icon: QrCode },
+                  { id: 'PAYTM', label: 'Paytm Wallet', icon: Smartphone },
+                  { id: 'IMPS', label: 'IMPS Bank', icon: Building2 },
+                ].map((m) => {
+                  const Icon = m.icon;
+                  const active = payMethod === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setPayMethod(m.id as any);
+                        audio.playClick();
+                      }}
+                      className={`p-2.5 rounded-xl border text-left transition-colors flex flex-col gap-1 ${
+                        active
+                          ? 'bg-[#131c31] border-[#f59e0b] text-white'
+                          : 'bg-[#070b14] border-[#24324f] text-[#94a3b8] hover:text-white'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 ${active ? 'text-[#f59e0b]' : 'text-[#64748b]'}`} />
+                      <span className="text-[11px] font-bold leading-tight">{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setPayMethod('PAYTM')}
-                    className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all ${
-                      payMethod === 'PAYTM'
-                        ? 'bg-[#131c31] border-[#f59e0b] text-white'
-                        : 'bg-[#070b14] border-[#24324f] text-[#94a3b8]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <Smartphone className="w-4 h-4 text-[#38bdf8]" />
-                      <span className="text-[10px] font-mono text-[#10b981]">FAST</span>
-                    </div>
-                    <div className="text-xs font-bold">Paytm UPI</div>
-                    <div className="text-[10px] text-[#64748b] truncate">Wallet & VPA</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPayMethod('IMPS')}
-                    className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all ${
-                      payMethod === 'IMPS'
-                        ? 'bg-[#131c31] border-[#f59e0b] text-white'
-                        : 'bg-[#070b14] border-[#24324f] text-[#94a3b8]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <Building2 className="w-4 h-4 text-[#10b981]" />
-                      <span className="text-[10px] font-mono text-[#f59e0b]">24×7</span>
-                    </div>
-                    <div className="text-xs font-bold">IMPS / NEFT</div>
-                    <div className="text-[10px] text-[#64748b] truncate">High Roller A/C</div>
-                  </button>
+              <div className="bg-[#070b14] border border-[#24324f] rounded-xl p-3.5 flex items-center gap-3.5">
+                <div className="w-14 h-14 rounded-lg bg-white p-1.5 shrink-0 flex items-center justify-center">
+                  <svg viewBox="0 0 64 64" className="w-full h-full fill-[#070b14]">
+                    <rect x="4" y="4" width="18" height="18" rx="2" />
+                    <rect x="8" y="8" width="10" height="10" fill="#fff" />
+                    <rect x="10" y="10" width="6" height="6" />
+                    <rect x="42" y="4" width="18" height="18" rx="2" />
+                    <rect x="46" y="8" width="10" height="10" fill="#fff" />
+                    <rect x="48" y="10" width="6" height="6" />
+                    <rect x="4" y="42" width="18" height="18" rx="2" />
+                    <rect x="8" y="46" width="10" height="10" fill="#fff" />
+                    <rect x="10" y="48" width="6" height="6" />
+                    <rect x="26" y="6" width="6" height="6" />
+                    <rect x="26" y="18" width="10" height="6" />
+                    <rect x="12" y="28" width="14" height="6" />
+                    <rect x="32" y="28" width="12" height="12" />
+                    <rect x="48" y="28" width="10" height="6" />
+                    <rect x="28" y="46" width="8" height="14" />
+                    <rect x="42" y="44" width="16" height="8" />
+                    <rect x="46" y="54" width="14" height="6" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="text-xs font-bold text-white truncate">
+                    Merchant VPA: <span className="font-mono text-[#fbbf24]">maharaja.exch@icici</span>
+                  </div>
+                  <p className="text-[11px] text-[#94a3b8] leading-snug">
+                    Tap any quick INR Peti chip below or enter a custom amount for instant simulated UPI credit.
+                  </p>
                 </div>
               </div>
 
-              {/* Simulated Merchant VPA / Bank Details */}
-              <div className="bg-[#070b14] border border-[#24324f] rounded-xl p-3.5 flex items-center justify-between gap-3">
-                <div className="space-y-1 min-w-0">
-                  <div className="text-[11px] text-[#94a3b8]">
-                    {payMethod === 'IMPS' ? 'Bookie Nodal Bank Account' : 'Verified Merchant UPI VPA'}
-                  </div>
-                  <div className="text-xs sm:text-sm font-mono font-bold text-white truncate">
-                    {payMethod === 'IMPS'
-                      ? 'A/C: 92402008491022 · IFSC: UTIB0000124'
-                      : 'maharaja.exchange@okaxis'}
-                  </div>
-                  <div className="text-[11px] text-[#10b981]">
-                    Auto-UTR verification enabled · Instant Khata credit
-                  </div>
-                </div>
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-white p-1.5 shrink-0 flex items-center justify-center">
-                  <QrCode className="w-9 h-9 sm:w-10 sm:h-10 text-[#070b14]" />
-                </div>
-              </div>
-
-              {/* Quick INR Top-Up Chips */}
               <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-2">
-                  1-Click Instant INR Top-Up
+                <label className="block text-xs font-medium text-[#94a3b8] mb-2">
+                  1-Tap Express INR Peti Top-Up
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[500, 2000, 10000, 50000].map((amt) => (
@@ -295,7 +280,7 @@ export const WalletModal = ({
                       key={amt}
                       type="button"
                       onClick={() => handleDeposit(amt)}
-                      className="h-10 bg-[#131c31] hover:bg-[#1d2a47] border border-[#24324f] hover:border-[#f59e0b] rounded-xl text-xs font-extrabold font-mono text-[#fbbf24] tabular-nums"
+                      className="py-2.5 bg-[#131c31] hover:bg-[#1d2a47] border border-[#24324f] hover:border-[#f59e0b] rounded-xl text-xs font-mono font-bold text-[#fbbf24] transition-colors whitespace-nowrap"
                     >
                       +{formatINR(amt, 0)}
                     </button>
@@ -303,7 +288,6 @@ export const WalletModal = ({
                 </div>
               </div>
 
-              {/* Custom Amount & Optional UTR */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">
@@ -448,20 +432,19 @@ export const WalletModal = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3 bg-[#070b14] p-4 rounded-xl border border-[#24324f]">
+              <div className="bg-[#070b14] p-4 rounded-xl border border-[#24324f] flex items-center justify-between gap-2">
                 <div>
-                  <div className="text-xs text-[#94a3b8]">Unclaimed VIP Chhoot</div>
-                  <div className="text-lg font-extrabold font-mono text-[#10b981] tabular-nums">
+                  <span className="text-xs text-[#94a3b8] block">Unclaimed VIP Chhoot</span>
+                  <span className="text-lg font-extrabold font-mono text-[#10b981] tabular-nums">
                     {formatINR(session.rakebackBalance)}
-                  </div>
+                  </span>
                 </div>
                 <button
                   type="button"
                   onClick={handleClaimRakeback}
-                  disabled={session.rakebackBalance <= 0}
-                  className="h-10 px-5 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-xs rounded-xl whitespace-nowrap"
+                  className="px-4 py-2.5 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-xs rounded-xl whitespace-nowrap"
                 >
-                  Claim Rebate
+                  Claim to Wallet
                 </button>
               </div>
             </div>
@@ -472,41 +455,34 @@ export const WalletModal = ({
   );
 };
 
-const SidebarLink = memo(
-  ({
-    to,
-    label,
-    badge,
-    icon: Icon,
-    active,
-    onClick,
-  }: {
-    to: string;
-    label: string;
-    badge?: string;
-    icon: any;
-    active: boolean;
-    onClick: () => void;
-  }) => (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
-        active
-          ? 'bg-[#131c31] text-[#fbbf24] border border-[#f59e0b]/40'
-          : 'text-[#94a3b8] hover:bg-[#131c31]/70 hover:text-white border border-transparent'
-      }`}
-    >
-      <span className="flex items-center gap-2.5 min-w-0">
-        <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-[#f59e0b]' : 'text-[#94a3b8]'}`} />
-        <span className="truncate">{label}</span>
-      </span>
-      {badge && (
-        <span className="text-[10px] font-mono font-bold text-[#10b981] shrink-0">{badge}</span>
-      )}
-    </Link>
-  )
-);
+interface SidebarLinkProps {
+  to: string;
+  label: string;
+  icon: any;
+  active: boolean;
+  badge?: string;
+  onClick: () => void;
+}
+
+const SidebarLink = memo(({ to, label, icon: Icon, active, badge, onClick }: SidebarLinkProps) => (
+  <Link
+    to={to}
+    onClick={onClick}
+    className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap ${
+      active
+        ? 'bg-[#131c31] text-[#fbbf24] border border-[#f59e0b]/40 shadow-sm'
+        : 'text-[#94a3b8] hover:bg-[#131c31]/60 hover:text-white'
+    }`}
+  >
+    <div className="flex items-center gap-2.5 min-w-0">
+      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-[#f59e0b]' : 'text-[#64748b]'}`} />
+      <span className="truncate">{label}</span>
+    </div>
+    {badge && (
+      <span className="text-[10px] font-mono font-bold text-[#10b981] shrink-0 ml-1">{badge}</span>
+    )}
+  </Link>
+));
 
 const Sidebar = memo(
   ({
@@ -519,51 +495,50 @@ const Sidebar = memo(
     pathname: string;
   }) => {
     const featuredOriginals = [
-      { label: 'Aviator Crash', to: '/crash', icon: TrendingUp, badge: '10,000x' },
-      { label: 'Mines Tijori', to: '/mines', icon: Grid, badge: '99% RTP' },
-      { label: 'Plinko 1000x', to: '/plinko', icon: Disc, badge: 'HOT' },
-      { label: 'Royal Roulette', to: '/roulette', icon: Award, badge: '36x' },
+      { to: '/crash', label: 'Aviator Crash', icon: TrendingUp, badge: 'HOT' },
+      { to: '/mines', label: 'Mines Gold Tijori', icon: Grid, badge: '99%' },
+      { to: '/plinko', label: 'Plinko 1000x', icon: Disc, badge: '1000x' },
+      { to: '/roulette', label: 'Royal Roulette', icon: Award, badge: '36x' },
     ];
 
     const desiSatta = [
-      { label: 'Kalyan Matka', to: '/matka', icon: Vault, badge: '95x Jodi' },
-      { label: 'Teen Patti Royal', to: '/teenpatti', icon: Spade, badge: '5x Trail' },
-      { label: 'Andar Bahar Live', to: '/andarbahar', icon: Layers, badge: 'NEW' },
+      { to: '/matka', label: 'Kalyan Satta Matka', icon: Vault, badge: '95x' },
+      { to: '/teenpatti', label: 'Teen Patti Royal', icon: Spade, badge: 'DESI' },
+      { to: '/andarbahar', label: 'Andar Bahar Live', icon: Layers, badge: 'LIVE' },
     ];
 
     const casinoSuite = [
-      { label: 'Blackjack 21', to: '/blackjack', icon: Spade },
-      { label: 'Punto Baccarat', to: '/baccarat', icon: Layers },
-      { label: 'Maharaja Slots', to: '/slots', icon: Sparkles },
-      { label: 'Matka Wheel', to: '/wheel', icon: CircleDot },
-      { label: 'Keno 40', to: '/keno', icon: Hash },
-      { label: 'Pro Dice', to: '/dice', icon: Dices },
-      { label: 'Sikka Coinflip', to: '/coinflip', icon: Coins },
+      { to: '/blackjack', label: 'VIP Blackjack', icon: Spade },
+      { to: '/baccarat', label: 'Punto Baccarat', icon: Layers },
+      { to: '/slots', label: 'Kohinoor Slots', icon: Sparkles },
+      { to: '/wheel', label: 'Navratna Wheel', icon: CircleDot },
+      { to: '/keno', label: 'Satta Keno 40', icon: Hash },
+      { to: '/dice', label: 'Bookie Dice', icon: Dices },
+      { to: '/coinflip', label: 'Sikka Toss', icon: Coins },
     ];
 
     const platformLinks = [
-      { label: 'Khata Analytics', to: '/statistics', icon: BarChart2 },
-      { label: 'UPI Passbook', to: '/transactions', icon: Receipt },
-      { label: 'Provably Fair', to: '/fairness', icon: ShieldCheck },
-      { label: 'Bookie Math Lab', to: '/admin', icon: Sliders },
+      { to: '/statistics', label: 'Session P&L Khata', icon: BarChart2 },
+      { to: '/transactions', label: 'UPI & UTR Passbook', icon: Receipt },
+      { to: '/fairness', label: 'SHA-256 Verifier', icon: ShieldCheck },
+      { to: '/admin', label: 'Bookie Risk Lab', icon: Sliders },
     ];
 
     return (
       <>
         <aside
-          className={`${
-            open ? 'translate-x-0' : '-translate-x-full'
-          } lg:translate-x-0 fixed lg:static inset-y-0 left-0 w-64 lg:w-60 bg-[#070b14] border-r border-[#1e293b] transition-transform duration-200 z-[1200] flex flex-col shrink-0`}
+          className={`fixed lg:static inset-y-0 left-0 z-[1200] w-64 lg:w-60 bg-[#0d1322] border-r border-[#24324f] flex flex-col transition-transform duration-200 ease-out shrink-0 ${
+            open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          }`}
         >
-          {/* Mobile Drawer Header */}
-          <div className="lg:hidden h-14 px-4 border-b border-[#1e293b] flex items-center justify-between shrink-0">
-            <span className="text-sm font-extrabold font-display text-[#fbbf24]">
-              MaharajaExch Games
+          <div className="lg:hidden h-14 px-4 border-b border-[#24324f] flex items-center justify-between bg-[#070b14] shrink-0">
+            <span className="text-base font-extrabold font-display text-[#fbbf24]">
+              MaharajaExch Menu
             </span>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="w-8 h-8 rounded-lg bg-[#131c31] text-[#94a3b8] hover:text-white flex items-center justify-center"
+              className="p-1.5 rounded-lg text-[#94a3b8] hover:text-white bg-[#131c31]"
             >
               <X className="w-4 h-4" />
             </button>
@@ -573,7 +548,7 @@ const Sidebar = memo(
             <div>
               <SidebarLink
                 to="/"
-                label="Exchange Lobby"
+                label="Casino & Satta Lobby"
                 icon={Sparkles}
                 active={pathname === '/'}
                 onClick={() => {
@@ -584,7 +559,7 @@ const Sidebar = memo(
             </div>
 
             <div>
-              <div className="px-3 mb-1.5 text-[11px] font-bold text-[#f59e0b]">
+              <div className="px-3 mb-1.5 text-[11px] font-bold text-[#fbbf24]">
                 Featured Originals
               </div>
               <div className="space-y-1">
@@ -670,12 +645,12 @@ const Sidebar = memo(
             </div>
           </div>
 
-          <div className="p-3 border-t border-[#1e293b] bg-[#070b14]">
+          <div className="p-3 border-t border-[#1e293b] bg-[#070b14] shrink-0">
             <button
               type="button"
               onClick={() => {
                 engine.resetBalance();
-                audio.playClick();
+                audio.playWin();
               }}
               className="w-full h-10 px-3 bg-[#131c31] hover:bg-[#1d2a47] border border-[#24324f] rounded-xl text-xs font-semibold text-[#94a3b8] hover:text-white flex items-center justify-center gap-2 whitespace-nowrap"
             >
@@ -723,13 +698,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#070b14] text-white overflow-hidden">
+    <div className="flex flex-col min-h-screen min-h-[100dvh] lg:h-[100dvh] w-full bg-[#070b14] text-white lg:overflow-hidden">
       {/* Strict 3-Zone Top Bar Contract */}
-      <header className="h-14 sm:h-16 bg-[#0d1322] border-b border-[#24324f] flex items-center justify-between gap-3 sm:gap-6 lg:gap-8 px-3 sm:px-6 lg:px-8 shrink-0 z-[100]">
+      <header className="sticky top-0 h-14 sm:h-16 bg-[#0d1322]/95 backdrop-blur-md border-b border-[#24324f] flex items-center justify-between gap-2 sm:gap-6 lg:gap-8 px-3 sm:px-6 lg:px-8 shrink-0 z-[100]">
         {/* Zone 1: Single wordmark */}
         <Link
           to="/"
-          className="text-lg sm:text-xl font-extrabold font-display tracking-tight text-[#fbbf24] whitespace-nowrap shrink-0"
+          className="text-base sm:text-xl font-extrabold font-display tracking-tight text-[#fbbf24] whitespace-nowrap shrink-0"
         >
           MaharajaExch
         </Link>
@@ -797,7 +772,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </span>
             <span className="bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-extrabold flex items-center gap-1.5">
               <Wallet className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden xs:inline">UPI</span>
               <span>Cashier</span>
             </span>
           </button>
@@ -805,19 +779,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </header>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 min-h-0 relative">
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} pathname={location.pathname} />
 
-        <div className="flex-1 flex flex-col min-w-0 bg-[#070b14] relative h-full">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#070b14] relative">
           {/* Sub-header Live Satta Bazar Ticker & Controls */}
-          <div className="h-10 bg-[#0d1322]/90 border-b border-[#1e293b] px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-3 shrink-0">
-            <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+          <div className="sticky top-14 sm:top-16 lg:static z-[90] h-10 bg-[#0d1322]/95 backdrop-blur-md border-b border-[#1e293b] px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
               <button
                 type="button"
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden flex items-center gap-1.5 text-xs font-bold text-[#fbbf24] hover:text-white whitespace-nowrap shrink-0"
+                className="lg:hidden flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#131c31] border border-[#24324f] text-xs font-bold text-[#fbbf24] hover:text-white whitespace-nowrap shrink-0"
               >
-                <Menu className="w-4 h-4" />
+                <Menu className="w-3.5 h-3.5" />
                 <span>Games</span>
               </button>
 
@@ -852,7 +826,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 }`}
               >
                 <Zap className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">Turbo</span>
+                <span className="hidden sm:inline">Turbo</span>
               </button>
 
               <button
@@ -883,14 +857,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </div>
           </div>
 
-          <main className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="max-w-[1360px] mx-auto p-3 sm:p-5 lg:p-7 pb-20 md:pb-10">
+          <main className="flex-1 lg:overflow-y-auto custom-scrollbar">
+            <div className="max-w-[1360px] mx-auto p-2.5 sm:p-5 lg:p-7 pb-20 md:pb-10">
               {children}
             </div>
           </main>
 
           {/* Mobile Quick Navigation Bar */}
-          <div className="md:hidden h-14 bg-[#0d1322] border-t border-[#24324f] grid grid-cols-5 items-center px-1 shrink-0 z-[100]">
+          <div className="md:hidden fixed bottom-0 inset-x-0 h-14 bg-[#0d1322]/95 backdrop-blur-md border-t border-[#24324f] grid grid-cols-5 items-center px-1 z-[100]">
             <Link
               to="/"
               onClick={() => audio.playClick()}

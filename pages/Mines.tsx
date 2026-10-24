@@ -7,6 +7,7 @@ import { ShieldCheck, Sparkles, Bomb, Shuffle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Mines() {
+  const [balance, setBalance] = useState<number>(engine.getSession().balance);
   const [betAmount, setBetAmount] = useState<number>(500);
   const [minesCount, setMinesCount] = useState<number>(3);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -25,6 +26,10 @@ export default function Mines() {
   const autoRef = useRef({ active: false, count: 0, remaining: 0 });
 
   useEffect(() => {
+    return engine.subscribe((s) => setBalance(s.balance));
+  }, []);
+
+  useEffect(() => {
     autoRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
   }, [autoActive, autoBetCount, autoBetsRemaining]);
 
@@ -34,6 +39,9 @@ export default function Mines() {
 
   const startManualGame = () => {
     if (isPlaying || betAmount <= 0) return;
+    if (engine.getSession().balance < betAmount) {
+      engine.resetBalance();
+    }
     if (!engine.deductStake(betAmount)) return;
 
     audio.playBet();
@@ -58,7 +66,56 @@ export default function Mines() {
       return;
     }
 
-    if (!isPlaying || revealed[i] || roundEnded) return;
+    if (!isPlaying) {
+      // Allow tapping directly on a tile when idle to start the round and reveal that tile immediately!
+      if (betAmount <= 0) return;
+      if (engine.getSession().balance < betAmount) {
+        engine.resetBalance();
+      }
+      if (!engine.deductStake(betAmount)) return;
+
+      audio.playBet();
+      setActiveStake(betAmount);
+      const newGrid = engine.generateMinesGrid(engine.peekNextRandom(), minesCount);
+      const firstRev = Array(25).fill(false);
+      firstRev[i] = true;
+      setGrid(newGrid);
+      setRevealed(firstRev);
+
+      if (newGrid[i]) {
+        setIsPlaying(false);
+        setRoundEnded(true);
+        setWonRound(false);
+        audio.playLoss();
+        engine.settleDeductedBet(
+          GameType.MINES,
+          betAmount,
+          0,
+          `Mines Tijori (${minesCount}m): Hit bomb on tile #1`
+        );
+      } else {
+        setIsPlaying(true);
+        setRoundEnded(false);
+        setWonRound(false);
+        audio.playTileSafe(1);
+        if (25 - minesCount === 1) {
+          const mult = engine.getMinesMultiplier(minesCount, 1);
+          audio.playWin();
+          engine.settleDeductedBet(
+            GameType.MINES,
+            betAmount,
+            mult,
+            `Mines Tijori (${minesCount}m): Cashed out 1 gold @ ${mult.toFixed(2)}x`
+          );
+          setIsPlaying(false);
+          setRoundEnded(true);
+          setWonRound(true);
+        }
+      }
+      return;
+    }
+
+    if (revealed[i] || roundEnded) return;
 
     const newRevealed = [...revealed];
     newRevealed[i] = true;
@@ -97,7 +154,10 @@ export default function Mines() {
   const cashOut = (finalRev = revealed) => {
     if (!isPlaying) return;
     const count = finalRev.filter((r, idx) => r && !grid[idx]).length;
-    if (count === 0) return;
+    if (count === 0) {
+      pickRandomTile();
+      return;
+    }
     const mult = engine.getMinesMultiplier(minesCount, count);
     audio.playWin();
     engine.settleDeductedBet(
@@ -191,10 +251,75 @@ export default function Mines() {
   return (
     <Layout>
       <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col lg:flex-row min-h-[560px]">
+        {/* flex-col-reverse on mobile puts the 5x5 Vault Grid on TOP and Controls immediately below */}
+        <div className="flex flex-col-reverse lg:flex-row min-h-[540px]">
           {/* Left Stake Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
+              {/* Primary CTA Button — Placed at the top of controls so it sits directly beneath the 5x5 grid on mobile */}
+              {mode === 'MANUAL' ? (
+                !isPlaying ? (
+                  <button
+                    type="button"
+                    onClick={startManualGame}
+                    disabled={betAmount <= 0}
+                    className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
+                  >
+                    {balance < betAmount
+                      ? `Refill ₹25,000 & Open Vault (${formatINR(betAmount, 0)})`
+                      : `Open Tijori Vault (${formatINR(betAmount, 0)})`}
+                  </button>
+                ) : revealedSafeCount === 0 ? (
+                  <button
+                    type="button"
+                    onClick={pickRandomTile}
+                    className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-xs sm:text-sm rounded-xl shadow-lg flex flex-col items-center justify-center leading-tight"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Shuffle className="w-4 h-4" /> PICK RANDOM VAULT TILE
+                    </span>
+                    <span className="text-[11px] font-medium mt-0.5">
+                      Or tap any tile on the 5×5 board above ({nextMult.toFixed(2)}×)
+                    </span>
+                  </button>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => cashOut()}
+                      className="col-span-2 h-14 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex flex-col items-center justify-center leading-tight"
+                    >
+                      <span>CASHOUT GOLD</span>
+                      <span className="text-xs font-mono tabular-nums mt-0.5">
+                        {formatINR(activeStake * currentMult)} ({currentMult.toFixed(2)}×)
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={pickRandomTile}
+                      className="h-14 bg-[#1d2a47] hover:bg-[#24324f] border border-[#f59e0b]/40 text-[#fbbf24] font-extrabold text-xs rounded-xl flex flex-col items-center justify-center leading-tight"
+                    >
+                      <Shuffle className="w-4 h-4 mb-0.5" />
+                      <span>Random</span>
+                    </button>
+                  </div>
+                )
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleAuto}
+                  className={`w-full h-14 font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center ${
+                    autoActive
+                      ? 'bg-[#f43f5e] text-white'
+                      : 'bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14]'
+                  }`}
+                >
+                  {autoActive
+                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
+                    : 'Start Autobet'}
+                </button>
+              )}
+
               {/* Manual / Auto Tabs */}
               <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
                 <button
@@ -273,7 +398,7 @@ export default function Mines() {
                 </div>
               </div>
 
-              {/* Mines Count Selector (Always rendered so panel never shifts height) */}
+              {/* Mines Count Selector */}
               <div>
                 <div className="flex justify-between text-xs font-medium text-[#94a3b8] mb-1.5">
                   <span>Bombs in Tijori Vault</span>
@@ -314,17 +439,7 @@ export default function Mines() {
                 </div>
               </div>
 
-              {mode === 'MANUAL' ? (
-                <button
-                  type="button"
-                  onClick={pickRandomTile}
-                  disabled={!isPlaying || roundEnded}
-                  className="w-full h-10 bg-[#1d2a47] hover:bg-[#24324f] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2"
-                >
-                  <Shuffle className="w-3.5 h-3.5 text-[#fbbf24]" />
-                  <span>Lucky Random Tile</span>
-                </button>
-              ) : (
+              {mode === 'AUTO' && (
                 <div className="space-y-2.5">
                   <div>
                     <label className="block text-xs font-medium text-[#94a3b8] mb-1">
@@ -351,52 +466,6 @@ export default function Mines() {
                   </div>
                 </div>
               )}
-
-              {/* Primary CTA Button — Locked h-14 (56px) */}
-              {mode === 'MANUAL' ? (
-                !isPlaying ? (
-                  <button
-                    type="button"
-                    onClick={startManualGame}
-                    disabled={betAmount <= 0}
-                    className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
-                  >
-                    Open Tijori Vault ({formatINR(betAmount, 0)})
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onPointerDown={(e) => {
-                      if (revealedSafeCount > 0) {
-                        e.preventDefault();
-                        cashOut();
-                      }
-                    }}
-                    onClick={() => cashOut()}
-                    disabled={revealedSafeCount === 0}
-                    className="w-full h-14 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex flex-col items-center justify-center leading-tight"
-                  >
-                    <span>CASHOUT GOLD</span>
-                    <span className="text-xs font-mono tabular-nums mt-0.5">
-                      {formatINR(activeStake * currentMult)}
-                    </span>
-                  </button>
-                )
-              ) : (
-                <button
-                  type="button"
-                  onClick={toggleAuto}
-                  className={`w-full h-14 font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center ${
-                    autoActive
-                      ? 'bg-[#f43f5e] text-white'
-                      : 'bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14]'
-                  }`}
-                >
-                  {autoActive
-                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
-                    : 'Start Autobet'}
-                </button>
-              )}
             </div>
 
             <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
@@ -407,9 +476,15 @@ export default function Mines() {
             </div>
           </div>
 
-          {/* Right 5x5 Mines Tijori Grid Stage */}
-          <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 lg:p-10 relative royal-surface">
-            <div className="grid grid-cols-5 gap-2 sm:gap-3 w-full max-w-[430px] aspect-square relative">
+          {/* Right 5x5 Mines Tijori Grid Stage (Top on Mobile, Right on Desktop) */}
+          <div className="flex-1 flex flex-col items-center justify-center p-3.5 sm:p-8 lg:p-10 relative royal-surface">
+            <div className="text-xs font-bold text-[#fbbf24] mb-2.5 text-center">
+              {isPlaying
+                ? `Vault Active · Tap any tile to uncover Gold (${nextMult.toFixed(2)}× next)`
+                : 'Tap any tile or click Open Tijori Vault to begin'}
+            </div>
+
+            <div className="grid grid-cols-5 gap-2 sm:gap-3 w-full max-w-[330px] sm:max-w-[420px] aspect-square relative">
               {Array.from({ length: 25 }).map((_, i) => {
                 const isMine = grid[i];
                 const isUserRevealed = revealed[i];
@@ -446,7 +521,6 @@ export default function Mines() {
                     key={i}
                     type="button"
                     onClick={() => handleTileClick(i)}
-                    disabled={mode === 'MANUAL' && !isPlaying}
                     className={`rounded-xl flex items-center justify-center transition-colors duration-150 ${tileClass}`}
                   >
                     {content}
@@ -457,11 +531,11 @@ export default function Mines() {
               {/* Cashout Floating Modal Card in Center */}
               {roundEnded && wonRound && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                  <div className="bg-[#0d1322]/95 border-2 border-[#fbbf24] rounded-2xl px-7 py-5 text-center shadow-2xl pointer-events-auto">
+                  <div className="bg-[#0d1322]/95 border-2 border-[#fbbf24] rounded-2xl px-6 py-4 text-center shadow-2xl pointer-events-auto">
                     <div className="text-2xl sm:text-3xl font-extrabold font-mono text-[#fbbf24] tabular-nums">
                       {currentMult.toFixed(2)}×
                     </div>
-                    <div className="w-12 h-0.5 bg-[#24324f] mx-auto my-2" />
+                    <div className="w-12 h-0.5 bg-[#24324f] mx-auto my-1.5" />
                     <div className="text-sm font-extrabold font-mono text-[#10b981] tabular-nums">
                       +{formatINR(activeStake * currentMult)}
                     </div>

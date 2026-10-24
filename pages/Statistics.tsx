@@ -191,7 +191,7 @@ export default function Statistics() {
           <div className="bg-[#0d1322] p-6 rounded-2xl border border-[#1e293b] flex flex-col">
             <h3 className="text-sm font-extrabold text-white mb-1">Game Distribution</h3>
             <p className="text-xs text-[#94a3b8] mb-4">Share of rounds by game module</p>
-            <div className="flex-1 min-h-[240px] relative">
+            <div className="h-[240px] w-full relative">
               {stats.gameDist.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
