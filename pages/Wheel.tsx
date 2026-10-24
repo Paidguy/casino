@@ -1,166 +1,416 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../components/Layout';
-import { engine } from '../services/engine';
+import { engine, formatINR } from '../services/engine';
 import { audio } from '../services/audio';
 import { GameType } from '../types';
+import { ShieldCheck, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const WHEEL_SEGMENTS = [
-  { label: '1.5x', multi: 1.5, color: '#3b82f6' },
-  { label: '0x', multi: 0, color: '#1e293b' },
-  { label: '2.0x', multi: 2, color: '#10b981' },
-  { label: '0x', multi: 0, color: '#1e293b' },
-  { label: '3.0x', multi: 3, color: '#facc15' },
-  { label: '0x', multi: 0, color: '#1e293b' },
-  { label: '1.5x', multi: 1.5, color: '#3b82f6' },
-  { label: '0x', multi: 0, color: '#1e293b' },
-  { label: '10.0x', multi: 10, color: '#ec4899' },
-  { label: '0x', multi: 0, color: '#1e293b' },
-];
+interface SegmentDef {
+  multi: number;
+  color: string;
+}
+
+const WHEEL_CONFIGS: Record<'LOW' | 'MEDIUM' | 'HIGH', SegmentDef[]> = {
+  LOW: [
+    { multi: 1.5, color: '#3b82f6' },
+    { multi: 1.2, color: '#94a3b8' },
+    { multi: 1.2, color: '#94a3b8' },
+    { multi: 1.2, color: '#94a3b8' },
+    { multi: 0, color: '#131c31' },
+    { multi: 1.2, color: '#94a3b8' },
+    { multi: 1.2, color: '#94a3b8' },
+    { multi: 1.2, color: '#94a3b8' },
+    { multi: 1.2, color: '#94a3b8' },
+    { multi: 0, color: '#131c31' },
+  ],
+  MEDIUM: [
+    { multi: 0, color: '#131c31' },
+    { multi: 1.5, color: '#10b981' },
+    { multi: 0, color: '#131c31' },
+    { multi: 2.0, color: '#f59e0b' },
+    { multi: 0, color: '#131c31' },
+    { multi: 1.5, color: '#10b981' },
+    { multi: 0, color: '#131c31' },
+    { multi: 3.0, color: '#a855f7' },
+    { multi: 0, color: '#131c31' },
+    { multi: 1.5, color: '#10b981' },
+  ],
+  HIGH: [
+    { multi: 0, color: '#131c31' },
+    { multi: 0, color: '#131c31' },
+    { multi: 0, color: '#131c31' },
+    { multi: 0, color: '#131c31' },
+    { multi: 9.9, color: '#f43f5e' },
+    { multi: 0, color: '#131c31' },
+    { multi: 0, color: '#131c31' },
+    { multi: 0, color: '#131c31' },
+    { multi: 0, color: '#131c31' },
+    { multi: 0, color: '#131c31' },
+  ],
+};
 
 export default function Wheel() {
-  const [betAmount, setBetAmount] = useState<number>(100);
+  const [betAmount, setBetAmount] = useState<number>(500);
+  const [risk, setRisk] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
+  const [segmentsCount, setSegmentsCount] = useState<number>(20);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [result, setResult] = useState<typeof WHEEL_SEGMENTS[0] | null>(null);
+  const [result, setResult] = useState<SegmentDef | null>(null);
 
-  // Auto Bet State
   const [mode, setMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
   const [autoActive, setAutoActive] = useState(false);
   const [autoBetCount, setAutoBetCount] = useState<number>(0);
   const [autoBetsRemaining, setAutoBetsRemaining] = useState<number>(0);
-  
+
   const autoRef = useRef({ active: false, count: 0, remaining: 0 });
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rotationRef = useRef(0);
 
   useEffect(() => {
     autoRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
   }, [autoActive, autoBetCount, autoBetsRemaining]);
 
-  const spin = () => {
-    if (betAmount > engine.getSession().balance || betAmount <= 0) {
-        if (autoRef.current.active) setAutoActive(false);
-        return;
+  useEffect(() => {
+    return () => {
+      if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+      setAutoActive(false);
+    };
+  }, []);
+
+  const basePattern = WHEEL_CONFIGS[risk];
+  const segments: SegmentDef[] = Array.from({ length: segmentsCount }, (_, i) => {
+    const seg = basePattern[i % basePattern.length];
+    if (risk === 'HIGH' && segmentsCount >= 20) {
+      return i === 0 ? { multi: +(segmentsCount * 0.99).toFixed(1), color: '#f43f5e' } : { multi: 0, color: '#131c31' };
     }
+    return seg;
+  });
+
+  const uniqueMultipliers = Array.from(new Set(segments.map((s) => s.multi))).sort((a, b) => a - b);
+
+  const spin = () => {
+    if (spinning || betAmount > engine.getSession().balance || betAmount <= 0) {
+      if (autoRef.current.active) setAutoActive(false);
+      return;
+    }
+
     setSpinning(true);
     setResult(null);
     audio.playBet();
     audio.playSpin();
 
-    const randomIndex = Math.floor(Math.random() * WHEEL_SEGMENTS.length);
-    const targetSeg = WHEEL_SEGMENTS[randomIndex];
-    
-    const segmentAngle = 360 / WHEEL_SEGMENTS.length;
-    const targetRotationForSegment = 360 - (randomIndex * segmentAngle);
-    
-    // For auto, we spin faster (2 rotations) vs 5 for manual
-    const extraSpins = 360 * (mode === 'AUTO' ? 2 : 5);
-    
-    const currentRotationMod = rotation % 360;
-    let diff = targetRotationForSegment - currentRotationMod;
-    if (diff < 0) diff += 360;
-    
-    const newRotation = rotation + extraSpins + diff;
-    setRotation(newRotation);
+    const r = engine.peekNextRandom();
+    const targetIdx = Math.floor(r * segments.length);
+    const targetSeg = segments[targetIdx];
 
-    setTimeout(() => {
+    const segAngle = 360 / segments.length;
+    const targetCenterAngle = 360 - (targetIdx * segAngle + segAngle / 2);
+    const currentMod = rotationRef.current % 360;
+    let delta = targetCenterAngle - currentMod;
+    if (delta < 0) delta += 360;
+
+    const isInstant = engine.getSession().settings.instantBet;
+    const extraSpins = 360 * (isInstant ? 1 : 4);
+    const nextRotation = rotationRef.current + extraSpins + delta;
+    rotationRef.current = nextRotation;
+    setRotation(nextRotation);
+
+    const duration = isInstant ? 250 : 1600;
+
+    if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+    spinTimerRef.current = setTimeout(() => {
       setSpinning(false);
       setResult(targetSeg);
       if (targetSeg.multi > 0) audio.playWin();
       else audio.playLoss();
-      engine.placeBet(GameType.WHEEL, betAmount, targetSeg.multi, `Wheel landed on ${targetSeg.label}`);
-    }, mode === 'AUTO' ? 2000 : 4000);
+      engine.placeBet(
+        GameType.WHEEL,
+        betAmount,
+        targetSeg.multi,
+        `Wheel (${risk}): ${targetSeg.multi.toFixed(2)}x`
+      );
+    }, duration);
   };
 
   useEffect(() => {
-      let timeout: ReturnType<typeof setTimeout>;
-      // Only proceed if auto is active AND we are NOT spinning
-      if (autoActive && !spinning) {
-          const { count, remaining } = autoRef.current;
-          
-          if (engine.getSession().balance < betAmount) {
-              setAutoActive(false);
-              return;
-          }
-
-          if (count === 0 || remaining > 0) {
-              timeout = setTimeout(() => {
-                  spin();
-                  if (count > 0) setAutoBetsRemaining(prev => prev - 1);
-              }, 1000); // 1s wait after spin end
-          } else {
-              setAutoActive(false);
-          }
+    let timeout: ReturnType<typeof setTimeout>;
+    if (autoActive && !spinning) {
+      const { count, remaining } = autoRef.current;
+      if (engine.getSession().balance < betAmount) {
+        setAutoActive(false);
+        return;
       }
-      return () => clearTimeout(timeout);
-  }, [autoActive, spinning]);
+      if (count === 0 || remaining > 0) {
+        timeout = setTimeout(() => {
+          spin();
+          if (count > 0) setAutoBetsRemaining((prev) => Math.max(0, prev - 1));
+        }, 700);
+      } else {
+        setAutoActive(false);
+      }
+    }
+    return () => clearTimeout(timeout);
+  }, [autoActive, spinning, betAmount, risk, segmentsCount]);
 
   const toggleAuto = () => {
-      if (autoActive) {
-          setAutoActive(false);
-      } else {
-          setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount);
-          setAutoActive(true);
-          if (!spinning) spin(); 
-      }
+    if (autoActive) {
+      setAutoActive(false);
+    } else {
+      setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount);
+      setAutoActive(true);
+      if (!spinning) spin();
+    }
   };
+
+  const conicStops = segments
+    .map((s, idx) => {
+      const startPct = (idx / segments.length) * 100;
+      const endPct = ((idx + 1) / segments.length) * 100;
+      return `${s.color} ${startPct}% ${endPct}%`;
+    })
+    .join(', ');
 
   return (
     <Layout>
-      <div className="flex flex-col items-center gap-8 lg:gap-12">
-        <div className="relative w-64 h-64 sm:w-72 sm:h-72 lg:w-96 lg:h-96">
-           <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-4 z-20 text-3xl lg:text-4xl text-bet-accent drop-shadow-xl">▼</div>
-           <div 
-             className={`w-full h-full rounded-full border-8 border-bet-900 shadow-[0_0_100px_rgba(0,0,0,0.5)] transition-transform cubic-bezier(0.15, 0, 0.15, 1)`}
-             style={{ 
-               transform: `rotate(${rotation}deg)`, 
-               transitionDuration: mode === 'AUTO' ? '2000ms' : '4000ms',
-               background: `conic-gradient(#3b82f6 0% 10%, #1e293b 10% 20%, #10b981 20% 30%, #1e293b 30% 40%, #facc15 40% 50%, #1e293b 50% 60%, #3b82f6 60% 70%, #1e293b 70% 80%, #ec4899 80% 90%, #1e293b 90% 100%)` 
-             }}
-           >
-              {WHEEL_SEGMENTS.map((seg, i) => (
-                <div key={i} className="absolute inset-0 flex items-center justify-center" style={{ transform: `rotate(${i * 36 + 18}deg) translateY(-110px) lg:translateY(-120px)` }}>
-                   <span className="text-white font-black text-[10px] lg:text-sm rotate-90">{seg.label}</span>
+      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
+        <div className="flex flex-col lg:flex-row min-h-[580px]">
+          {/* Left Stake Control Panel */}
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#fbbf24]" />
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
+                    NAVRATNA WHEEL
+                  </span>
                 </div>
-              ))}
-           </div>
-        </div>
+                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
+                  99.0% RTP
+                </span>
+              </div>
 
-        <div className="bg-bet-900 w-full max-w-lg p-6 lg:p-8 rounded-[2rem] lg:rounded-[3rem] border border-white/5 space-y-6">
-           <div className="text-center h-10 lg:h-12">
-              {result && (
-                <div className={`text-2xl lg:text-3xl font-black uppercase italic ${result.multi > 0 ? 'text-bet-success' : 'text-slate-500'}`}>
-                  {result.multi > 0 ? `Won ₹${(betAmount * result.multi).toLocaleString()}!` : 'Bust'}
+              <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
+                <button
+                  type="button"
+                  onClick={() => setMode('MANUAL')}
+                  disabled={autoActive || spinning}
+                  className={`py-2 rounded-lg text-xs font-extrabold ${
+                    mode === 'MANUAL' ? 'bg-[#f59e0b] text-[#070b14]' : 'text-[#94a3b8] hover:text-white'
+                  }`}
+                >
+                  Manual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('AUTO')}
+                  disabled={autoActive || spinning}
+                  className={`py-2 rounded-lg text-xs font-extrabold ${
+                    mode === 'AUTO' ? 'bg-[#f59e0b] text-[#070b14]' : 'text-[#94a3b8] hover:text-white'
+                  }`}
+                >
+                  Auto
+                </button>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
+                  <span>Bet Amount (₹)</span>
+                  <span className="font-mono text-[#fbbf24] tabular-nums">{formatINR(betAmount)}</span>
                 </div>
-              )}
-           </div>
-           
-           <div className="flex bg-black/40 p-1 rounded-xl">
-              <button onClick={() => setMode('MANUAL')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'MANUAL' ? 'bg-bet-800 text-white shadow' : 'text-slate-500'}`}>Manual</button>
-              <button onClick={() => setMode('AUTO')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'AUTO' ? 'bg-bet-primary text-bet-950 shadow' : 'text-slate-500'}`}>Auto</button>
-           </div>
+                <div className="flex h-11 bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b]/60 rounded-xl overflow-hidden">
+                  <input
+                    type="number"
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
+                    disabled={spinning || autoActive}
+                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(Math.max(10, Math.floor(betAmount / 2)))}
+                    disabled={spinning || autoActive}
+                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    ½
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(betAmount * 2)}
+                    disabled={spinning || autoActive}
+                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    2×
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  {[100, 500, 1000, 5000].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setBetAmount(chip)}
+                      disabled={spinning || autoActive}
+                      className="py-1.5 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
+                    >
+                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-           <div className="flex flex-col gap-4">
-              <input 
-                type="number" value={betAmount} 
-                onChange={e => setBetAmount(Number(e.target.value))} 
-                disabled={spinning || autoActive}
-                className="flex-1 bg-black border border-white/10 p-4 rounded-xl text-white font-black text-xl outline-none" 
-              />
-              
+              {/* Risk Level */}
+              <div>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">Risk Level</label>
+                <div className="grid grid-cols-3 gap-1.5 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
+                  {(['LOW', 'MEDIUM', 'HIGH'] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setRisk(r)}
+                      disabled={spinning || autoActive}
+                      className={`py-2 rounded-lg text-xs font-extrabold capitalize ${
+                        risk === r ? 'bg-[#131c31] text-[#fbbf24] border border-[#f59e0b]/40' : 'text-[#94a3b8] hover:text-white'
+                      }`}
+                    >
+                      {r.toLowerCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Segments Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">Segments</label>
+                <div className="grid grid-cols-3 gap-1.5 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
+                  {[10, 20, 30].map((seg) => (
+                    <button
+                      key={seg}
+                      type="button"
+                      onClick={() => setSegmentsCount(seg)}
+                      disabled={spinning || autoActive}
+                      className={`py-2 rounded-lg text-xs font-mono font-bold ${
+                        segmentsCount === seg ? 'bg-[#131c31] text-[#fbbf24] border border-[#f59e0b]/40' : 'text-[#94a3b8] hover:text-white'
+                      }`}
+                    >
+                      {seg}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {mode === 'AUTO' && (
-                 <input 
-                    type="number" value={autoBetCount} placeholder="Spins (0=Inf)"
-                    onChange={e => setAutoBetCount(Number(e.target.value))} 
+                <div>
+                  <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">
+                    Number of Bets (0 = Infinite)
+                  </label>
+                  <input
+                    type="number"
+                    value={autoBetCount}
+                    onChange={(e) => setAutoBetCount(Math.max(0, Number(e.target.value)))}
                     disabled={autoActive}
-                    className="w-full bg-black border border-white/10 p-3 rounded-xl text-white font-black text-lg outline-none" 
-                 />
+                    className="w-full h-11 bg-[#070b14] border border-[#24324f] rounded-xl px-3 text-sm font-mono font-bold text-white outline-none"
+                  />
+                </div>
               )}
 
-              {!autoActive ? (
-                <button onClick={spin} disabled={spinning} className="bg-bet-accent text-black px-12 py-4 rounded-xl font-black uppercase text-sm shadow-xl active:scale-95 transition-all">Spin</button>
+              {mode === 'MANUAL' ? (
+                <button
+                  type="button"
+                  onClick={spin}
+                  disabled={spinning || betAmount <= 0}
+                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
+                >
+                  {spinning ? 'Spinning...' : `Spin Wheel (${formatINR(betAmount, 0)})`}
+                </button>
               ) : (
-                <button onClick={toggleAuto} className="bg-bet-danger text-white px-12 py-4 rounded-xl font-black uppercase text-sm shadow-xl active:scale-95 transition-all">Stop Auto ({autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})</button>
+                <button
+                  type="button"
+                  onClick={toggleAuto}
+                  className={`w-full h-14 font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center ${
+                    autoActive
+                      ? 'bg-[#f43f5e] text-white'
+                      : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
+                  }`}
+                >
+                  {autoActive
+                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
+                    : 'Start Autobet'}
+                </button>
               )}
-           </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+              <span>Up to 29.7× Jackpot</span>
+              <Link to="/fairness" className="hover:text-white flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
+              </Link>
+            </div>
+          </div>
+
+          {/* Right Wheel Stage */}
+          <div className="flex-1 flex flex-col items-center justify-between p-5 sm:p-10 royal-surface">
+            {/* Wheel Ring */}
+            <div className="relative w-64 h-64 sm:w-80 sm:h-80 my-auto flex items-center justify-center">
+              {/* Top Pointer */}
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[18px] border-t-[#fbbf24] drop-shadow" />
+
+              {/* Rotating Conic Ring */}
+              <div
+                className="w-full h-full rounded-full border-8 border-[#24324f] shadow-2xl"
+                style={{
+                  transform: `rotate(${rotation}deg)`,
+                  transition: spinning
+                    ? `transform ${engine.getSession().settings.instantBet ? 250 : 1600}ms cubic-bezier(0.15, 0.85, 0.25, 1)`
+                    : 'none',
+                  background: `conic-gradient(${conicStops})`,
+                }}
+              />
+
+              {/* Inner Hub */}
+              <div className="absolute w-44 h-44 sm:w-56 sm:h-56 rounded-full bg-[#070b14] border-8 border-[#f59e0b]/40 flex flex-col items-center justify-center z-20 shadow-inner">
+                {result ? (
+                  <>
+                    <div
+                      className="text-3xl sm:text-4xl font-extrabold font-mono tabular-nums"
+                      style={{ color: result.multi > 0 ? result.color : '#64748b' }}
+                    >
+                      {result.multi.toFixed(2)}×
+                    </div>
+                    <div className="text-xs font-mono font-bold text-[#fbbf24] mt-1 tabular-nums">
+                      {formatINR(betAmount * result.multi)}
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">Spin the Wheel</span>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Unique Multiplier Legend Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full max-w-xl pt-6">
+              {uniqueMultipliers.map((m) => {
+                const segColor = segments.find((s) => s.multi === m)?.color || '#131c31';
+                const count = segments.filter((s) => s.multi === m).length;
+                const isHit = result?.multi === m;
+                return (
+                  <div
+                    key={m}
+                    className={`bg-[#131c31] rounded-xl p-3 border-b-4 text-center transition-transform ${
+                      isHit ? '-translate-y-1 brightness-125' : ''
+                    }`}
+                    style={{ borderBottomColor: segColor }}
+                  >
+                    <div className="font-mono font-extrabold text-sm text-white tabular-nums">
+                      {m.toFixed(2)}×
+                    </div>
+                    <div className="text-[11px] text-[#94a3b8] mt-0.5">
+                      {count}/{segments.length} chance
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </Layout>

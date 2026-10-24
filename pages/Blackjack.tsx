@@ -1,260 +1,448 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../components/Layout';
-import { engine } from '../services/engine';
+import { engine, formatINR } from '../services/engine';
 import { audio } from '../services/audio';
 import { GameType } from '../types';
+import { ShieldCheck, Crown } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-type Card = { suit: string, value: string, numeric: number };
+type Card = { suit: '♠' | '♥' | '♦' | '♣'; value: string; numeric: number };
+
+const CardComponent: React.FC<{ card?: Card; hidden?: boolean }> = ({ card, hidden }) => {
+  if (hidden || !card) {
+    return (
+      <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-xl bg-gradient-to-br from-[#92400e] via-[#451a03] to-[#1e1b4b] border-2 border-[#f59e0b]/70 shadow-xl flex items-center justify-center select-none">
+        <div className="w-14 h-20 sm:w-16 sm:h-28 rounded-lg border border-[#f59e0b]/40 bg-[#0d1322]/90 flex flex-col items-center justify-center">
+          <Crown className="w-4 h-4 text-[#fbbf24] mb-1" />
+          <span className="text-[9px] font-black text-[#fbbf24] tracking-widest">ROYAL</span>
+        </div>
+      </div>
+    );
+  }
+
+  const isRed = card.suit === '♥' || card.suit === '♦';
+
+  return (
+    <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-xl bg-white border-2 border-[#f59e0b]/40 shadow-xl flex flex-col justify-between p-2.5 select-none">
+      <div className={`flex flex-col items-start leading-none ${isRed ? 'text-[#f43f5e]' : 'text-[#070b14]'}`}>
+        <span className="text-base sm:text-lg font-extrabold font-mono">{card.value}</span>
+        <span className="text-sm sm:text-base">{card.suit}</span>
+      </div>
+      <div className={`text-3xl sm:text-4xl self-center ${isRed ? 'text-[#f43f5e]' : 'text-[#070b14]'}`}>
+        {card.suit}
+      </div>
+      <div className={`flex flex-col items-end leading-none rotate-180 ${isRed ? 'text-[#f43f5e]' : 'text-[#070b14]'}`}>
+        <span className="text-base sm:text-lg font-extrabold font-mono">{card.value}</span>
+        <span className="text-sm sm:text-base">{card.suit}</span>
+      </div>
+    </div>
+  );
+};
 
 export default function Blackjack() {
-  const [betAmount, setBetAmount] = useState<number>(100);
+  const [betAmount, setBetAmount] = useState<number>(500);
+  const [activeStake, setActiveStake] = useState<number>(500);
   const [playerHand, setPlayerHand] = useState<Card[]>([]);
   const [dealerHand, setDealerHand] = useState<Card[]>([]);
   const [gameState, setGameState] = useState<'IDLE' | 'PLAYER_TURN' | 'DEALER_TURN' | 'FINISHED'>('IDLE');
-  const [message, setMessage] = useState('');
-  
-  const canDouble = gameState === 'PLAYER_TURN' && playerHand.length === 2;
+  const [outcomeBanner, setOutcomeBanner] = useState<{ text: string; mult: number } | null>(null);
   const [deck, setDeck] = useState<Card[]>([]);
   const mounted = useRef<boolean>(true);
+  const bjTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-      mounted.current = true;
-      return () => { mounted.current = false; };
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (bjTimerRef.current) clearTimeout(bjTimerRef.current);
+    };
   }, []);
 
-  const generateDeck = () => {
-     const suits = ['♠', '♥', '♦', '♣'];
-     const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-     const d: Card[] = [];
-     for(const s of suits) {
-        for(const v of values) {
-           let n = parseInt(v);
-           if (v === 'J' || v === 'Q' || v === 'K') n = 10;
-           if (v === 'A') n = 11;
-           d.push({ suit: s, value: v, numeric: n });
+  const generateDeck = (): Card[] => {
+    const suits: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
+    const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    const d: Card[] = [];
+    for (let shoe = 0; shoe < 4; shoe++) {
+      for (const s of suits) {
+        for (const v of values) {
+          let n = parseInt(v);
+          if (v === 'J' || v === 'Q' || v === 'K') n = 10;
+          if (v === 'A') n = 11;
+          d.push({ suit: s, value: v, numeric: n });
         }
-     }
-     // Fixed: Use proper Fisher-Yates shuffle instead of biased sort
-     for (let i = d.length - 1; i > 0; i--) {
-         const j = Math.floor(Math.random() * (i + 1));
-         [d[i], d[j]] = [d[j], d[i]];
-     }
-     return d;
+      }
+    }
+    const floats = engine.getNextFloats(64);
+    for (let i = d.length - 1; i > 0; i--) {
+      const f = floats[i % floats.length] ?? Math.random();
+      const j = Math.floor(((f + Math.random()) % 1) * (i + 1));
+      [d[i], d[j]] = [d[j], d[i]];
+    }
+    return d;
   };
 
   const getHandValue = (hand: Card[]) => {
-      let val = hand.reduce((a, b) => a + b.numeric, 0);
-      let aces = hand.filter(c => c.value === 'A').length;
-      while (val > 21 && aces > 0) {
-          val -= 10;
-          aces--;
-      }
-      return val;
+    let val = hand.reduce((a, b) => a + b.numeric, 0);
+    let aces = hand.filter((c) => c.value === 'A').length;
+    while (val > 21 && aces > 0) {
+      val -= 10;
+      aces--;
+    }
+    return val;
   };
 
   const startGame = () => {
-     if (betAmount > engine.getSession().balance || betAmount <= 0) return;
-     audio.playBet();
-     engine.updateBalance(-betAmount);
-     
-     const d = generateDeck();
-     const p = [d.pop()!, d.pop()!];
-     const dealer = [d.pop()!, d.pop()!];
-     
-     setDeck(d);
-     setPlayerHand(p);
-     setDealerHand(dealer);
-     setGameState('PLAYER_TURN');
-     setMessage('');
+    if (gameState === 'PLAYER_TURN' || gameState === 'DEALER_TURN') return;
+    if (betAmount <= 0 || !engine.deductStake(betAmount)) return;
 
-     if (getHandValue(p) === 21) {
-         setTimeout(() => {
-             if (!mounted.current) return;
-             if (getHandValue(dealer) === 21) finishGame('PUSH', p, dealer, betAmount);
-             else finishGame('BLACKJACK', p, dealer, betAmount);
-         }, 500);
-     }
+    audio.playBet();
+    setActiveStake(betAmount);
+    const d = generateDeck();
+    const p = [d.pop()!, d.pop()!];
+    const dealer = [d.pop()!, d.pop()!];
+
+    setDeck(d);
+    setPlayerHand(p);
+    setDealerHand(dealer);
+    setGameState('PLAYER_TURN');
+    setOutcomeBanner(null);
+
+    if (getHandValue(p) === 21) {
+      if (bjTimerRef.current) clearTimeout(bjTimerRef.current);
+      bjTimerRef.current = setTimeout(() => {
+        if (!mounted.current) return;
+        if (getHandValue(dealer) === 21) finishGame('PUSH', p, dealer, betAmount);
+        else finishGame('BLACKJACK', p, dealer, betAmount);
+      }, 450);
+    }
   };
 
   const hit = () => {
-     if (gameState !== 'PLAYER_TURN') return;
-     audio.playClick();
-     const newHand = [...playerHand, deck.pop()!];
-     setPlayerHand(newHand);
-     if (getHandValue(newHand) > 21) {
-         finishGame('BUST', newHand, dealerHand, betAmount);
-     }
+    if (gameState !== 'PLAYER_TURN') return;
+    audio.playClick();
+    const nextDeck = [...deck];
+    const drawn = nextDeck.pop()!;
+    const newHand = [...playerHand, drawn];
+    setDeck(nextDeck);
+    setPlayerHand(newHand);
+
+    const val = getHandValue(newHand);
+    if (val > 21) {
+      finishGame('BUST', newHand, dealerHand, activeStake);
+    } else if (val === 21) {
+      stand(newHand, activeStake, nextDeck);
+    }
   };
 
   const doubleDown = () => {
-     if (gameState !== 'PLAYER_TURN') return;
-     if (betAmount > engine.getSession().balance) return;
-     audio.playBet();
-     engine.updateBalance(-betAmount);
-     const doubleBet = betAmount * 2;
-     
-     const newHand = [...playerHand, deck.pop()!];
-     setPlayerHand(newHand);
-     
-     if (getHandValue(newHand) > 21) {
-         finishGame('BUST', newHand, dealerHand, doubleBet);
-     } else {
-         stand(newHand, doubleBet);
-     }
+    if (gameState !== 'PLAYER_TURN' || playerHand.length !== 2) return;
+    if (!engine.deductStake(activeStake)) return;
+
+    audio.playBet();
+    const doubledStake = activeStake * 2;
+    setActiveStake(doubledStake);
+
+    const nextDeck = [...deck];
+    const newHand = [...playerHand, nextDeck.pop()!];
+    setDeck(nextDeck);
+    setPlayerHand(newHand);
+
+    if (getHandValue(newHand) > 21) {
+      finishGame('BUST', newHand, dealerHand, doubledStake);
+    } else {
+      stand(newHand, doubledStake, nextDeck);
+    }
   };
 
-  const stand = (finalHand = playerHand, finalBet = betAmount) => {
-     if (gameState !== 'PLAYER_TURN') return;
-     audio.playClick();
-     setGameState('DEALER_TURN');
-     
-     let dHand = [...dealerHand];
-     // Async loop for dealer draw
-     const playDealer = async () => {
-         await new Promise(r => setTimeout(r, 800)); 
-         
-         while (getHandValue(dHand) < 17) {
-             if (!mounted.current) return;
-             dHand.push(deck.pop()!);
-             setDealerHand([...dHand]);
-             audio.playSpin(); 
-             await new Promise(r => setTimeout(r, 800)); 
-         }
-         if (mounted.current) determineWinner(finalHand, dHand, finalBet);
-     };
-     playDealer();
-  };
+  const stand = (finalHand = playerHand, finalBet = activeStake, currentDeck = deck) => {
+    if (gameState !== 'PLAYER_TURN') return;
+    audio.playClick();
+    setGameState('DEALER_TURN');
 
-  const determineWinner = (p: Card[], d: Card[], finalBet: number) => {
-     const pVal = getHandValue(p);
-     const dVal = getHandValue(d);
-     if (dVal > 21) finishGame('DEALER_BUST', p, d, finalBet);
-     else if (pVal > dVal) finishGame('WIN', p, d, finalBet);
-     else if (pVal < dVal) finishGame('LOSE', p, d, finalBet);
-     else finishGame('PUSH', p, d, finalBet);
+    let dHand = [...dealerHand];
+    const nextDeck = [...currentDeck];
+
+    const playDealer = async () => {
+      const delay = engine.getSession().settings.instantBet ? 150 : 450;
+      await new Promise((r) => setTimeout(r, delay));
+
+      while (getHandValue(dHand) < 17) {
+        if (!mounted.current) return;
+        dHand.push(nextDeck.pop()!);
+        setDealerHand([...dHand]);
+        audio.playSpin();
+        await new Promise((r) => setTimeout(r, delay));
+      }
+
+      if (!mounted.current) return;
+      const pVal = getHandValue(finalHand);
+      const dVal = getHandValue(dHand);
+      if (dVal > 21) finishGame('DEALER_BUST', finalHand, dHand, finalBet);
+      else if (pVal > dVal) finishGame('WIN', finalHand, dHand, finalBet);
+      else if (pVal < dVal) finishGame('LOSE', finalHand, dHand, finalBet);
+      else finishGame('PUSH', finalHand, dHand, finalBet);
+    };
+
+    playDealer();
   };
 
   const finishGame = (result: string, p: Card[], d: Card[], finalBet: number) => {
-      setGameState('FINISHED');
-      let mult = 0;
-      let txt = '';
-      
-      if (result === 'BLACKJACK') { mult = 2.5; txt = 'BLACKJACK!'; }
-      else if (result === 'WIN' || result === 'DEALER_BUST') { mult = 2; txt = 'WIN!'; }
-      else if (result === 'PUSH') { mult = 1; txt = 'PUSH'; }
-      else { mult = 0; txt = 'HOUSE WINS'; }
-      
-      setMessage(txt);
-      if (mult >= 1) audio.playWin(); else audio.playLoss();
-      if (mult > 0) engine.updateBalance(finalBet * mult);
-      engine.placeBet(GameType.BLACKJACK, finalBet, mult, `BJ: ${txt}`);
+    setGameState('FINISHED');
+    let mult = 0;
+    let text = '';
+
+    if (result === 'BLACKJACK') {
+      mult = 2.5;
+      text = 'Blackjack! (2.50×)';
+    } else if (result === 'WIN' || result === 'DEALER_BUST') {
+      mult = 2.0;
+      text = result === 'DEALER_BUST' ? 'Dealer Bust · You Win (2.00×)' : 'You Win (2.00×)';
+    } else if (result === 'PUSH') {
+      mult = 1.0;
+      text = 'Push · Stake Returned (1.00×)';
+    } else if (result === 'BUST') {
+      mult = 0;
+      text = 'Player Bust';
+    } else {
+      mult = 0;
+      text = 'Dealer Wins';
+    }
+
+    setOutcomeBanner({ text, mult });
+    if (mult > 1) audio.playWin();
+    else if (mult === 1) audio.playClick();
+    else audio.playLoss();
+
+    engine.settleDeductedBet(
+      GameType.BLACKJACK,
+      finalBet,
+      mult,
+      `Blackjack: ${text} (${getHandValue(p)} vs ${getHandValue(d)})`
+    );
   };
 
-  const CardView: React.FC<{ card: Card, hidden?: boolean }> = ({ card, hidden }) => (
-     <div className={`w-16 h-24 sm:w-20 sm:h-32 lg:w-28 lg:h-44 bg-white rounded-lg sm:rounded-2xl shadow-2xl border border-slate-300 flex flex-col items-center justify-center relative select-none transform transition-transform hover:-translate-y-4 duration-300 ${hidden ? 'bg-bet-800 border-bet-700' : ''}`}>
-        {!hidden ? (
-            <>
-                <div className="absolute top-1 left-2 sm:top-2 sm:left-3 flex flex-col items-center leading-none">
-                    <span className={`text-lg sm:text-xl lg:text-2xl font-black ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.value}</span>
-                    <span className={`text-lg sm:text-xl lg:text-2xl ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.suit}</span>
-                </div>
-                <div className={`text-4xl sm:text-6xl lg:text-8xl ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>
-                    {card.suit}
-                </div>
-                <div className="absolute bottom-1 right-2 sm:bottom-2 sm:right-3 flex flex-col items-center leading-none rotate-180">
-                    <span className={`text-lg sm:text-xl lg:text-2xl font-black ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.value}</span>
-                    <span className={`text-lg sm:text-xl lg:text-2xl ${['♥','♦'].includes(card.suit) ? 'text-rose-600' : 'text-slate-900'}`}>{card.suit}</span>
-                </div>
-            </>
-        ) : (
-            <div className="w-full h-full bg-bet-950 rounded-lg sm:rounded-2xl flex items-center justify-center border-4 border-bet-primary shadow-inner">
-               <span className="text-2xl sm:text-4xl lg:text-6xl text-bet-primary font-black bazar-font opacity-40">K</span>
-            </div>
-        )}
-     </div>
-  );
+  const canDouble =
+    gameState === 'PLAYER_TURN' &&
+    playerHand.length === 2 &&
+    engine.getSession().balance >= activeStake;
+
+  const isRoundActive = gameState === 'PLAYER_TURN' || gameState === 'DEALER_TURN';
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 pb-32">
-         <div className="bg-bet-900 p-6 lg:p-8 rounded-[2.5rem] border border-white/10 h-fit shadow-3xl order-2 lg:order-1 space-y-8">
+      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
+        <div className="flex flex-col lg:flex-row min-h-[580px]">
+          {/* Left Stake Control Panel */}
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
             <div className="space-y-4">
-              <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Bet Amount (₹)</label>
-              <input 
-                 type="number" 
-                 value={betAmount} 
-                 onChange={(e) => setBetAmount(Number(e.target.value))}
-                 disabled={gameState !== 'IDLE' && gameState !== 'FINISHED'}
-                 className="w-full bg-black border border-white/10 rounded-2xl p-4 lg:p-5 text-white font-mono font-black text-xl lg:text-2xl outline-none"
-              />
-            </div>
-            
-            {gameState === 'IDLE' || gameState === 'FINISHED' ? (
-                <button 
-                   onClick={startGame}
-                   disabled={betAmount <= 0}
-                   className="w-full py-6 bg-bet-primary text-bet-950 font-black text-2xl rounded-3xl shadow-xl transition-all active:scale-95 uppercase tracking-[0.2em] bazar-font cyan-glow disabled:opacity-50"
-                >
-                   Deal Cards
-                </button>
-            ) : gameState === 'PLAYER_TURN' ? (
-                <div className="grid grid-cols-2 gap-4">
-                   <button onClick={hit} className="py-5 bg-bet-800 text-white font-black rounded-2xl border border-white/10 hover:bg-bet-700">HIT</button>
-                   <button onClick={() => stand()} className="py-5 bg-bet-primary text-bet-950 font-black rounded-2xl border border-white/10 active:scale-95">STAND</button>
-                   {canDouble && (
-                       <button onClick={doubleDown} className="col-span-2 py-5 bg-bet-secondary text-white font-black rounded-2xl shadow-xl animate-pulse">DOUBLE DOWN</button>
-                   )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-[#fbbf24]" />
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
+                    BLACKJACK VIP
+                  </span>
                 </div>
-            ) : (
-                <div className="py-6 text-center text-slate-500 font-black uppercase tracking-widest animate-pulse">
-                    Dealer's Turn...
-                </div>
-            )}
-            
-            {message && (
-              <div className={`mt-6 p-6 text-center font-black text-2xl lg:text-3xl italic -skew-x-12 uppercase rounded-[2rem] border-4 animate-bounce bazar-font ${message.includes('WIN') || message.includes('BLACKJACK') ? 'bg-bet-primary/20 border-bet-primary text-bet-primary' : message.includes('PUSH') ? 'bg-bet-accent/20 border-bet-accent text-bet-accent' : 'bg-bet-danger/20 border-bet-danger text-bet-danger'}`}>
-                {message}
+                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
+                  99.5% RTP
+                </span>
               </div>
-            )}
-         </div>
 
-         <div className="lg:col-span-2 bg-gradient-to-b from-[#064e3b] to-bet-950 rounded-[2.5rem] lg:rounded-[4rem] border-[8px] lg:border-[12px] border-bet-900 p-6 lg:p-16 min-h-[500px] lg:min-h-[600px] flex flex-col justify-between items-center relative shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] order-1 lg:order-2 overflow-hidden">
-             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] pointer-events-none"></div>
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
+                  <span>Bet Amount (₹)</span>
+                  <span className="font-mono text-[#fbbf24] tabular-nums">{formatINR(activeStake)}</span>
+                </div>
+                <div className="flex h-11 bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b]/60 rounded-xl overflow-hidden">
+                  <input
+                    type="number"
+                    value={betAmount}
+                    onChange={(e) => {
+                      const v = Math.max(0, Number(e.target.value));
+                      setBetAmount(v);
+                      if (!isRoundActive) setActiveStake(v);
+                    }}
+                    disabled={isRoundActive}
+                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const v = Math.max(10, Math.floor(betAmount / 2));
+                      setBetAmount(v);
+                      if (!isRoundActive) setActiveStake(v);
+                    }}
+                    disabled={isRoundActive}
+                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    ½
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const v = betAmount * 2;
+                      setBetAmount(v);
+                      if (!isRoundActive) setActiveStake(v);
+                    }}
+                    disabled={isRoundActive}
+                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    2×
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  {[100, 500, 1000, 5000].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => {
+                        setBetAmount(chip);
+                        if (!isRoundActive) setActiveStake(chip);
+                      }}
+                      disabled={isRoundActive}
+                      className="py-1.5 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
+                    >
+                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-             <div className="flex flex-col items-center relative z-10">
-                 <div className="mb-4 lg:mb-6 bg-black/40 px-4 lg:px-6 py-1.5 rounded-full text-emerald-200/50 font-black text-[9px] lg:text-[10px] uppercase tracking-[0.3em] lg:tracking-[0.5em] backdrop-blur-md">
-                    Dealer Hand {gameState === 'FINISHED' ? getHandValue(dealerHand) : '?'}
-                 </div>
-                 <div className="flex -space-x-8 sm:-space-x-12 lg:-space-x-16">
-                    {dealerHand.length > 0 ? dealerHand.map((c, i) => (
-                        <div key={i} className="transform transition-transform hover:-translate-y-4">
-                           <CardView card={c} hidden={i === 0 && gameState === 'PLAYER_TURN'} />
-                        </div>
-                    )) : Array(2).fill(null).map((_, i) => <CardView key={i} card={{} as Card} hidden />)}
-                 </div>
-             </div>
+              {/* Action Controls */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={hit}
+                  disabled={gameState !== 'PLAYER_TURN'}
+                  className="h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] text-white font-extrabold text-xs rounded-xl"
+                >
+                  Hit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stand()}
+                  disabled={gameState !== 'PLAYER_TURN'}
+                  className="h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] text-white font-extrabold text-xs rounded-xl"
+                >
+                  Stand
+                </button>
+                <button
+                  type="button"
+                  onClick={doubleDown}
+                  disabled={!canDouble}
+                  className="col-span-2 h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#f59e0b]/40 text-[#fbbf24] font-extrabold text-xs rounded-xl"
+                >
+                  Double Down (2×)
+                </button>
+              </div>
 
-             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
-                 <div className="w-60 h-30 lg:w-80 lg:h-40 border-4 border-white rounded-full flex items-center justify-center transform -rotate-12">
-                     <span className="text-4xl lg:text-6xl font-black text-white uppercase bazar-font">SATTA KING</span>
-                 </div>
-             </div>
+              <button
+                type="button"
+                onClick={startGame}
+                disabled={isRoundActive || betAmount <= 0}
+                className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
+              >
+                {isRoundActive ? 'Hand in Progress...' : `Deal Hand (${formatINR(betAmount, 0)})`}
+              </button>
 
-             <div className="flex flex-col items-center relative z-10 mt-12">
-                 <div className="flex -space-x-8 sm:-space-x-12 lg:-space-x-16 mb-6 lg:mb-8">
-                    {playerHand.length > 0 ? playerHand.map((c, i) => (
-                        <div key={i} className="transform transition-transform hover:-translate-y-4">
-                           <CardView card={c} />
-                        </div>
-                    )) : Array(2).fill(null).map((_, i) => <CardView key={i} card={{} as Card} hidden />)}
-                 </div>
-                 {playerHand.length > 0 && (
-                   <div className="bg-bet-primary text-bet-950 px-6 lg:px-8 py-2 lg:py-3 rounded-full font-black text-xl lg:text-3xl shadow-xl border-4 border-white/20 bazar-font">
-                      {getHandValue(playerHand)}
-                   </div>
-                 )}
-             </div>
-         </div>
+              <div className="p-3.5 bg-[#070b14] rounded-xl border border-[#24324f] text-xs text-[#94a3b8] space-y-1.5">
+                <div className="flex justify-between">
+                  <span>Blackjack Pays</span>
+                  <span className="font-mono font-bold text-[#fbbf24]">3 to 2 (2.50×)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Dealer Rule</span>
+                  <span className="font-mono text-white">Stands on all 17</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+              <span>4-Deck Provably Fair Shoe</span>
+              <Link to="/fairness" className="hover:text-white flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
+              </Link>
+            </div>
+          </div>
+
+          {/* Right Blackjack Table Stage */}
+          <div className="flex-1 flex flex-col justify-between items-center p-5 sm:p-10 relative felt-surface">
+            {/* Dealer Zone */}
+            <div className="flex flex-col items-center space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-white/80">
+                  Maharaja Dealer
+                </span>
+                {dealerHand.length > 0 && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#070b14]/80 border border-[#f59e0b]/40 text-[#fbbf24] font-mono text-xs font-bold tabular-nums">
+                    {gameState === 'PLAYER_TURN'
+                      ? dealerHand[0].numeric
+                      : getHandValue(dealerHand)}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center justify-center -space-x-5 sm:-space-x-8 min-h-[144px]">
+                {dealerHand.length > 0
+                  ? dealerHand.map((card, i) => (
+                      <CardComponent
+                        key={i}
+                        card={card}
+                        hidden={i === 1 && gameState === 'PLAYER_TURN'}
+                      />
+                    ))
+                  : [0, 1].map((i) => <CardComponent key={i} hidden />)}
+              </div>
+            </div>
+
+            {/* Center Banner / Rules Ribbon */}
+            <div className="my-4 min-h-[48px] flex items-center justify-center">
+              {outcomeBanner ? (
+                <div
+                  className={`px-5 py-2 rounded-xl font-extrabold text-xs sm:text-sm border shadow-xl text-center ${
+                    outcomeBanner.mult > 1
+                      ? 'bg-[#10b981]/20 border-[#10b981] text-[#10b981]'
+                      : outcomeBanner.mult === 1
+                      ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-[#fbbf24]'
+                      : 'bg-[#f43f5e]/20 border-[#f43f5e] text-[#f43f5e]'
+                  }`}
+                >
+                  {outcomeBanner.text}{' '}
+                  {outcomeBanner.mult > 0 && `· ${formatINR(activeStake * outcomeBanner.mult)}`}
+                </div>
+              ) : (
+                <div className="text-xs font-extrabold text-[#fbbf24]/80 tracking-widest uppercase text-center">
+                  BLACKJACK PAYS 3 TO 2 · DEALER STANDS ON 17
+                </div>
+              )}
+            </div>
+
+            {/* Player Zone */}
+            <div className="flex flex-col items-center space-y-3">
+              <div className="flex items-center justify-center -space-x-5 sm:-space-x-8 min-h-[144px]">
+                {playerHand.length > 0
+                  ? playerHand.map((card, i) => <CardComponent key={i} card={card} />)
+                  : [0, 1].map((i) => <CardComponent key={i} hidden />)}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-white/80">
+                  Your Hand
+                </span>
+                {playerHand.length > 0 && (
+                  <span
+                    className={`px-3 py-0.5 rounded-full font-mono text-xs font-bold tabular-nums ${
+                      getHandValue(playerHand) > 21
+                        ? 'bg-[#f43f5e] text-white'
+                        : getHandValue(playerHand) === 21
+                        ? 'bg-[#10b981] text-[#070b14]'
+                        : 'bg-[#070b14]/80 border border-[#f59e0b]/40 text-white'
+                    }`}
+                  >
+                    {getHandValue(playerHand)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Layout>
   );

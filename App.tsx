@@ -11,6 +11,7 @@ import Blackjack from './pages/Blackjack';
 import Coinflip from './pages/Coinflip';
 import Fairness from './pages/Fairness';
 import TeenPatti from './pages/TeenPatti';
+import AndarBahar from './pages/AndarBahar';
 import Matka from './pages/Matka';
 import Admin from './pages/Admin';
 import Wheel from './pages/Wheel';
@@ -28,41 +29,39 @@ interface ErrorBoundaryState {
   hasError: boolean;
 }
 
-// Simple Error Boundary to catch render crashes (blank screens)
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = { hasError: false };
 
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError() {
     return { hasError: true };
   }
 
   componentDidCatch(error: any, errorInfo: any) {
-    console.error("Uncaught error:", error, errorInfo);
+    console.error('Uncaught error:', error, errorInfo);
   }
 
   handleHardReset = () => {
-      // Aggressive clear
-      try {
-          localStorage.clear();
-          sessionStorage.clear();
-      } catch(e) {}
-      engine.hardReset();
-      // Force reload ignoring cache
-      window.location.reload();
-  }
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (e) {}
+    engine.hardReset();
+    window.location.reload();
+  };
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-[#020617] text-white p-6 text-center font-sans">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h1 className="text-4xl font-black text-rose-500 mb-2 uppercase">System Malfunction</h1>
-          <p className="text-slate-400 mb-8 max-w-md">The game engine encountered a critical data corruption. This usually happens when local data is outdated.</p>
-          <button 
+        <div className="flex flex-col items-center justify-center min-h-screen bg-[#070b14] text-white p-6 text-center font-sans">
+          <h1 className="text-3xl font-extrabold text-[#fbbf24] mb-2">Session Reset Required</h1>
+          <p className="text-[#94a3b8] mb-6 max-w-md text-sm">
+            Local session storage encountered an outdated schema. Click below to restore your ₹25,000 INR wallet.
+          </p>
+          <button
             onClick={this.handleHardReset}
-            className="px-8 py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold uppercase tracking-widest shadow-lg transition-all active:scale-95"
+            className="px-6 py-3 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] rounded-xl font-extrabold text-sm shadow-lg"
           >
-            Hard Reset & Repair
+            Repair & Restore ₹25,000 Wallet
           </button>
         </div>
       );
@@ -88,6 +87,7 @@ const App: React.FC = () => {
           <Route path="/coinflip" element={<Coinflip />} />
           <Route path="/fairness" element={<Fairness />} />
           <Route path="/teenpatti" element={<TeenPatti />} />
+          <Route path="/andarbahar" element={<AndarBahar />} />
           <Route path="/matka" element={<Matka />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/wheel" element={<Wheel />} />

@@ -1,14 +1,28 @@
-
 /* Reset and full-screen enforcement */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
-  background-color: #020617;
-  overflow: hidden; 
+  background-color: #070b14;
+  color: #ffffff;
+  overflow: hidden;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+}
+
+.font-mono {
+  font-variant-numeric: tabular-nums;
 }
 
 #root {
@@ -20,36 +34,38 @@ html, body {
   overflow: hidden;
 }
 
-/* Custom Scrollbar Styling - Crucial for Desktop Experience */
+/* Custom Scrollbar Styling */
+.custom-scrollbar {
+  -webkit-overflow-scrolling: touch;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(7, 11, 20, 0.7);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.3);
+  background: rgba(245, 158, 11, 0.35);
   border-radius: 10px;
   transition: background 0.2s;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(34, 211, 238, 0.6);
+  background: rgba(245, 158, 11, 0.65);
 }
 
-/* Utilities */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* Perspective for 3D effects in casino games */
-.perspective-1000 {
-  perspective: 1000px;
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Input Field Improvements */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -60,12 +76,11 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
-/* Button & Link Global Enhancements */
+/* Stable Button & Link Interactions (no global scale transform to prevent 60fps click drops) */
 button, a {
-  /* Optimized transition properties for performance */
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); /* Standard ease-in-out */
-  transition-duration: 150ms;
+  transition-property: color, background-color, border-color, opacity, box-shadow, filter;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  transition-duration: 120ms;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
@@ -73,32 +88,31 @@ button, a {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Global active state for tactile feedback */
-button:active:not(:disabled), a:active:not([href="#"]) {
-  transform: scale(0.97);
+button:active:not(:disabled) {
+  filter: brightness(0.94);
 }
 
-/* Disabled state handling */
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
   transform: none !important;
+  filter: none !important;
 }
 
-/* Performance Optimizations */
-.will-change-transform {
-  will-change: transform;
-  backface-visibility: hidden;
-  transform: translateZ(0);
+.gold-shimmer {
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #d97706 100%);
 }
-
-.cyan-glow { filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.5)); }
-.magenta-glow { filter: drop-shadow(0 0 10px rgba(217, 70, 239, 0.5)); }
 
 .gold-text {
-  background: linear-gradient(to bottom, #fde047, #fbbf24, #f59e0b);
+  background: linear-gradient(to bottom, #fef08a, #f59e0b, #d97706);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-.bazar-font { font-family: 'Teko', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; }
+.felt-surface {
+  background: radial-gradient(circle at center, #065f46 0%, #064e3b 65%, #022c22 100%);
+}
+
+.royal-surface {
+  background: radial-gradient(circle at top right, #1e1b4b 0%, #0d1322 60%, #070b14 100%);
+}

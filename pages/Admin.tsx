@@ -1,110 +1,223 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
-import { engine } from '../services/engine';
+import { engine, formatINR } from '../services/engine';
 import { GameType } from '../types';
+import { Sliders, Calculator, RotateCcw } from 'lucide-react';
 
 export default function Admin() {
   const [session, setSession] = useState(engine.getSession());
 
+  const [simWinProb, setSimWinProb] = useState<number>(49.5);
+  const [simMultiplier, setSimMultiplier] = useState<number>(2.0);
+
   useEffect(() => {
-    const interval = setInterval(() => setSession(engine.getSession()), 1000);
-    return () => clearInterval(interval);
+    return engine.subscribe((s) => setSession(s));
   }, []);
 
-  const update = (key: string, val: any) => {
+  const updateSetting = (key: string, val: any) => {
     engine.updateAdminSettings({ [key]: val });
-    setSession(engine.getSession());
   };
+
+  const p = simWinProb / 100;
+  const q = 1 - p;
+  const b = Math.max(0.01, simMultiplier - 1);
+  const expectedValuePerUnit = p * b - q;
+  const kellyFraction = Math.max(0, (p * b - q) / b);
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-20">
-        <header className="flex flex-col md:flex-row justify-between items-center gap-6 border-b border-white/5 pb-10">
+      <div className="space-y-6">
+        <header className="bg-[#0d1322] border border-[#1e293b] rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-black text-white italic transform -skew-x-12 tracking-tighter uppercase leading-none">
-              PIT <span className="text-bet-accent">BOSS</span> COMMAND
+            <div className="flex items-center gap-2 text-[#fbbf24] text-xs font-extrabold uppercase tracking-wider mb-1">
+              <Sliders className="w-4 h-4" />
+              <span>Bookie Risk & Gambling-Math Console</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white">
+              House Edge & Risk Parameters Lab
             </h1>
-            <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.4em] mt-3">Operational Oversight • Reality Manipulation</p>
           </div>
-          <div className="flex gap-4 w-full md:w-auto">
-            <button onClick={() => engine.resetBalance()} className="flex-1 md:flex-none bg-bet-800 hover:bg-bet-700 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest text-white border border-white/5 transition-all">Emergency Reset</button>
-            <button onClick={() => engine.toggleAdmin()} className="flex-1 md:flex-none bg-bet-danger text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg">Logout</button>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => engine.resetBalance()}
+              className="px-4 py-2 bg-[#131c31] hover:bg-[#1e293b] border border-[#1e293b] rounded-xl text-xs font-bold text-white flex items-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-[#fbbf24]" /> Reset ₹25,000 Khata
+            </button>
           </div>
         </header>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-           {[
-             { label: 'Site Net Profit', val: `₹${Math.floor(session.settings.globalProfit).toLocaleString()}`, color: 'text-bet-success' },
-             { label: 'Active Nonce', val: session.nonce, color: 'text-white' },
-             { label: 'User Retention', val: '98.2%', color: 'text-bet-accent' },
-             { label: 'RNG Entropy', val: 'MAX', color: 'gold-text' }
-           ].map((stat, i) => (
-             <div key={i} className="bg-bet-900 p-6 lg:p-8 rounded-[2rem] border border-white/5 shadow-xl group hover:border-bet-accent transition-colors">
-                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 group-hover:text-bet-accent">{stat.label}</div>
-                <div className={`text-xl lg:text-3xl font-black tabular-nums tracking-tighter ${stat.color}`}>{stat.val}</div>
-             </div>
-           ))}
+        {/* Top Telemetry */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-[#0d1322] p-5 rounded-2xl border border-[#1e293b]">
+            <div className="text-xs text-[#94a3b8] mb-1">Cumulative House Net</div>
+            <div
+              className={`text-xl font-extrabold font-mono tabular-nums ${
+                session.settings.globalProfit >= 0 ? 'text-[#10b981]' : 'text-[#f43f5e]'
+              }`}
+            >
+              {formatINR(session.settings.globalProfit)}
+            </div>
+          </div>
+          <div className="bg-[#0d1322] p-5 rounded-2xl border border-[#1e293b]">
+            <div className="text-xs text-[#94a3b8] mb-1">Active Nonce</div>
+            <div className="text-xl font-extrabold font-mono text-[#fbbf24] tabular-nums">
+              {session.nonce}
+            </div>
+          </div>
+          <div className="bg-[#0d1322] p-5 rounded-2xl border border-[#1e293b]">
+            <div className="text-xs text-[#94a3b8] mb-1">RNG Mode</div>
+            <div className="text-xl font-extrabold text-white">
+              {session.settings.isRigged ? 'Adverse Drift' : 'Fair HMAC'}
+            </div>
+          </div>
+          <div className="bg-[#0d1322] p-5 rounded-2xl border border-[#1e293b]">
+            <div className="text-xs text-[#94a3b8] mb-1">Target RTP Baseline</div>
+            <div className="text-xl font-extrabold font-mono text-[#10b981] tabular-nums">
+              {(session.settings.forcedRTP * 100).toFixed(1)}%
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          <section className="bg-bet-900 rounded-[3rem] border border-white/5 p-8 lg:p-12 space-y-10 shadow-2xl">
-            <h2 className="text-2xl font-black text-white uppercase italic -skew-x-6 flex items-center gap-4">
-              <span className="w-3 h-3 rounded-full bg-bet-accent animate-ping"></span>
-              RNG Override Filters
-            </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Simulation Variance & Kelly Calculator */}
+          <div className="space-y-6">
+            <section className="bg-[#0d1322] border border-[#1e293b] rounded-2xl p-6 space-y-5">
+              <h2 className="text-base font-extrabold text-white">RNG & Variance Simulation</h2>
 
-            <div className="flex items-center justify-between p-8 bg-black/40 rounded-3xl border border-white/5 hover:border-bet-accent transition-all group cursor-pointer" onClick={() => update('isRigged', !session.settings.isRigged)}>
-               <div>
-                 <div className="font-black text-white group-hover:text-bet-accent transition-colors uppercase tracking-tight">ENHANCED VARIANCE</div>
-                 <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Simulates "unlucky" streaks for retention analysis.</div>
-               </div>
-               <div className={`w-16 h-8 rounded-full transition-all relative ${session.settings.isRigged ? 'bg-bet-danger shadow-[0_0_15px_rgba(255,59,48,0.4)]' : 'bg-bet-950 border border-white/5'}`}>
-                  <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-md ${session.settings.isRigged ? 'left-9' : 'left-1'}`}></div>
-               </div>
+              <div
+                onClick={() => updateSetting('isRigged', !session.settings.isRigged)}
+                className="flex items-center justify-between p-4 bg-[#131c31] rounded-xl border border-[#1e293b] cursor-pointer"
+              >
+                <div>
+                  <div className="text-sm font-bold text-white">Adverse Variance Stress Test</div>
+                  <div className="text-xs text-[#94a3b8] mt-0.5">
+                    Simulates a negative tail-risk streak to test bankroll resilience and stop-loss behavior.
+                  </div>
+                </div>
+                <div
+                  className={`w-12 h-6 rounded-full relative transition-colors shrink-0 ml-4 ${
+                    session.settings.isRigged ? 'bg-[#f43f5e]' : 'bg-[#070b14]'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                      session.settings.isRigged ? 'left-7' : 'left-1'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-[#131c31] rounded-xl border border-[#1e293b] space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-semibold text-[#94a3b8]">Simulated Return to Player (RTP)</span>
+                  <span className="font-mono font-bold text-[#fbbf24] tabular-nums">
+                    {(session.settings.forcedRTP * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0.80"
+                  max="1.00"
+                  step="0.01"
+                  value={session.settings.forcedRTP}
+                  onChange={(e) => updateSetting('forcedRTP', Number(e.target.value))}
+                  className="w-full h-2 bg-[#070b14] rounded-lg appearance-none cursor-pointer accent-[#f59e0b]"
+                />
+              </div>
+            </section>
+
+            {/* Kelly Criterion & EV Calculator */}
+            <section className="bg-[#0d1322] border border-[#1e293b] rounded-2xl p-6 space-y-4">
+              <h2 className="text-base font-extrabold text-white flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-[#fbbf24]" />
+                <span>Expected Value (EV) & Kelly Criterion Calculator</span>
+              </h2>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#94a3b8] mb-1">
+                    Win Probability (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0.1"
+                    max="99"
+                    value={simWinProb}
+                    onChange={(e) => setSimWinProb(Number(e.target.value))}
+                    className="w-full bg-[#070b14] border border-[#1e293b] rounded-xl px-3 py-2 text-xs font-mono font-bold text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#94a3b8] mb-1">
+                    Payout Multiplier (×)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="1.01"
+                    value={simMultiplier}
+                    onChange={(e) => setSimMultiplier(Number(e.target.value))}
+                    className="w-full bg-[#070b14] border border-[#1e293b] rounded-xl px-3 py-2 text-xs font-mono font-bold text-white outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-[#131c31] p-4 rounded-xl border border-[#1e293b] space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-[#94a3b8]">Expected Value per ₹1,000 Bet:</span>
+                  <span
+                    className={`font-mono font-bold tabular-nums ${
+                      expectedValuePerUnit >= 0 ? 'text-[#10b981]' : 'text-[#f43f5e]'
+                    }`}
+                  >
+                    {expectedValuePerUnit >= 0 ? '+' : ''}
+                    {formatINR(expectedValuePerUnit * 1000)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#94a3b8]">Optimal Kelly Bankroll Fraction:</span>
+                  <span className="font-mono font-bold text-[#fbbf24] tabular-nums">
+                    {(kellyFraction * 100).toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Module House Edges Table */}
+          <section className="bg-[#0d1322] border border-[#1e293b] rounded-2xl overflow-hidden flex flex-col">
+            <div className="px-6 py-4 bg-[#131c31] border-b border-[#1e293b]">
+              <h2 className="text-sm font-extrabold text-white">Game Module House Edges</h2>
             </div>
-
-            <div className="space-y-6 bg-black/40 p-8 rounded-3xl border border-white/5">
-               <div className="flex justify-between items-end">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Global Payout Limit (RTP)</label>
-                  <span className="text-3xl font-black text-white tabular-nums leading-none">{Math.floor(session.settings.forcedRTP * 100)}%</span>
-               </div>
-               <input 
-                  type="range" min="0" max="1" step="0.01" 
-                  value={session.settings.forcedRTP} 
-                  onChange={(e) => update('forcedRTP', Number(e.target.value))}
-                  className="w-full h-3 bg-bet-950 rounded-full appearance-none cursor-pointer accent-bet-accent"
-               />
-               <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                  <span>House Wins All</span>
-                  <span>Pure Fairness</span>
-               </div>
+            <div className="overflow-x-auto custom-scrollbar flex-1">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#0d1322] text-[#94a3b8] border-b border-[#1e293b]">
+                  <tr>
+                    <th className="px-6 py-3 font-semibold">Module</th>
+                    <th className="px-4 py-3 font-semibold text-right">House Edge</th>
+                    <th className="px-6 py-3 font-semibold text-right">Theoretical RTP</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1e293b]">
+                  {Object.values(GameType).map((type) => {
+                    const edge = session.settings.houseEdgeOverrides[type] ?? 0.01;
+                    return (
+                      <tr key={type} className="hover:bg-[#131c31]/50">
+                        <td className="px-6 py-3 font-bold text-white">{type}</td>
+                        <td className="px-4 py-3 text-right font-mono text-[#94a3b8] tabular-nums">
+                          {(edge * 100).toFixed(2)}%
+                        </td>
+                        <td className="px-6 py-3 text-right font-mono font-bold text-[#fbbf24] tabular-nums">
+                          {((1 - edge) * 100).toFixed(2)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </section>
-
-          <section className="bg-bet-900 rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl flex flex-col">
-             <div className="p-8 bg-bet-800 border-b border-white/5 shrink-0">
-                <h2 className="text-2xl font-black text-white uppercase italic transform -skew-x-12 tracking-tighter">Software Module Edges</h2>
-             </div>
-             <div className="flex-1 overflow-y-auto no-scrollbar">
-               <table className="w-full text-left">
-                  <thead className="bg-black/20 text-[10px] font-black text-slate-600 uppercase tracking-widest">
-                     <tr>
-                        <th className="px-10 py-5">Module ID</th>
-                        <th className="px-10 py-5 text-right">House Edge</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                     {Object.values(GameType).map(type => (
-                       <tr key={type} className="hover:bg-white/[0.02] transition-colors group">
-                          <td className="px-10 py-5 font-black text-white group-hover:text-bet-accent uppercase italic text-sm tracking-tight">{type}</td>
-                          <td className="px-10 py-5 text-right font-mono font-black text-bet-success text-sm tabular-nums">
-                             {(session.settings.houseEdgeOverrides[type] * 100).toFixed(2)}%
-                          </td>
-                       </tr>
-                     ))}
-                  </tbody>
-               </table>
-             </div>
           </section>
         </div>
       </div>

@@ -1,122 +1,440 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../components/Layout';
-import { engine } from '../services/engine';
+import { engine, formatINR, LIVE_BAZAR_MARKETS } from '../services/engine';
 import { audio } from '../services/audio';
 import { GameType } from '../types';
+import { ShieldCheck, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Matka() {
-  const [betAmount, setBetAmount] = useState<number>(100);
-  const [selectedNum, setSelectedNum] = useState<number | null>(null);
+  const [selectedBazar, setSelectedBazar] = useState(LIVE_BAZAR_MARKETS[0].name);
+  const [betAmount, setBetAmount] = useState<number>(500);
+  const [betMode, setBetMode] = useState<'ANK' | 'JODI' | 'PANNA' | 'EVEN_ODD'>('ANK');
+  const [selectedAnk, setSelectedAnk] = useState<number>(7);
+  const [selectedJodi, setSelectedJodi] = useState<string>('37');
+  const [selectedPannaType, setSelectedPannaType] = useState<'SINGLE' | 'DOUBLE' | 'TRIPLE'>('SINGLE');
+  const [selectedParity, setSelectedParity] = useState<'EVEN' | 'ODD'>('ODD');
   const [isDrawing, setIsDrawing] = useState(false);
-  const [result, setResult] = useState<{ cards: string, single: number } | null>(null);
-  const [message, setMessage] = useState('');
+
+  const drawTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (drawTimerRef.current) clearTimeout(drawTimerRef.current);
+    };
+  }, []);
+
+  const [result, setResult] = useState<{
+    cards: string;
+    closeCards: string;
+    single: number;
+    jodi: string;
+    pannaType: string;
+    won: boolean;
+    payout: number;
+  } | null>(null);
+
+  const [history, setHistory] = useState<
+    { bazar: string; openPanna: string; jodi: string; closePanna: string }[]
+  >([
+    { bazar: 'KALYAN', openPanna: '148', jodi: '37', closePanna: '250' },
+    { bazar: 'WORLI', openPanna: '369', jodi: '81', closePanna: '146' },
+    { bazar: 'MILAN', openPanna: '279', jodi: '84', closePanna: '130' },
+    { bazar: 'RAJDHANI', openPanna: '458', jodi: '72', closePanna: '246' },
+  ]);
+
+  const getActiveMultiplier = () => {
+    if (betMode === 'ANK') return 9.5;
+    if (betMode === 'JODI') return 95.0;
+    if (betMode === 'PANNA') {
+      return selectedPannaType === 'TRIPLE' ? 600 : selectedPannaType === 'DOUBLE' ? 300 : 150;
+    }
+    return 1.95;
+  };
 
   const play = () => {
-    if (betAmount > engine.getSession().balance || selectedNum === null) return;
+    if (isDrawing || betAmount <= 0 || betAmount > engine.getSession().balance) return;
     setIsDrawing(true);
     setResult(null);
-    setMessage('');
     audio.playBet();
 
-    setTimeout(() => {
-      engine.placeBet(GameType.MATKA, betAmount, (r) => {
-        const res = engine.getSattaMatkaResult(r);
-        setResult(res);
-        setIsDrawing(false);
-        if (res.single === selectedNum) {
-          audio.playWin();
-          setMessage('JACKPOT!');
-          return { multiplier: 9, outcome: `Kalyan Result: ${res.single} (Win)` };
-        } else {
-          audio.playLoss();
-          setMessage('TRY AGAIN');
-          return { multiplier: 0, outcome: `Kalyan Result: ${res.single} (Loss)` };
-        }
-      }, '');
-    }, 2000);
+    const delay = engine.getSession().settings.instantBet ? 150 : 600;
+
+    if (drawTimerRef.current) clearTimeout(drawTimerRef.current);
+    drawTimerRef.current = setTimeout(() => {
+      engine.placeBet(
+        GameType.MATKA,
+        betAmount,
+        (r) => {
+          const res = engine.getSattaMatkaResult(r);
+          let mult = 0;
+
+          if (betMode === 'ANK') {
+            if (res.single === selectedAnk) mult = 9.5;
+          } else if (betMode === 'JODI') {
+            const cleanJodi = (selectedJodi || '00').padStart(2, '0');
+            if (res.jodi === cleanJodi) mult = 95.0;
+          } else if (betMode === 'PANNA') {
+            if (res.pannaType === selectedPannaType) {
+              mult = selectedPannaType === 'TRIPLE' ? 600 : selectedPannaType === 'DOUBLE' ? 300 : 150;
+            }
+          } else {
+            const isEven = res.single % 2 === 0;
+            if ((selectedParity === 'EVEN' && isEven) || (selectedParity === 'ODD' && !isEven)) {
+              mult = 1.95;
+            }
+          }
+
+          const won = mult > 0;
+          setResult({
+            cards: res.cards,
+            closeCards: res.closeCards,
+            single: res.single,
+            jodi: res.jodi,
+            pannaType: res.pannaType,
+            won,
+            payout: +(betAmount * mult).toFixed(2),
+          });
+          setHistory((prev) =>
+            [
+              {
+                bazar: selectedBazar.split(' ')[0],
+                openPanna: res.cards,
+                jodi: res.jodi,
+                closePanna: res.closeCards,
+              },
+              ...prev,
+            ].slice(0, 8)
+          );
+          setIsDrawing(false);
+
+          if (won) audio.playWin();
+          else audio.playLoss();
+
+          return {
+            multiplier: mult,
+            outcome: `${selectedBazar}: ${res.cards}-${res.jodi}-${res.closeCards}`,
+          };
+        },
+        ''
+      );
+    }, delay);
   };
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6 lg:gap-8 pb-20">
-        <div className="bg-bet-900 border border-white/5 rounded-[2.5rem] p-6 lg:p-8 shadow-3xl">
-           <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
+        <div className="flex flex-col lg:flex-row min-h-[580px]">
+          {/* Left Bookie Matka Slip Control Panel */}
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+            <div className="space-y-4">
+              {/* Bazar Market Selector */}
               <div>
-                 <h1 className="text-3xl lg:text-5xl font-black text-white uppercase italic tracking-tighter leading-none mb-2 bazar-font">Kalyan <span className="text-bet-primary drop-shadow-[0_0_15px_#22d3ee]">Matka</span></h1>
-                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] leading-none">Made by @paidguy</p>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">
+                  Select Official Matka Bazar
+                </label>
+                <select
+                  value={selectedBazar}
+                  onChange={(e) => setSelectedBazar(e.target.value)}
+                  disabled={isDrawing}
+                  className="w-full h-11 bg-[#070b14] border border-[#24324f] rounded-xl px-3 text-xs font-bold text-[#fbbf24] outline-none"
+                >
+                  {LIVE_BAZAR_MARKETS.map((m) => (
+                    <option key={m.id} value={m.name}>
+                      {m.name} ({m.openTime})
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="bg-bet-primary/10 px-6 py-3 rounded-xl border border-bet-primary/30 text-bet-primary font-black text-xl bazar-font leading-none">ANK: 9x</div>
-           </header>
-           
-           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-              <div className="xl:col-span-8 space-y-6">
-                 <div className="grid grid-cols-5 gap-2 lg:gap-3">
-                    {[...Array(10)].map((_, i) => (
-                      <button 
-                        key={i} onClick={() => { setSelectedNum(i); audio.playClick(); }}
+
+              {/* 4 Bet Mode Tabs */}
+              <div className="grid grid-cols-2 gap-1.5 bg-[#070b14] p-1.5 rounded-xl border border-[#24324f]">
+                {[
+                  { id: 'ANK', label: 'Single Ank (9.5×)' },
+                  { id: 'JODI', label: 'Jodi (95×)' },
+                  { id: 'PANNA', label: 'Panna (150×+)' },
+                  { id: 'EVEN_ODD', label: 'Even/Odd (1.95×)' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setBetMode(m.id as any)}
+                    disabled={isDrawing}
+                    className={`py-2 rounded-lg text-xs font-bold whitespace-nowrap ${
+                      betMode === m.id
+                        ? 'bg-[#f59e0b] text-[#070b14]'
+                        : 'text-[#94a3b8] hover:text-white'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Stake Input */}
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
+                  <span>Parchi Stake (INR)</span>
+                  <span className="font-mono text-[#fbbf24] font-bold tabular-nums">
+                    {formatINR(betAmount)}
+                  </span>
+                </div>
+                <div className="flex h-11 bg-[#070b14] border border-[#24324f] rounded-xl overflow-hidden">
+                  <input
+                    type="number"
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
+                    disabled={isDrawing}
+                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(Math.max(10, +(betAmount / 2).toFixed(0)))}
+                    disabled={isDrawing}
+                    className="px-3 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    ½
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(+(betAmount * 2).toFixed(0))}
+                    disabled={isDrawing}
+                    className="px-3 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    2×
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  {[100, 500, 1000, 5000].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setBetAmount(chip)}
+                      disabled={isDrawing}
+                      className="py-1.5 bg-[#070b14] hover:bg-[#1d2a47] border border-[#24324f] rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
+                    >
+                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {betMode === 'JODI' && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-[#94a3b8]">
+                    Enter 2-Digit Jodi (00 to 99) · Pays 95×
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={2}
+                    value={selectedJodi}
+                    onChange={(e) => setSelectedJodi(e.target.value.replace(/\D/g, ''))}
+                    disabled={isDrawing}
+                    className="w-full h-11 bg-[#070b14] border border-[#f59e0b] rounded-xl px-3.5 text-center text-lg font-mono font-extrabold text-[#fbbf24] outline-none"
+                  />
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {['37', '81', '42', '50', '07', '99'].map((j) => (
+                      <button
+                        key={j}
+                        type="button"
+                        onClick={() => setSelectedJodi(j)}
                         disabled={isDrawing}
-                        className={`aspect-square rounded-2xl font-black text-3xl lg:text-5xl transition-all border-2 ${selectedNum === i ? 'bg-bet-primary text-bet-950 border-bet-primary shadow-2xl scale-105' : 'bg-bet-800 text-slate-600 border-white/5 hover:border-bet-primary hover:text-white'}`}
+                        className={`py-1.5 rounded-lg font-mono text-xs font-bold border ${
+                          selectedJodi === j
+                            ? 'bg-[#f59e0b] text-[#070b14] border-white'
+                            : 'bg-[#070b14] text-[#94a3b8] border-[#24324f]'
+                        }`}
                       >
-                        {i}
+                        {j}
                       </button>
                     ))}
-                 </div>
-              </div>
+                  </div>
+                </div>
+              )}
 
-              <div className="xl:col-span-4 flex flex-col gap-4">
-                 <div className="bg-black/40 p-6 rounded-3xl border border-white/5 space-y-4 shadow-inner">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block leading-none">Stake (₹)</label>
-                    <input 
-                      type="number" 
-                      value={betAmount} 
-                      onChange={e => setBetAmount(Number(e.target.value))} 
-                      disabled={isDrawing}
-                      className="w-full bg-black border border-white/10 p-4 rounded-xl text-white font-black text-3xl outline-none focus:border-bet-primary transition-all text-center tabular-nums" 
-                    />
-                 </div>
-                 <button 
-                  onClick={play} 
-                  disabled={isDrawing || selectedNum === null || betAmount <= 0} 
-                  className="flex-1 py-8 bg-bet-primary text-bet-950 font-black text-2xl rounded-3xl shadow-xl hover:brightness-110 active:scale-95 transition-all uppercase tracking-[0.2em] bazar-font leading-none"
-                 >
-                    {isDrawing ? 'DRAWING...' : 'Bet Lagao'}
-                 </button>
-              </div>
-           </div>
-        </div>
-
-        {/* Result Area */}
-        <div className="bg-bet-900 border border-white/5 rounded-[2.5rem] lg:rounded-[3rem] p-8 lg:p-12 flex flex-col items-center justify-center min-h-[300px] lg:min-h-[400px] relative shadow-2xl overflow-hidden">
-           {isDrawing ? (
-              <div className="flex flex-col items-center gap-6 animate-fade-in">
-                 <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full border-[6px] lg:border-[8px] border-bet-primary border-t-transparent animate-spin"></div>
-                 <div className="text-lg lg:text-xl font-black text-bet-primary animate-pulse uppercase tracking-[0.5em] bazar-font">Node Connecting...</div>
-              </div>
-           ) : result ? (
-              <div className="text-center space-y-6 lg:space-y-10 animate-fade-in">
-                 <div className="flex gap-2 lg:gap-4 justify-center">
-                    {result.cards.split('').map((c, i) => (
-                      <div key={i} className="w-12 h-20 sm:w-16 sm:h-28 lg:w-28 lg:h-44 bg-white text-bet-950 flex items-center justify-center text-4xl sm:text-5xl lg:text-7xl font-black rounded-lg sm:rounded-xl lg:rounded-[2rem] shadow-3xl">
-                        {c}
-                      </div>
+              {betMode === 'PANNA' && (
+                <div>
+                  <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">
+                    Select Panna Category
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'SINGLE', label: 'Single', odds: '150×' },
+                      { id: 'DOUBLE', label: 'Double', odds: '300×' },
+                      { id: 'TRIPLE', label: 'Triple', odds: '600×' },
+                    ].map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelectedPannaType(p.id as any)}
+                        disabled={isDrawing}
+                        className={`py-2.5 rounded-xl border text-center ${
+                          selectedPannaType === p.id
+                            ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-white'
+                            : 'bg-[#070b14] border-[#24324f] text-[#94a3b8]'
+                        }`}
+                      >
+                        <div className="text-xs font-bold">{p.label}</div>
+                        <div className="text-[11px] font-mono text-[#fbbf24]">{p.odds}</div>
+                      </button>
                     ))}
-                 </div>
-                 
-                 <div className="space-y-2">
-                    <div className="text-7xl sm:text-8xl lg:text-9xl font-black gold-text drop-shadow-[0_10px_60px_rgba(251,191,36,0.6)] leading-none bazar-font">
-                       {result.single}
-                    </div>
-                    <div className={`text-3xl lg:text-5xl font-black uppercase italic tracking-tighter bazar-font ${result.single === selectedNum ? 'text-bet-primary animate-bounce' : 'text-bet-danger opacity-80'}`}>
-                       {message}
-                    </div>
-                 </div>
+                  </div>
+                </div>
+              )}
+
+              {betMode === 'EVEN_ODD' && (
+                <div>
+                  <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">
+                    Select Open Ank Parity
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['EVEN', 'ODD'] as const).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setSelectedParity(p)}
+                        disabled={isDrawing}
+                        className={`h-11 rounded-xl font-bold text-xs border ${
+                          selectedParity === p
+                            ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-[#fbbf24]'
+                            : 'bg-[#070b14] border-[#24324f] text-[#94a3b8]'
+                        }`}
+                      >
+                        {p} ANK (1.95×)
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div className="flex justify-between text-xs font-medium text-[#94a3b8] mb-1.5">
+                  <span>Potential Bhav Payout</span>
+                  <span className="font-mono text-[#fbbf24]">{getActiveMultiplier()}×</span>
+                </div>
+                <div className="h-11 bg-[#070b14] border border-[#24324f] rounded-xl px-3 flex items-center text-sm font-mono font-extrabold text-[#10b981] tabular-nums">
+                  {formatINR(betAmount * getActiveMultiplier())}
+                </div>
               </div>
-           ) : (
-              <div className="text-center space-y-4 lg:space-y-8 opacity-20">
-                 <div className="text-7xl lg:text-[10rem] leading-none">🏺</div>
-                 <h2 className="text-2xl lg:text-5xl font-black text-white uppercase italic tracking-tighter bazar-font">Select Luck Number</h2>
+
+              <button
+                type="button"
+                onClick={play}
+                disabled={isDrawing || betAmount <= 0}
+                className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
+              >
+                {isDrawing ? 'Drawing Matka Pot...' : `Lock Matka Parchi (${formatINR(betAmount, 0)})`}
+              </button>
+            </div>
+
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+              <span>95.0% RTP · Official Matka</span>
+              <Link to="/fairness" className="hover:text-white flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
+              </Link>
+            </div>
+          </div>
+
+          {/* Right Kalyan Matka Stage */}
+          <div className="flex-1 flex flex-col justify-between p-4 sm:p-8 lg:p-10 space-y-6 royal-surface min-w-0">
+            {/* Top Draw Chart History */}
+            <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+              <span className="text-xs font-bold text-[#fbbf24] flex items-center gap-1.5 shrink-0">
+                <Sparkles className="w-4 h-4" /> {selectedBazar}
+              </span>
+              <div className="flex items-center gap-2">
+                {history.map((h, i) => (
+                  <div
+                    key={i}
+                    className="px-3 py-1 rounded-lg bg-[#131c31] border border-[#24324f] font-mono text-xs font-bold text-white tabular-nums shrink-0"
+                  >
+                    <span className="text-[#94a3b8] mr-1">{h.bazar}:</span>
+                    {h.openPanna}-<span className="text-[#fbbf24]">{h.jodi}</span>-{h.closePanna}
+                  </div>
+                ))}
               </div>
-           )}
+            </div>
+
+            {/* 3-Card Panna & Jodi Draw Display */}
+            <div className="my-auto flex flex-col items-center space-y-6">
+              <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4">
+                {(result ? result.cards.split('') : ['1', '4', '8']).map((digit, idx) => (
+                  <div
+                    key={idx}
+                    className="w-16 h-24 sm:w-20 sm:h-28 rounded-2xl bg-[#131c31] border-2 border-[#f59e0b]/60 flex flex-col items-center justify-center font-mono text-3xl sm:text-4xl font-extrabold text-white shadow-xl"
+                  >
+                    <span className="text-[10px] text-[#94a3b8] font-sans mb-1">PATTI {idx + 1}</span>
+                    <span>{isDrawing ? '•' : digit}</span>
+                  </div>
+                ))}
+
+                <div className="text-xl sm:text-2xl font-bold text-[#fbbf24]">→</div>
+
+                <div
+                  className={`w-20 h-24 sm:w-24 sm:h-28 rounded-2xl border-2 flex flex-col items-center justify-center shadow-xl ${
+                    result?.won
+                      ? 'bg-[#10b981] text-[#070b14] border-white'
+                      : 'bg-[#f59e0b] text-[#070b14] border-[#fef08a]'
+                  }`}
+                >
+                  <span className="text-[10px] font-extrabold uppercase">ANK / JODI</span>
+                  <span className="font-mono text-2xl sm:text-4xl font-extrabold">
+                    {isDrawing ? '••' : result ? (betMode === 'JODI' ? result.jodi : result.single) : '3 / 37'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="min-h-[40px] flex items-center justify-center">
+                {result && (
+                  <div
+                    className={`px-4 sm:px-5 py-2 rounded-xl font-mono text-xs sm:text-sm font-extrabold border text-center ${
+                      result.won
+                        ? 'bg-[#10b981]/20 border-[#10b981] text-[#10b981]'
+                        : 'bg-[#131c31] border-[#24324f] text-[#94a3b8]'
+                    }`}
+                  >
+                    {result.won
+                      ? `PASS! Won +${formatINR(result.payout)} (${result.cards}-${result.jodi}-${result.closeCards})`
+                      : `Declared: ${result.cards}-${result.jodi}-${result.closeCards} (${result.pannaType} PANNA)`}
+                  </div>
+                )}
+              </div>
+
+              {/* 0-9 Ank Selection Grid */}
+              {betMode === 'ANK' && (
+                <div className="w-full max-w-xl space-y-2">
+                  <div className="text-xs font-semibold text-[#94a3b8] text-center">
+                    Select Lucky Single Ank (0–9) · Pays 9.50× Bhav
+                  </div>
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                    {Array.from({ length: 10 }, (_, i) => i).map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAnk(num);
+                          audio.playClick();
+                        }}
+                        disabled={isDrawing}
+                        className={`h-12 sm:h-14 rounded-xl font-mono font-extrabold text-base sm:text-lg border transition-colors ${
+                          selectedAnk === num
+                            ? 'bg-[#f59e0b] text-[#070b14] border-white shadow-lg'
+                            : 'bg-[#131c31] hover:bg-[#1d2a47] text-white border-[#24324f]'
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="text-xs text-[#94a3b8] flex flex-wrap justify-between gap-2 pt-2 border-t border-[#24324f]">
+              <span>Ank: 9.5× · Jodi: 95× · Single Panna: 150× · Double: 300× · Triple: 600×</span>
+              <span>SHA-256 Verified Draw</span>
+            </div>
+          </div>
         </div>
       </div>
     </Layout>

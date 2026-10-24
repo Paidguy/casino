@@ -1,165 +1,308 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../components/Layout';
-import { engine } from '../services/engine';
+import { engine, formatINR } from '../services/engine';
 import { audio } from '../services/audio';
 import { GameType } from '../types';
+import { ShieldCheck, Coins } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Coinflip() {
-  const [betAmount, setBetAmount] = useState<number>(100);
+  const [betAmount, setBetAmount] = useState<number>(500);
+  const [activeStake, setActiveStake] = useState<number>(500);
   const [side, setSide] = useState<'HEADS' | 'TAILS'>('HEADS');
   const [flipping, setFlipping] = useState(false);
   const [result, setResult] = useState<'HEADS' | 'TAILS' | null>(null);
+  const [streak, setStreak] = useState<number>(0);
+  const [isRoundActive, setIsRoundActive] = useState(false);
+  const [history, setHistory] = useState<('HEADS' | 'TAILS')[]>([]);
 
-  // Auto Bet State
-  const [mode, setMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
-  const [autoActive, setAutoActive] = useState(false);
-  const [autoBetCount, setAutoBetCount] = useState<number>(0);
-  const [autoBetsRemaining, setAutoBetsRemaining] = useState<number>(0);
-  
-  const autoRef = useRef({ active: false, count: 0, remaining: 0 });
+  const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    autoRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
-  }, [autoActive, autoBetCount, autoBetsRemaining]);
+    return () => {
+      if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
+    };
+  }, []);
 
-  const flip = () => {
-     if (betAmount > engine.getSession().balance || betAmount <= 0) {
-        if (autoRef.current.active) setAutoActive(false);
-        return;
-     }
-     setFlipping(true);
-     setResult(null); 
-     audio.playBet();
-     audio.playSpin();
+  const currentMultiplier = streak === 0 ? 1.0 : +(0.98 * Math.pow(2, streak)).toFixed(2);
+  const nextMultiplier = +(0.98 * Math.pow(2, streak + 1)).toFixed(2);
 
-     setTimeout(() => {
-        engine.placeBet(GameType.COINFLIP, betAmount, (r) => {
-           const isHeads = r > 0.5;
-           const outcomeSide = isHeads ? 'HEADS' : 'TAILS';
-           const won = side === outcomeSide;
-           const mult = won ? 1.96 : 0;
-           
-           setResult(outcomeSide);
-           setFlipping(false);
-           
-           if (won) audio.playWin(); else audio.playLoss();
-           return { multiplier: mult, outcome: `Coinflip: ${outcomeSide}` };
-        }, '');
-     }, 1000); 
+  const flipCoin = (chosenSide: 'HEADS' | 'TAILS') => {
+    if (flipping) return;
+
+    let roundStake = activeStake;
+    let currentStreak = streak;
+
+    if (!isRoundActive) {
+      if (betAmount <= 0 || !engine.deductStake(betAmount)) return;
+      roundStake = betAmount;
+      currentStreak = 0;
+      setActiveStake(betAmount);
+      setIsRoundActive(true);
+      setStreak(0);
+    }
+
+    setSide(chosenSide);
+    setFlipping(true);
+    audio.playBet();
+    audio.playSpin();
+
+    const delay = engine.getSession().settings.instantBet ? 120 : 500;
+
+    if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
+    flipTimerRef.current = setTimeout(() => {
+      // Offset by currentStreak so each flip in a streak gets an independent provably fair float
+      const r = engine.peekNextRandom(currentStreak);
+      const outcomeSide: 'HEADS' | 'TAILS' = r >= 0.5 ? 'HEADS' : 'TAILS';
+      const won = chosenSide === outcomeSide;
+
+      setResult(outcomeSide);
+      setHistory((prev) => [outcomeSide, ...prev].slice(0, 10));
+      setFlipping(false);
+
+      if (won) {
+        const nextStreak = currentStreak + 1;
+        setStreak(nextStreak);
+        audio.playTileSafe(nextStreak);
+      } else {
+        audio.playLoss();
+        engine.settleDeductedBet(
+          GameType.COINFLIP,
+          roundStake,
+          0,
+          `Flip: Lost on ${outcomeSide} after ${currentStreak} streak`
+        );
+        setIsRoundActive(false);
+        setStreak(0);
+      }
+    }, delay);
   };
 
-  // Auto Loop
-  useEffect(() => {
-      let timeout: ReturnType<typeof setTimeout>;
-      if (autoActive && !flipping && result !== null) {
-          const { count, remaining } = autoRef.current;
-          
-          if (engine.getSession().balance < betAmount) {
-              setAutoActive(false);
-              return;
-          }
-
-          if (count === 0 || remaining > 0) {
-              timeout = setTimeout(() => {
-                  flip();
-                  if (count > 0) setAutoBetsRemaining(prev => prev - 1);
-              }, 1000); // 1s wait after result
-          } else {
-              setAutoActive(false);
-          }
-      }
-      return () => clearTimeout(timeout);
-  }, [autoActive, flipping, result]); // Trigger when flipping ends (result updates)
-
-  const toggleAuto = () => {
-      if (autoActive) {
-          setAutoActive(false);
-      } else {
-          setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount);
-          setAutoActive(true);
-          if (!flipping) setTimeout(() => flip(), 0); // Start first one immediately on next tick
-      }
+  const cashOut = () => {
+    if (!isRoundActive || streak === 0 || flipping) return;
+    audio.playWin();
+    engine.settleDeductedBet(
+      GameType.COINFLIP,
+      activeStake,
+      currentMultiplier,
+      `Flip: Cashed out ${streak} streak @ ${currentMultiplier.toFixed(2)}x`
+    );
+    setIsRoundActive(false);
+    setStreak(0);
   };
 
   return (
     <Layout>
-       <div className="max-w-3xl mx-auto space-y-12 pb-32">
-          <div className="bg-bet-900 p-12 lg:p-20 rounded-[4rem] border border-white/10 text-center shadow-3xl relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-80 h-80 bg-bet-primary/10 blur-[150px] pointer-events-none"></div>
-             
-             <div className="mb-16 flex justify-center perspective-1000">
-                <div className={`w-64 h-64 lg:w-80 lg:h-80 rounded-full bg-bet-primary border-[12px] border-bet-950 flex items-center justify-center text-8xl font-black text-bet-950 shadow-[0_0_60px_rgba(34,211,238,0.4)] transition-all duration-1000 transform-gpu ${flipping ? 'animate-[spin_0.3s_linear_infinite]' : ''}`}>
-                   {!flipping && result ? (result === 'HEADS' ? 'H' : 'T') : '?'}
+      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
+        <div className="flex flex-col lg:flex-row min-h-[560px]">
+          {/* Left Stake Control Panel */}
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Coins className="w-4 h-4 text-[#fbbf24]" />
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
+                    GOLD MOHUR TOSS
+                  </span>
                 </div>
-             </div>
-             
-             <div className="grid grid-cols-2 gap-6 mb-12">
-                <button 
-                   onClick={() => { setSide('HEADS'); audio.playClick(); }}
-                   disabled={flipping || autoActive}
-                   className={`p-10 rounded-[2.5rem] border-4 font-black text-3xl lg:text-5xl transition-all bazar-font ${side === 'HEADS' ? 'bg-bet-primary/10 border-bet-primary text-bet-primary shadow-2xl cyan-glow' : 'bg-black/40 border-white/5 text-slate-700'}`}
-                >
-                   HEADS
-                </button>
-                <button 
-                   onClick={() => { setSide('TAILS'); audio.playClick(); }}
-                   disabled={flipping || autoActive}
-                   className={`p-10 rounded-[2.5rem] border-4 font-black text-3xl lg:text-5xl transition-all bazar-font ${side === 'TAILS' ? 'bg-bet-secondary/10 border-bet-secondary text-bet-secondary shadow-2xl magenta-glow' : 'bg-black/40 border-white/5 text-slate-700'}`}
-                >
-                   TAILS
-                </button>
-             </div>
+                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
+                  98.0% RTP
+                </span>
+              </div>
 
-             <div className="space-y-4">
-                 <div className="flex bg-black/40 p-1 rounded-xl max-w-xs mx-auto mb-4">
-                    <button onClick={() => setMode('MANUAL')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'MANUAL' ? 'bg-bet-800 text-white shadow' : 'text-slate-500'}`}>Manual</button>
-                    <button onClick={() => setMode('AUTO')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'AUTO' ? 'bg-bet-primary text-bet-950 shadow' : 'text-slate-500'}`}>Auto</button>
-                 </div>
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
+                  <span>Bet Amount (₹)</span>
+                  <span className="font-mono text-[#fbbf24] tabular-nums">{formatINR(betAmount)}</span>
+                </div>
+                <div className="flex h-11 bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b]/60 rounded-xl overflow-hidden">
+                  <input
+                    type="number"
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
+                    disabled={isRoundActive || flipping}
+                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(Math.max(10, Math.floor(betAmount / 2)))}
+                    disabled={isRoundActive || flipping}
+                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    ½
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(betAmount * 2)}
+                    disabled={isRoundActive || flipping}
+                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    2×
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  {[100, 500, 1000, 5000].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setBetAmount(chip)}
+                      disabled={isRoundActive || flipping}
+                      className="py-1.5 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
+                    >
+                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                 <div className="flex flex-col md:flex-row gap-6 items-stretch">
-                    <div className="flex-1 text-left space-y-3">
-                      <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest px-4">Stake (₹)</label>
-                      <input 
-                          type="number" 
-                          value={betAmount} 
-                          onChange={(e) => setBetAmount(Number(e.target.value))}
-                          className="w-full bg-black border border-white/10 rounded-2xl px-6 py-5 text-white font-mono font-black text-2xl lg:text-3xl outline-none focus:border-bet-primary transition-all"
-                          disabled={flipping || autoActive}
-                     />
-                    </div>
-                    {mode === 'AUTO' && (
-                        <div className="flex-1 text-left space-y-3">
-                          <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest px-4">Count</label>
-                          <input 
-                              type="number" 
-                              value={autoBetCount} 
-                              onChange={(e) => setAutoBetCount(Number(e.target.value))}
-                              className="w-full bg-black border border-white/10 rounded-2xl px-6 py-5 text-white font-mono font-black text-2xl lg:text-3xl outline-none"
-                              disabled={autoActive}
-                         />
-                        </div>
-                    )}
-                    
-                    {!autoActive ? (
-                        <button 
-                          onClick={flip}
-                          disabled={flipping || betAmount <= 0}
-                          className="px-12 py-6 bg-bet-primary text-bet-950 font-black text-2xl lg:text-4xl rounded-[2rem] shadow-xl active:scale-95 transition-all w-full md:w-80 bazar-font cyan-glow"
-                        >
-                          {flipping ? 'FLIPPING' : 'TOSS'}
-                        </button>
-                    ) : (
-                        <button 
-                          onClick={toggleAuto}
-                          className="px-12 py-6 bg-bet-danger text-white font-black text-xl lg:text-2xl rounded-[2rem] shadow-xl active:scale-95 transition-all w-full md:w-80 bazar-font"
-                        >
-                          STOP ({autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})
-                        </button>
-                    )}
-                 </div>
-             </div>
+              {/* Pick Heads or Tails */}
+              <div>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">
+                  Pick Side ({nextMultiplier.toFixed(2)}× Next)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => flipCoin('HEADS')}
+                    disabled={flipping || (!isRoundActive && betAmount <= 0)}
+                    className={`h-11 rounded-xl font-extrabold text-xs border flex items-center justify-center gap-2 ${
+                      side === 'HEADS'
+                        ? 'bg-[#f59e0b] text-[#070b14] border-amber-300'
+                        : 'bg-[#070b14] text-white border-[#24324f] hover:bg-[#1e293b]'
+                    }`}
+                  >
+                    <span className="w-3 h-3 rounded-full bg-amber-300 inline-block" />
+                    <span>Heads (Gold)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => flipCoin('TAILS')}
+                    disabled={flipping || (!isRoundActive && betAmount <= 0)}
+                    className={`h-11 rounded-xl font-extrabold text-xs border flex items-center justify-center gap-2 ${
+                      side === 'TAILS'
+                        ? 'bg-[#10b981] text-[#070b14] border-emerald-300'
+                        : 'bg-[#070b14] text-white border-[#24324f] hover:bg-[#1e293b]'
+                    }`}
+                  >
+                    <span className="w-3 h-3 rounded-full bg-emerald-300 inline-block" />
+                    <span>Tails (Emerald)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Streak Telemetry */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="bg-[#070b14] p-3 rounded-xl border border-[#24324f]">
+                  <span className="block text-[11px] text-[#94a3b8]">Current Streak</span>
+                  <span className="text-base font-mono font-bold text-white tabular-nums">
+                    {streak} {streak === 1 ? 'Hit' : 'Hits'}
+                  </span>
+                </div>
+                <div className="bg-[#070b14] p-3 rounded-xl border border-[#24324f]">
+                  <span className="block text-[11px] text-[#94a3b8]">Multiplier</span>
+                  <span className="text-base font-mono font-bold text-[#10b981] tabular-nums">
+                    {currentMultiplier.toFixed(2)}×
+                  </span>
+                </div>
+              </div>
+
+              {isRoundActive && streak > 0 ? (
+                <button
+                  type="button"
+                  onClick={cashOut}
+                  disabled={flipping}
+                  className="w-full h-14 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex flex-col items-center justify-center leading-tight"
+                >
+                  <span>CASHOUT STREAK</span>
+                  <span className="text-xs font-mono tabular-nums mt-0.5">
+                    {formatINR(activeStake * currentMultiplier)}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => flipCoin(side)}
+                  disabled={flipping || betAmount <= 0}
+                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
+                >
+                  {flipping ? 'Flipping...' : `Toss ${side} (${formatINR(betAmount, 0)})`}
+                </button>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+              <span>Royal Mohur Streak</span>
+              <Link to="/fairness" className="hover:text-white flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
+              </Link>
+            </div>
           </div>
-       </div>
+
+          {/* Right Coinflip Stage */}
+          <div className="flex-1 flex flex-col items-center justify-between p-5 sm:p-10 royal-surface">
+            {/* History Badges */}
+            <div className="flex items-center justify-end gap-1.5 w-full h-8 overflow-x-auto no-scrollbar">
+              {history.map((h, i) => (
+                <span
+                  key={i}
+                  className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold shrink-0 ${
+                    h === 'HEADS'
+                      ? 'bg-[#f59e0b]/20 text-[#fbbf24] border border-[#f59e0b]/40'
+                      : 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40'
+                  }`}
+                >
+                  {h === 'HEADS' ? 'H' : 'T'}
+                </span>
+              ))}
+            </div>
+
+            {/* Central 3D Coin */}
+            <div className="my-6 flex flex-col items-center gap-6">
+              <div
+                className={`w-44 h-44 sm:w-56 sm:h-56 rounded-full border-8 flex flex-col items-center justify-center shadow-2xl transition-transform duration-300 ${
+                  flipping ? 'animate-spin scale-95' : 'scale-100'
+                } ${
+                  result === 'TAILS'
+                    ? 'bg-gradient-to-br from-[#10b981] to-[#047857] border-emerald-200 text-[#070b14]'
+                    : 'bg-gradient-to-br from-[#fbbf24] to-[#d97706] border-amber-200 text-[#070b14]'
+                }`}
+              >
+                <span className="text-5xl sm:text-6xl font-extrabold font-mono">
+                  {flipping ? '₹' : result ? (result === 'HEADS' ? 'H' : 'T') : 'H'}
+                </span>
+                <span className="text-xs font-extrabold mt-2 tracking-widest">
+                  {flipping ? 'TOSSING' : result || 'HEADS'}
+                </span>
+              </div>
+
+              {/* Streak Multiplier Chain Preview */}
+              <div className="flex flex-wrap items-center justify-center gap-2 max-w-full px-2">
+                {[1, 2, 3, 4, 5].map((s) => {
+                  const m = +(0.98 * Math.pow(2, s)).toFixed(2);
+                  const reached = streak >= s;
+                  return (
+                    <div
+                      key={s}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-bold tabular-nums ${
+                        reached
+                          ? 'bg-[#10b981]/20 border-[#10b981] text-[#10b981]'
+                          : 'bg-[#131c31] border-[#24324f] text-[#94a3b8]'
+                      }`}
+                    >
+                      {s}× Hit: {m}×
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="text-xs text-[#94a3b8] w-full flex flex-wrap justify-between gap-2 pt-2 border-t border-[#24324f]">
+              <span>Chain consecutive flips to compound your multiplier</span>
+              <span>Cash out anytime after 1+ hit</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </Layout>
   );
 }

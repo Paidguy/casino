@@ -1,104 +1,353 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../components/Layout';
-import { engine } from '../services/engine';
+import { engine, formatINR } from '../services/engine';
 import { audio } from '../services/audio';
 import { GameType } from '../types';
+import { ShieldCheck, Crown } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+type BCard = { suit: '♠' | '♥' | '♦' | '♣'; rank: string; val: number };
+
+const CardTile: React.FC<{ card?: BCard }> = ({ card }) => {
+  if (!card) {
+    return (
+      <div className="w-16 h-24 sm:w-20 sm:h-28 rounded-xl bg-gradient-to-br from-[#92400e] via-[#451a03] to-[#1e1b4b] border border-[#f59e0b]/60 flex flex-col items-center justify-center shadow-lg">
+        <Crown className="w-3.5 h-3.5 text-[#fbbf24] mb-1" />
+        <span className="text-[9px] font-black text-[#fbbf24] tracking-widest">ROYAL</span>
+      </div>
+    );
+  }
+  const isRed = card.suit === '♥' || card.suit === '♦';
+  return (
+    <div className="w-16 h-24 sm:w-20 sm:h-28 rounded-xl bg-white border-2 border-[#f59e0b]/40 shadow-lg flex flex-col justify-between p-2 select-none">
+      <div className={`text-xs font-extrabold font-mono leading-none ${isRed ? 'text-[#f43f5e]' : 'text-[#070b14]'}`}>
+        {card.rank}
+        <div>{card.suit}</div>
+      </div>
+      <div className={`text-2xl self-center ${isRed ? 'text-[#f43f5e]' : 'text-[#070b14]'}`}>
+        {card.suit}
+      </div>
+      <div className={`text-xs font-extrabold font-mono leading-none self-end rotate-180 ${isRed ? 'text-[#f43f5e]' : 'text-[#070b14]'}`}>
+        {card.rank}
+      </div>
+    </div>
+  );
+};
 
 export default function Baccarat() {
-  const [betAmount, setBetAmount] = useState<number>(100);
+  const [betAmount, setBetAmount] = useState<number>(500);
   const [betSide, setBetSide] = useState<'PLAYER' | 'BANKER' | 'TIE'>('PLAYER');
-  const [gameState, setGameState] = useState<'IDLE' | 'DEALING' | 'RESULT'>('IDLE');
-  const [result, setResult] = useState<any>(null);
+  const [dealing, setDealing] = useState(false);
+  const [playerCards, setPlayerCards] = useState<BCard[]>([]);
+  const [bankerCards, setBankerCards] = useState<BCard[]>([]);
+  const [outcome, setOutcome] = useState<{
+    pTotal: number;
+    bTotal: number;
+    winner: 'PLAYER' | 'BANKER' | 'TIE';
+    won: boolean;
+    payout: number;
+  } | null>(null);
+
+  const dealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dealTimerRef.current) clearTimeout(dealTimerRef.current);
+    };
+  }, []);
+
+  const drawShoe = (): BCard[] => {
+    const suits: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
+    const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    const floats = engine.getNextFloats(6);
+    return floats.map((f, idx) => {
+      const s = suits[Math.floor(((f * 13 + idx) % 1) * 4)];
+      const rIdx = Math.floor(f * 13);
+      const rank = ranks[rIdx];
+      const val = rIdx === 0 ? 1 : rIdx >= 9 ? 0 : rIdx + 1;
+      return { suit: s, rank, val };
+    });
+  };
 
   const deal = () => {
-    if (betAmount > engine.getSession().balance || betAmount <= 0) return;
-    setGameState('DEALING');
-    setResult(null);
+    if (dealing || betAmount <= 0 || betAmount > engine.getSession().balance) return;
+    setDealing(true);
+    setOutcome(null);
     audio.playBet();
 
-    setTimeout(() => {
-      const pScore = Math.floor(Math.random() * 10);
-      const bScore = Math.floor(Math.random() * 10);
-      let winner = 'TIE';
-      let multi = 9; // Tie multiplier
-      
-      if (pScore > bScore) { winner = 'PLAYER'; multi = 2; }
-      else if (bScore > pScore) { winner = 'BANKER'; multi = 1.95; }
+    const delay = engine.getSession().settings.instantBet ? 150 : 600;
 
-      const won = betSide === winner;
-      const finalMulti = won ? multi : 0;
+    if (dealTimerRef.current) clearTimeout(dealTimerRef.current);
+    dealTimerRef.current = setTimeout(() => {
+      engine.placeBet(
+        GameType.BACCARAT,
+        betAmount,
+        () => {
+          const cards = drawShoe();
+          const pHand = [cards[0], cards[2]];
+          const bHand = [cards[1], cards[3]];
 
-      setResult({ pScore, bScore, winner, won });
-      setGameState('RESULT');
-      
-      if (won) audio.playWin(); else audio.playLoss();
-      engine.placeBet(GameType.BACCARAT, betAmount, finalMulti, `Baccarat: ${winner} won (${pScore} vs ${bScore})`);
-    }, 1500);
+          let pTotal = (pHand[0].val + pHand[1].val) % 10;
+          let bTotal = (bHand[0].val + bHand[1].val) % 10;
+
+          const isNatural = pTotal >= 8 || bTotal >= 8;
+          if (!isNatural) {
+            let playerThirdVal: number | null = null;
+            if (pTotal <= 5) {
+              const p3 = cards[4];
+              pHand.push(p3);
+              playerThirdVal = p3.val;
+              pTotal = (pTotal + p3.val) % 10;
+            }
+
+            if (playerThirdVal === null) {
+              if (bTotal <= 5) {
+                const b3 = cards[5];
+                bHand.push(b3);
+                bTotal = (bTotal + b3.val) % 10;
+              }
+            } else {
+              let bankerDraws = false;
+              if (bTotal <= 2) bankerDraws = true;
+              else if (bTotal === 3 && playerThirdVal !== 8) bankerDraws = true;
+              else if (bTotal === 4 && playerThirdVal >= 2 && playerThirdVal <= 7) bankerDraws = true;
+              else if (bTotal === 5 && playerThirdVal >= 4 && playerThirdVal <= 7) bankerDraws = true;
+              else if (bTotal === 6 && (playerThirdVal === 6 || playerThirdVal === 7)) bankerDraws = true;
+
+              if (bankerDraws) {
+                const b3 = cards[5];
+                bHand.push(b3);
+                bTotal = (bTotal + b3.val) % 10;
+              }
+            }
+          }
+
+          let winner: 'PLAYER' | 'BANKER' | 'TIE' = 'TIE';
+          if (pTotal > bTotal) winner = 'PLAYER';
+          else if (bTotal > pTotal) winner = 'BANKER';
+
+          let mult = 0;
+          if (betSide === winner) {
+            mult = winner === 'TIE' ? 9.0 : winner === 'BANKER' ? 1.95 : 2.0;
+          } else if (winner === 'TIE' && (betSide === 'PLAYER' || betSide === 'BANKER')) {
+            mult = 1.0;
+          }
+
+          setPlayerCards(pHand);
+          setBankerCards(bHand);
+          setOutcome({
+            pTotal,
+            bTotal,
+            winner,
+            won: mult > 1,
+            payout: +(betAmount * mult).toFixed(2),
+          });
+          setDealing(false);
+
+          if (mult > 1) audio.playWin();
+          else if (mult === 1) audio.playClick();
+          else audio.playLoss();
+
+          return {
+            multiplier: mult,
+            outcome: `Baccarat: ${winner} (${pTotal} vs ${bTotal})`,
+          };
+        },
+        ''
+      );
+    }, delay);
   };
 
   return (
     <Layout>
-      <div className="flex flex-col items-center gap-6 lg:gap-12 pb-20 max-w-6xl mx-auto">
-        <div className="w-full bg-gradient-to-b from-emerald-800 to-emerald-950 p-6 lg:p-16 rounded-[2.5rem] lg:rounded-[4rem] border-[8px] lg:border-[12px] border-bet-900 shadow-[inset_0_0_150px_rgba(0,0,0,0.8)] flex flex-col justify-between items-center min-h-[350px] lg:min-h-[550px] relative overflow-hidden">
-           <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] pointer-events-none"></div>
-           
-           <div className="flex justify-between w-full relative z-10 px-2 lg:px-0">
-              <div className="text-center group transition-transform hover:scale-110">
-                 <div className="text-[9px] lg:text-[10px] font-black uppercase text-emerald-200/50 mb-2 lg:mb-3 tracking-[0.2em] lg:tracking-[0.4em]">Player Hand</div>
-                 <div className="w-24 h-36 sm:w-28 sm:h-40 lg:w-40 lg:h-56 bg-white/5 backdrop-blur-md rounded-[2rem] lg:rounded-[2.5rem] flex items-center justify-center text-5xl lg:text-9xl font-black text-white shadow-2xl border border-white/10">
-                    {gameState === 'RESULT' ? result.pScore : '?'}
-                 </div>
-              </div>
-              <div className="text-center group transition-transform hover:scale-110">
-                 <div className="text-[9px] lg:text-[10px] font-black uppercase text-emerald-200/50 mb-2 lg:mb-3 tracking-[0.2em] lg:tracking-[0.4em]">Banker Hand</div>
-                 <div className="w-24 h-36 sm:w-28 sm:h-40 lg:w-40 lg:h-56 bg-white/5 backdrop-blur-md rounded-[2rem] lg:rounded-[2.5rem] flex items-center justify-center text-5xl lg:text-9xl font-black text-white shadow-2xl border border-white/10">
-                    {gameState === 'RESULT' ? result.bScore : '?'}
-                 </div>
-              </div>
-           </div>
-
-           <div className="text-center h-16 lg:h-24 flex items-center justify-center relative z-10">
-              {gameState === 'RESULT' ? (
-                <div className={`text-4xl lg:text-8xl font-black italic -skew-x-12 uppercase animate-bounce bazar-font ${result.won ? 'text-bet-primary drop-shadow-[0_0_20px_#22d3ee]' : 'text-white/40'}`}>
-                  {result.winner} WINS
+      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
+        <div className="flex flex-col lg:flex-row min-h-[560px]">
+          {/* Left Stake Control Panel */}
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-[#fbbf24]" />
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
+                    BACCARAT ROYALE
+                  </span>
                 </div>
-              ) : gameState === 'DEALING' ? (
-                <div className="text-xl lg:text-2xl font-black text-white uppercase italic animate-pulse tracking-widest bazar-font">Dealing Satta Cards...</div>
-              ) : null}
-           </div>
-        </div>
-
-        <div className="bg-bet-900 w-full max-w-3xl p-6 lg:p-10 rounded-[2.5rem] lg:rounded-[3rem] border border-white/5 space-y-6 lg:space-y-10 shadow-3xl">
-           <div className="grid grid-cols-3 gap-3 lg:gap-6">
-              {(['PLAYER', 'TIE', 'BANKER'] as const).map(side => (
-                <button 
-                  key={side} onClick={() => { setBetSide(side); audio.playClick(); }}
-                  disabled={gameState === 'DEALING'}
-                  className={`py-4 lg:py-8 rounded-2xl lg:rounded-3xl font-black text-[10px] lg:text-sm tracking-widest border-2 transition-all transform active:scale-95 ${betSide === side ? 'bg-bet-primary text-bet-950 border-bet-primary shadow-2xl scale-105' : 'bg-black/40 border-white/5 text-slate-600 hover:text-white'}`}
-                >
-                  {side} <span className="block text-[8px] lg:text-[9px] mt-1 opacity-60">({side === 'TIE' ? '9x' : side === 'BANKER' ? '1.95x' : '2x'})</span>
-                </button>
-              ))}
-           </div>
-           
-           <div className="flex flex-col md:flex-row gap-4 lg:gap-6">
-              <div className="flex-1">
-                 <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 block px-2">Investment Amount (₹)</label>
-                 <input 
-                   type="number" value={betAmount} 
-                   onChange={e => setBetAmount(Number(e.target.value))} 
-                   disabled={gameState === 'DEALING'}
-                   className="w-full bg-black border border-white/10 p-4 lg:p-5 rounded-2xl text-white font-black text-2xl lg:text-3xl outline-none focus:border-bet-primary transition-all text-center" 
-                 />
+                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
+                  98.94% RTP
+                </span>
               </div>
-              <button 
-                onClick={deal} 
-                disabled={gameState === 'DEALING' || betAmount <= 0} 
-                className="md:w-64 py-6 lg:py-8 bg-bet-primary text-bet-950 font-black text-xl lg:text-2xl rounded-2xl lg:rounded-3xl shadow-xl hover:brightness-110 active:scale-95 transition-all uppercase tracking-[0.2em] bazar-font leading-none"
+
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
+                  <span>Bet Amount (₹)</span>
+                  <span className="font-mono text-[#fbbf24] tabular-nums">{formatINR(betAmount)}</span>
+                </div>
+                <div className="flex h-11 bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b]/60 rounded-xl overflow-hidden">
+                  <input
+                    type="number"
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
+                    disabled={dealing}
+                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(Math.max(10, Math.floor(betAmount / 2)))}
+                    disabled={dealing}
+                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    ½
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(betAmount * 2)}
+                    disabled={dealing}
+                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    2×
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  {[100, 500, 1000, 5000].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setBetAmount(chip)}
+                      disabled={dealing}
+                      className="py-1.5 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
+                    >
+                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">Select Bet Position</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'PLAYER', label: 'Player', odds: '2.00×' },
+                    { id: 'TIE', label: 'Tie', odds: '9.00×' },
+                    { id: 'BANKER', label: 'Banker', odds: '1.95×' },
+                  ].map((pos) => (
+                    <button
+                      key={pos.id}
+                      type="button"
+                      onClick={() => {
+                        setBetSide(pos.id as any);
+                        audio.playClick();
+                      }}
+                      disabled={dealing}
+                      className={`py-3 rounded-xl border text-center transition-colors ${
+                        betSide === pos.id
+                          ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-white'
+                          : 'bg-[#070b14] border-[#24324f] text-[#94a3b8] hover:text-white'
+                      }`}
+                    >
+                      <div className="text-xs font-extrabold">{pos.label}</div>
+                      <div className="text-[11px] font-mono text-[#fbbf24] mt-0.5">{pos.odds}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={deal}
+                disabled={dealing || betAmount <= 0}
+                className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
               >
-                {gameState === 'DEALING' ? 'DEALING...' : 'PLACE BET'}
+                {dealing ? 'Dealing Shoe...' : `Deal Shoe (${formatINR(betAmount, 0)})`}
               </button>
-           </div>
+
+              <div className="p-3.5 bg-[#070b14] rounded-xl border border-[#24324f] text-xs text-[#94a3b8] space-y-1.5">
+                <div className="flex justify-between">
+                  <span>Player / Banker Push on Tie</span>
+                  <span className="font-mono font-bold text-[#10b981]">1.00× Refund</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Third Card Tableau</span>
+                  <span className="font-mono text-white">Punto Banco</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+              <span>Punto Banco VIP</span>
+              <Link to="/fairness" className="hover:text-white flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
+              </Link>
+            </div>
+          </div>
+
+          {/* Right Baccarat Table Stage */}
+          <div className="flex-1 flex flex-col justify-between p-5 sm:p-10 felt-surface">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 my-auto">
+              {/* Player Hand Box */}
+              <div
+                className={`p-5 sm:p-6 rounded-2xl border-2 flex flex-col items-center space-y-4 transition-colors ${
+                  outcome?.winner === 'PLAYER'
+                    ? 'bg-[#070b14]/75 border-[#10b981] shadow-xl'
+                    : 'bg-[#070b14]/45 border-[#24324f]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm font-extrabold uppercase tracking-wider text-white">PLAYER</span>
+                  {outcome && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#131c31] font-mono text-sm font-extrabold text-[#10b981]">
+                      {outcome.pTotal}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-center gap-2.5 min-h-[112px]">
+                  {playerCards.length > 0
+                    ? playerCards.map((c, idx) => <CardTile key={idx} card={c} />)
+                    : [0, 1].map((i) => <CardTile key={i} />)}
+                </div>
+              </div>
+
+              {/* Banker Hand Box */}
+              <div
+                className={`p-5 sm:p-6 rounded-2xl border-2 flex flex-col items-center space-y-4 transition-colors ${
+                  outcome?.winner === 'BANKER'
+                    ? 'bg-[#070b14]/75 border-[#fbbf24] shadow-xl'
+                    : 'bg-[#070b14]/45 border-[#24324f]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm font-extrabold uppercase tracking-wider text-white">BANKER</span>
+                  {outcome && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#131c31] font-mono text-sm font-extrabold text-[#fbbf24]">
+                      {outcome.bTotal}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-center gap-2.5 min-h-[112px]">
+                  {bankerCards.length > 0
+                    ? bankerCards.map((c, idx) => <CardTile key={idx} card={c} />)
+                    : [0, 1].map((i) => <CardTile key={i} />)}
+                </div>
+              </div>
+            </div>
+
+            {/* Result Banner */}
+            <div className="min-h-[52px] flex items-center justify-center mt-4">
+              {outcome && (
+                <div
+                  className={`px-5 sm:px-6 py-2.5 rounded-xl border font-extrabold text-xs sm:text-sm text-center ${
+                    outcome.won
+                      ? 'bg-[#10b981]/20 border-[#10b981] text-[#10b981]'
+                      : outcome.payout === betAmount
+                      ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-[#fbbf24]'
+                      : 'bg-[#070b14]/80 border-[#24324f] text-[#94a3b8]'
+                  }`}
+                >
+                  {outcome.winner} WINS ({outcome.pTotal} to {outcome.bTotal}) ·{' '}
+                  {outcome.payout > 0 ? `Payout ${formatINR(outcome.payout)}` : 'No Payout'}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </Layout>

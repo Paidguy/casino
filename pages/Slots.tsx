@@ -1,163 +1,329 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '../components/Layout';
-import { engine } from '../services/engine';
+import { engine, formatINR } from '../services/engine';
 import { audio } from '../services/audio';
 import { GameType } from '../types';
+import { ShieldCheck, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const SYMBOLS = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
+const INITIAL_GRID = [
+  ['💎', '7️⃣', '🔔'],
+  ['👑', '💎', '🍒'],
+  ['🍉', '💎', '7️⃣'],
+  ['🔔', '👑', '🍉'],
+  ['🍒', '7️⃣', '💎'],
+];
+
+const PAYTABLE = [
+  { sym: '💎', name: 'Kohinoor Wild', m3: '12.5×', m4: '37.5×', m5: '100×' },
+  { sym: '7️⃣', name: 'Lucky Seven', m3: '7.5×', m4: '22.5×', m5: '60×' },
+  { sym: '👑', name: 'Maharaja Crown', m3: '5.0×', m4: '15.0×', m5: '40×' },
+  { sym: '🔔', name: 'Mandir Bell', m3: '3.0×', m4: '9.0×', m5: '24×' },
+  { sym: '🍉', name: 'Melon', m3: '2.0×', m4: '6.0×', m5: '16×' },
+  { sym: '🍒', name: 'Cherry', m3: '1.25×', m4: '3.75×', m5: '10×' },
+];
 
 export default function Slots() {
-  const [betAmount, setBetAmount] = useState<number>(100);
-  const [reels, setReels] = useState(['7️⃣', '7️⃣', '7️⃣']);
+  const [betAmount, setBetAmount] = useState<number>(500);
+  const [grid, setGrid] = useState<string[][]>(INITIAL_GRID);
   const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{ multiplier: number; winningLines: number[] } | null>(null);
 
-  // Auto Bet State
   const [mode, setMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
   const [autoActive, setAutoActive] = useState(false);
   const [autoBetCount, setAutoBetCount] = useState<number>(0);
   const [autoBetsRemaining, setAutoBetsRemaining] = useState<number>(0);
-  
+
   const autoRef = useRef({ active: false, count: 0, remaining: 0 });
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const betRef = useRef(500);
 
   useEffect(() => {
     autoRef.current = { active: autoActive, count: autoBetCount, remaining: autoBetsRemaining };
   }, [autoActive, autoBetCount, autoBetsRemaining]);
 
+  useEffect(() => {
+    betRef.current = betAmount;
+  }, [betAmount]);
+
+  useEffect(() => {
+    return () => {
+      if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+      setAutoActive(false);
+    };
+  }, []);
+
   const spin = () => {
-    if (spinning) return; // Prevent double-spins
-    if (betAmount > engine.getSession().balance || betAmount <= 0) {
-        if (autoRef.current.active) setAutoActive(false);
-        return;
+    const curBet = betRef.current;
+    if (spinning || curBet > engine.getSession().balance || curBet <= 0) {
+      if (autoRef.current.active) setAutoActive(false);
+      return;
     }
+
     setSpinning(true);
     setResult(null);
     audio.playBet();
     audio.playSpin();
 
-    setTimeout(() => {
-      engine.placeBet(GameType.SLOTS, betAmount, (r) => {
-        const res = engine.calculateSlotsResult(r);
-        setReels(res.symbols);
-        setResult(res);
-        setSpinning(false);
-        if (res.multiplier > 0) audio.playWin();
-        else audio.playLoss();
-        return { multiplier: res.multiplier, outcome: `Slots: ${res.symbols.join('')}` };
-      }, '');
-    }, 1200); // 1.2s spin duration
+    const delay = engine.getSession().settings.instantBet ? 120 : 500;
+
+    if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+    spinTimerRef.current = setTimeout(() => {
+      engine.placeBet(
+        GameType.SLOTS,
+        curBet,
+        (r) => {
+          const res = engine.calculateSlotsResult(r);
+          setGrid(res.grid);
+          setResult({ multiplier: res.multiplier, winningLines: res.winningLines });
+          setSpinning(false);
+          if (res.multiplier > 0) audio.playWin();
+          else audio.playLoss();
+          return {
+            multiplier: res.multiplier,
+            outcome: `Slots: ${res.multiplier.toFixed(2)}x (${res.winningLines.length} lines)`,
+          };
+        },
+        ''
+      );
+    }, delay);
   };
 
   useEffect(() => {
-      let timeout: ReturnType<typeof setTimeout>;
-      // Wait for spin to finish (spinning becomes false)
-      if (autoActive && !spinning) {
-          const { count, remaining } = autoRef.current;
-          
-          if (engine.getSession().balance < betAmount) {
-              setAutoActive(false);
-              return;
-          }
-
-          if (count === 0 || remaining > 0) {
-              timeout = setTimeout(() => {
-                  spin();
-                  if (count > 0) setAutoBetsRemaining(prev => prev - 1);
-              }, 1500); // Add slight delay after result is shown
-          } else {
-              setAutoActive(false);
-          }
+    let timeout: ReturnType<typeof setTimeout>;
+    if (autoActive && !spinning) {
+      const { count, remaining } = autoRef.current;
+      if (engine.getSession().balance < betRef.current) {
+        setAutoActive(false);
+        return;
       }
-      return () => clearTimeout(timeout);
-  }, [autoActive, spinning]); // Dependency on spinning ensures loop
+      if (count === 0 || remaining > 0) {
+        timeout = setTimeout(() => {
+          spin();
+          if (count > 0) setAutoBetsRemaining((prev) => Math.max(0, prev - 1));
+        }, 650);
+      } else {
+        setAutoActive(false);
+      }
+    }
+    return () => clearTimeout(timeout);
+  }, [autoActive, spinning]);
 
   const toggleAuto = () => {
-      if (autoActive) {
-          setAutoActive(false);
-      } else {
-          setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount);
-          setAutoActive(true);
-          if (!spinning) spin(); // Trigger first immediately
-      }
+    if (autoActive) {
+      setAutoActive(false);
+    } else {
+      setAutoBetsRemaining(autoBetCount === 0 ? 999999 : autoBetCount);
+      setAutoActive(true);
+      if (!spinning) spin();
+    }
   };
 
   return (
     <Layout>
-      <div className="flex flex-col items-center gap-6 lg:gap-12">
-        {/* Slot Machine Container */}
-        <div className="w-full max-w-3xl bg-bet-900 p-6 lg:p-16 rounded-[2.5rem] lg:rounded-[4rem] border-[8px] lg:border-[12px] border-bet-800 shadow-[inset_0_0_100px_rgba(0,0,0,0.5),0_50px_100px_rgba(0,0,0,0.5)] relative overflow-hidden">
-           <div className="absolute top-0 left-0 w-full h-16 lg:h-24 bg-gradient-to-b from-bet-accent/10 to-transparent"></div>
-           
-           <div className="flex justify-center gap-2 sm:gap-4 lg:gap-8 relative z-10 mb-8 lg:mb-12">
-              {reels.map((symbol, i) => (
-                <div key={i} className="w-20 h-28 sm:w-24 sm:h-36 lg:w-36 lg:h-52 bg-black/40 rounded-2xl lg:rounded-3xl border-2 lg:border-4 border-white/5 flex items-center justify-center text-4xl sm:text-5xl lg:text-7xl shadow-inner relative overflow-hidden">
-                   <div className={`${spinning ? 'animate-bounce' : 'animate-none'}`}>
-                      {symbol}
-                   </div>
+      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
+        <div className="flex flex-col lg:flex-row min-h-[580px]">
+          {/* Left Stake Control Panel */}
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#24324f] shrink-0">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#fbbf24]" />
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
+                    DIWALI GOLD SLOTS
+                  </span>
                 </div>
-              ))}
-           </div>
+                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
+                  97.0% RTP
+                </span>
+              </div>
 
-           <div className="text-center h-12 lg:h-16 flex items-center justify-center">
-              {result && (
-                <div className={`text-2xl sm:text-4xl lg:text-6xl font-black italic -skew-x-12 uppercase tracking-tighter ${result.multiplier > 0 ? 'text-bet-accent' : 'text-slate-600 opacity-30'}`}>
-                   {result.multiplier > 0 ? `JACKPOT ${result.multiplier}x!` : 'TRY AGAIN'}
+              <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
+                <button
+                  type="button"
+                  onClick={() => setMode('MANUAL')}
+                  disabled={autoActive || spinning}
+                  className={`py-2 rounded-lg text-xs font-extrabold ${
+                    mode === 'MANUAL' ? 'bg-[#f59e0b] text-[#070b14]' : 'text-[#94a3b8] hover:text-white'
+                  }`}
+                >
+                  Manual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('AUTO')}
+                  disabled={autoActive || spinning}
+                  className={`py-2 rounded-lg text-xs font-extrabold ${
+                    mode === 'AUTO' ? 'bg-[#f59e0b] text-[#070b14]' : 'text-[#94a3b8] hover:text-white'
+                  }`}
+                >
+                  Auto
+                </button>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
+                  <span>Bet Amount (5 Paylines)</span>
+                  <span className="font-mono text-[#fbbf24] tabular-nums">{formatINR(betAmount)}</span>
+                </div>
+                <div className="flex h-11 bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b]/60 rounded-xl overflow-hidden">
+                  <input
+                    type="number"
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
+                    disabled={spinning || autoActive}
+                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(Math.max(10, Math.floor(betAmount / 2)))}
+                    disabled={spinning || autoActive}
+                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    ½
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(betAmount * 2)}
+                    disabled={spinning || autoActive}
+                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
+                  >
+                    2×
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  {[100, 500, 1000, 5000].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setBetAmount(chip)}
+                      disabled={spinning || autoActive}
+                      className="py-1.5 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
+                    >
+                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {mode === 'AUTO' && (
+                <div>
+                  <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">
+                    Number of Spins (0 = Infinite)
+                  </label>
+                  <input
+                    type="number"
+                    value={autoBetCount}
+                    onChange={(e) => setAutoBetCount(Math.max(0, Number(e.target.value)))}
+                    disabled={autoActive}
+                    className="w-full h-11 bg-[#070b14] border border-[#24324f] rounded-xl px-3 text-sm font-mono font-bold text-white outline-none"
+                  />
                 </div>
               )}
-           </div>
-        </div>
 
-        {/* Controls */}
-        <div className="bg-bet-900 w-full max-w-xl p-6 lg:p-8 rounded-[2.5rem] lg:rounded-[3rem] border border-white/5 space-y-6 lg:space-y-8 shadow-2xl">
-           <div className="flex bg-black/40 p-1 rounded-xl">
-              <button onClick={() => setMode('MANUAL')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'MANUAL' ? 'bg-bet-800 text-white shadow' : 'text-slate-500'}`}>Manual</button>
-              <button onClick={() => setMode('AUTO')} disabled={autoActive} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${mode === 'AUTO' ? 'bg-bet-primary text-bet-950 shadow' : 'text-slate-500'}`}>Auto</button>
-           </div>
+              {mode === 'MANUAL' ? (
+                <button
+                  type="button"
+                  onClick={spin}
+                  disabled={spinning || betAmount <= 0}
+                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center"
+                >
+                  {spinning ? 'Spinning Reels...' : `Spin Reels (${formatINR(betAmount, 0)})`}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleAuto}
+                  className={`w-full h-14 font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center ${
+                    autoActive
+                      ? 'bg-[#f43f5e] text-white'
+                      : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
+                  }`}
+                >
+                  {autoActive
+                    ? `Stop Autobet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
+                    : 'Start Autobet'}
+                </button>
+              )}
 
-           <div className="space-y-4">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Stake (₹)</label>
-              <div className="flex gap-2 lg:gap-4">
-                 <input 
-                   type="number" value={betAmount} 
-                   onChange={e => setBetAmount(Number(e.target.value))} 
-                   disabled={spinning || autoActive}
-                   className="flex-1 bg-black border border-white/10 p-4 lg:p-5 rounded-xl lg:rounded-2xl text-white font-black text-xl lg:text-2xl outline-none focus:border-bet-primary transition-all" 
-                 />
-                 <div className="flex flex-col gap-2">
-                    <button onClick={() => setBetAmount(betAmount*2)} disabled={autoActive} className="bg-bet-800 px-3 lg:px-4 py-2 rounded-xl text-[9px] lg:text-[10px] font-black uppercase hover:bg-bet-700">2X</button>
-                    <button onClick={() => setBetAmount(Math.max(10, Math.floor(betAmount/2)))} disabled={autoActive} className="bg-bet-800 px-3 lg:px-4 py-2 rounded-xl text-[9px] lg:text-[10px] font-black uppercase hover:bg-bet-700">1/2</button>
-                 </div>
+              {/* Paytable Summary */}
+              <div className="pt-3 border-t border-[#24324f] space-y-1.5">
+                <div className="text-xs font-bold text-[#94a3b8] mb-1">Symbol Multipliers (3 / 4 / 5)</div>
+                {PAYTABLE.map((row) => (
+                  <div
+                    key={row.sym}
+                    className="flex items-center justify-between text-xs bg-[#070b14] px-2.5 py-1.5 rounded-lg border border-[#24324f]"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span>{row.sym}</span>
+                      <span className="text-[#94a3b8] font-medium">{row.name}</span>
+                    </span>
+                    <span className="font-mono font-bold text-[#fbbf24] tabular-nums">
+                      {row.m3} · {row.m4} · {row.m5}
+                    </span>
+                  </div>
+                ))}
               </div>
-           </div>
+            </div>
 
-           {mode === 'AUTO' && (
-              <div className="space-y-2">
-                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Auto Spins (0 = ∞)</label>
-                 <input 
-                    type="number" value={autoBetCount} 
-                    onChange={e => setAutoBetCount(Number(e.target.value))} 
-                    disabled={autoActive}
-                    className="w-full bg-black border border-white/10 p-4 rounded-xl text-white font-black text-lg outline-none" 
-                 />
+            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
+              <span>5-Reel Gold Matrix</span>
+              <Link to="/fairness" className="hover:text-white flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
+              </Link>
+            </div>
+          </div>
+
+          {/* Right 5x3 Video Slot Stage */}
+          <div className="flex-1 flex flex-col items-center justify-between p-4 sm:p-10 royal-surface">
+            <div className="text-xs font-extrabold uppercase tracking-wider text-[#fbbf24] text-center">
+              5 REELS · 5 PAYLINES · 💎 KOHINOOR WILD SUBSTITUTES ALL
+            </div>
+
+            {/* 5x3 Reel Matrix */}
+            <div className="my-6 w-full max-w-2xl bg-[#131c31] p-3 sm:p-6 rounded-2xl border-2 border-[#f59e0b]/40 shadow-2xl">
+              <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
+                {grid.map((col, cIdx) => (
+                  <div key={cIdx} className="flex flex-col gap-1.5 sm:gap-3">
+                    {col.map((sym, rIdx) => {
+                      const isMiddleLine = rIdx === 1;
+                      return (
+                        <div
+                          key={rIdx}
+                          className={`h-16 sm:h-28 rounded-xl bg-[#070b14] border flex items-center justify-center text-2xl sm:text-5xl select-none transition-transform ${
+                            spinning ? 'animate-pulse scale-95 opacity-70' : 'scale-100'
+                          } ${
+                            result && result.multiplier > 0 && isMiddleLine
+                              ? 'border-[#10b981] bg-[#10b981]/15 shadow-lg shadow-[#10b981]/20'
+                              : 'border-[#24324f]'
+                          }`}
+                        >
+                          {sym}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
-           )}
+            </div>
 
-           {!autoActive ? (
-             <button 
-                onClick={spin} 
-                disabled={spinning || betAmount <= 0}
-                className="w-full py-6 lg:py-8 bg-bet-accent text-black font-black text-2xl lg:text-3xl rounded-[2rem] lg:rounded-[2.5rem] shadow-xl hover:scale-105 active:scale-95 transition-all uppercase tracking-[0.2em] disabled:opacity-30"
-            >
-                {spinning ? 'Spinning...' : 'Spin'}
-            </button>
-           ) : (
-             <button 
-                onClick={toggleAuto}
-                className="w-full py-6 lg:py-8 bg-bet-danger text-white font-black text-2xl lg:text-3xl rounded-[2rem] lg:rounded-[2.5rem] shadow-xl hover:scale-105 active:scale-95 transition-all uppercase tracking-[0.2em]"
-            >
-                Stop Auto ({autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})
-            </button>
-           )}
+            {/* Payout Banner */}
+            <div className="min-h-[48px] flex items-center justify-center">
+              {result && (
+                <div
+                  className={`px-5 sm:px-6 py-2 rounded-xl font-extrabold text-xs sm:text-sm font-mono tabular-nums border text-center ${
+                    result.multiplier > 0
+                      ? 'bg-[#10b981]/15 border-[#10b981] text-[#10b981]'
+                      : 'bg-[#131c31] border-[#24324f] text-[#94a3b8]'
+                  }`}
+                >
+                  {result.multiplier > 0
+                    ? `WIN +${formatINR(betAmount * result.multiplier)} (${result.multiplier.toFixed(2)}×)`
+                    : 'No winning payline'}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </Layout>

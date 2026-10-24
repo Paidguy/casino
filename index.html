@@ -1,98 +1,51 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>SattaKing.IND | Titanium Silk Edition by @paidguy</title>
+    <title>StakePro Originals & Casino</title>
+    <meta name="description" content="Next-generation provably fair gaming platform featuring Crash, Plinko, Mines, Dice, Blackjack, Roulette, and real-time behavioral analytics." />
+    <meta property="og:title" content="StakePro Originals & Casino" />
+    <meta property="og:description" content="Next-generation provably fair gaming platform featuring Crash, Plinko, Mines, Dice, Blackjack, Roulette, and real-time behavioral analytics." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Outfit:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
+            fontFamily: {
+              display: ['Outfit', 'Plus Jakarta Sans', 'sans-serif'],
+              sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
             colors: {
-              bet: {
-                950: '#020617', // Obsidian
-                900: '#0f172a', // Midnight
-                800: '#1e293b', // Slate
-                primary: '#22d3ee', // Cyan
-                secondary: '#d946ef', // Magenta
-                accent: '#fbbf24', // Gold
-                success: '#22c55e', // Green
-                danger: '#f43f5e', // Rose
-              }
-            },
-            animation: {
-              'marquee': 'marquee 35s linear infinite',
-              'pulse-neon': 'pulseNeon 2.5s ease-in-out infinite',
-              'fade-in': 'fadeIn 0.4s ease-out forwards',
-            },
-            keyframes: {
-              marquee: {
-                '0%': { transform: 'translateX(0)' },
-                '100%': { transform: 'translateX(-50%)' }
-              },
-              pulseNeon: {
-                '0%, 100%': { filter: 'drop-shadow(0 0 5px #22d3ee) brightness(1)' },
-                '50%': { filter: 'drop-shadow(0 0 15px #22d3ee) brightness(1.2)' }
-              },
-              fadeIn: {
-                '0%': { opacity: '0', transform: 'scale(0.98) translateY(10px)' },
-                '100%': { opacity: '1', transform: 'scale(1) translateY(0)' }
+              stake: {
+                bg: '#070b14',
+                panel: '#0d1322',
+                elevated: '#131c31',
+                border: '#24324f',
+                hover: '#1d2a47',
+                input: '#070b14',
+                green: '#f59e0b',
+                greenHover: '#fbbf24',
+                blue: '#10b981',
+                text: '#ffffff',
+                muted: '#94a3b8',
+                subtle: '#64748b',
+                danger: '#f43f5e',
+                warning: '#f59e0b',
               }
             }
           }
         }
       }
     </script>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Teko:wght@400;600;700&display=swap');
-      
-      :root { --app-height: 100dvh; }
-      * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; outline: none !important; }
-
-      body {
-        background: #020617;
-        color: #f8fafc;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        margin: 0;
-        padding: 0;
-        height: var(--app-height);
-        width: 100vw;
-        overflow: hidden;
-        position: fixed;
-      }
-
-      .bazar-font { font-family: 'Teko', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; }
-
-      #root {
-        height: 100%;
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        background-image: 
-          radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.12) 0%, transparent 50%),
-          radial-gradient(circle at 100% 100%, rgba(217, 70, 239, 0.08) 0%, transparent 40%);
-      }
-
-      .cyan-glow { filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.5)); }
-      .gold-text {
-        background: linear-gradient(to bottom, #fde047, #fbbf24, #f59e0b);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-
-      button, a { transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
-      button:active, a:active { transform: scale(0.96); }
-
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
   </head>
-  <body>
+  <body class="bg-[#070b14] text-white antialiased selection:bg-[#f59e0b] selection:text-[#070b14]">
     <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
