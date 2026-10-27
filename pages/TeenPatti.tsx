@@ -26,7 +26,12 @@ const RANKS = [
   { rank: 14, label: 'A' },
 ];
 
-function evaluateHand(hand: Card[]): { score: number; name: string; bonusMult: number } {
+function evaluateHand(hand: Card[]): {
+  score: number;
+  name: string;
+  bonusMult: number;
+  pairPlusMult: number;
+} {
   const sorted = [...hand].sort((a, b) => b.rank - a.rank);
   const r = sorted.map((c) => c.rank);
   const isFlush = hand[0].suit === hand[1].suit && hand[1].suit === hand[2].suit;
@@ -35,26 +40,32 @@ function evaluateHand(hand: Card[]): { score: number; name: string; bonusMult: n
     (r[0] === 14 && r[1] === 3 && r[2] === 2);
 
   if (r[0] === r[1] && r[1] === r[2]) {
-    return { score: 600 + r[0], name: 'Three of a Kind (Trail)', bonusMult: 5.0 };
+    return { score: 600 + r[0], name: 'Three of a Kind (Trail)', bonusMult: 5.0, pairPlusMult: 40 };
   }
   if (isFlush && isStraight) {
-    return { score: 500 + r[0], name: 'Straight Flush (Pure Sequence)', bonusMult: 4.0 };
+    return { score: 500 + r[0], name: 'Straight Flush (Pure Sequence)', bonusMult: 4.0, pairPlusMult: 30 };
   }
   if (isStraight) {
-    return { score: 400 + r[0], name: 'Straight (Sequence)', bonusMult: 3.0 };
+    return { score: 400 + r[0], name: 'Straight (Sequence)', bonusMult: 3.0, pairPlusMult: 6 };
   }
   if (isFlush) {
-    return { score: 300 + r[0], name: 'Flush (Same Suit)', bonusMult: 2.2 };
+    return { score: 300 + r[0], name: 'Flush (Same Suit)', bonusMult: 2.2, pairPlusMult: 4 };
   }
   if (r[0] === r[1] || r[1] === r[2]) {
     const pairRank = r[1];
-    return { score: 200 + pairRank, name: 'Pair', bonusMult: 1.95 };
+    return { score: 200 + pairRank, name: 'Pair', bonusMult: 1.95, pairPlusMult: 2 };
   }
-  return { score: 100 + r[0] + r[1] * 0.1, name: `${sorted[0].label} High Card`, bonusMult: 1.95 };
+  return {
+    score: 100 + r[0] + r[1] * 0.1,
+    name: `${sorted[0].label} High Card`,
+    bonusMult: 1.95,
+    pairPlusMult: 0,
+  };
 }
 
 export const TeenPatti: React.FC = () => {
   const [bet, setBet] = useState<number>(200);
+  const [pairPlusBet, setPairPlusBet] = useState<number>(0);
   const [playStyle, setPlayStyle] = useState<'SEEN' | 'BLIND'>('SEEN');
   const [dealing, setDealing] = useState(false);
   const [playerHand, setPlayerHand] = useState<Card[]>([
@@ -73,11 +84,14 @@ export const TeenPatti: React.FC = () => {
     mult: number;
     playerTitle: string;
     dealerTitle: string;
+    pairPlusWon: number;
   } | null>(null);
+
+  const totalWager = bet + pairPlusBet;
 
   const dealHand = () => {
     const state = gameEngine.getState();
-    if (dealing || bet <= 0 || bet > state.balance) return;
+    if (dealing || totalWager <= 0 || totalWager > state.balance) return;
 
     sound.card();
     setDealing(true);
@@ -88,14 +102,15 @@ export const TeenPatti: React.FC = () => {
       RANKS.forEach((rk) => deck.push({ ...rk, suit: s }));
     });
 
-    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
+    // Deterministic Fisher-Yates shuffle using HMAC-SHA256 floats
+    const floats = gameEngine.getNextFloats(52);
     for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
+      const j = Math.floor(floats[i] * (i + 1));
       [deck[i], deck[j]] = [deck[j], deck[i]];
     }
 
-    const pHand = [deck[0], deck[1], deck[2]];
-    const dHand = [deck[3], deck[4], deck[5]];
+    const pHand = [deck[0], deck[2], deck[4]];
+    const dHand = [deck[1], deck[3], deck[5]];
 
     setTimeout(() => {
       setPlayerHand(pHand);
@@ -105,23 +120,32 @@ export const TeenPatti: React.FC = () => {
       const dEval = evaluateHand(dHand);
       const won = pEval.score >= dEval.score;
 
-      let baseMult = playStyle === 'BLIND' ? 2.1 : 1.95;
-      const finalMult = won ? Math.max(baseMult, pEval.bonusMult) : 0;
-      const payout = Math.floor(bet * finalMult);
+      const baseMult = playStyle === 'BLIND' ? 2.1 : 1.95;
+      const mainMult = won ? Math.max(baseMult, pEval.bonusMult) : 0;
+      const mainPayout = Math.floor(bet * mainMult);
+      const pairPlusPayout = pairPlusBet > 0 ? Math.floor(pairPlusBet * pEval.pairPlusMult) : 0;
+      const totalPayout = mainPayout + pairPlusPayout;
+      const effectiveMult = Number((totalPayout / totalWager).toFixed(2));
 
-      gameEngine.placeBet('Teen Patti Royal', bet, finalMult);
-      if (won) sound.win();
+      gameEngine.placeBet(
+        'Teen Patti Royal',
+        totalWager,
+        effectiveMult,
+        `${pEval.name} vs ${dEval.name}`
+      );
+      if (totalPayout > 0) sound.win();
       else sound.lose();
 
       setOutcome({
-        won,
-        payout,
-        mult: finalMult,
+        won: totalPayout > 0,
+        payout: totalPayout,
+        mult: effectiveMult,
         playerTitle: pEval.name,
         dealerTitle: dEval.name,
+        pairPlusWon: pairPlusPayout,
       });
       setDealing(false);
-    }, 550);
+    }, 520);
   };
 
   const renderCard = (c: Card, hidden = false) => {
@@ -184,10 +208,10 @@ export const TeenPatti: React.FC = () => {
           </div>
         </div>
 
-        {/* Bet Amount */}
+        {/* Main Bet Amount */}
         <div>
           <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1.5">
-            <span>Bet Amount (₹)</span>
+            <span>Main Hand Bet (₹)</span>
             <span className="font-mono text-slate-300">₹{bet.toLocaleString('en-IN')}</span>
           </div>
           <div className="flex bg-[#151f30] rounded-xl border border-white/10 focus-within:border-amber-500/60 overflow-hidden">
@@ -214,31 +238,45 @@ export const TeenPatti: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-1.5 mt-2">
-            {[100, 500, 1000, 5000].map((amt) => (
+        </div>
+
+        {/* Pair Plus Side Bet */}
+        <div>
+          <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1.5">
+            <span>Pair Plus Side Bet (Up to 40×)</span>
+            <span className="font-mono text-amber-400">₹{pairPlusBet.toLocaleString('en-IN')}</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
+            {[0, 50, 100, 500].map((amt) => (
               <button
                 key={amt}
-                onClick={() => setBet(amt)}
-                className="py-1.5 bg-[#151f30] hover:bg-[#1e2b42] border border-white/5 rounded-lg text-[11px] font-mono font-bold text-slate-300"
+                onClick={() => setPairPlusBet(amt)}
+                className={`py-1.5 rounded-lg text-[11px] font-mono font-bold border transition-all ${
+                  pairPlusBet === amt
+                    ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                    : 'bg-[#151f30] border-white/5 text-slate-400 hover:text-white'
+                }`}
               >
-                ₹{amt >= 1000 ? `${amt / 1000}k` : amt}
+                {amt === 0 ? 'Off' : `+₹${amt}`}
               </button>
             ))}
           </div>
         </div>
 
         {/* Bonus Payout Table */}
-        <div className="bg-[#151f30] rounded-xl border border-white/10 p-3.5 space-y-2">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" /> Winning Hand Multipliers
+        <div className="bg-[#151f30] rounded-xl border border-white/10 p-3.5 space-y-1.5">
+          <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-amber-400">
+            <span className="flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5" /> Hand Rank
+            </span>
+            <span>Main / Pair+</span>
           </div>
           {[
-            { name: 'Three of a Kind (Trail)', mult: '5.00×' },
-            { name: 'Straight Flush', mult: '4.00×' },
-            { name: 'Straight (Sequence)', mult: '3.00×' },
-            { name: 'Flush (Same Suit)', mult: '2.20×' },
-            { name: 'Pair / High Card (Blind)', mult: '2.10×' },
-            { name: 'Pair / High Card (Seen)', mult: '1.95×' },
+            { name: 'Three of a Kind', mult: '5.0× / 40×' },
+            { name: 'Straight Flush', mult: '4.0× / 30×' },
+            { name: 'Straight', mult: '3.0× / 6×' },
+            { name: 'Flush', mult: '2.2× / 4×' },
+            { name: 'Pair', mult: '1.95× / 2×' },
           ].map((row) => (
             <div key={row.name} className="flex justify-between text-xs">
               <span className="text-slate-300">{row.name}</span>
@@ -247,7 +285,7 @@ export const TeenPatti: React.FC = () => {
           ))}
         </div>
 
-        {/* Primary CTA Button (Top on mobile via order-first, natural bottom on desktop via lg:order-none) */}
+        {/* Primary CTA Button */}
         <div className="order-first lg:order-none">
           <button
             onClick={dealHand}
@@ -256,15 +294,14 @@ export const TeenPatti: React.FC = () => {
           >
             {dealing
               ? 'Dealing 3 Cards...'
-              : `Deal ${playStyle === 'BLIND' ? 'Blind' : 'Seen'} Hand (₹${bet.toLocaleString('en-IN')})`}
+              : `Deal ${playStyle === 'BLIND' ? 'Blind' : 'Seen'} Hand (₹${totalWager.toLocaleString('en-IN')})`}
           </button>
         </div>
 
         <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
           <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Standard 52-Card Deck
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> HMAC-SHA256 52-Card Deck
           </span>
-          <span className="font-mono text-slate-500">3-Card Poker</span>
         </div>
       </div>
 
@@ -301,16 +338,17 @@ export const TeenPatti: React.FC = () => {
             >
               <div className="text-xs font-bold uppercase tracking-widest">
                 {outcome.won ? `You Win (${outcome.mult.toFixed(2)}×)` : 'Dealer Wins Hand'}
+                {outcome.pairPlusWon > 0 ? ` · Pair+ Bonus +₹${outcome.pairPlusWon}` : ''}
               </div>
               <div className="text-xl font-mono font-black text-white">
                 {outcome.won
                   ? `+₹${outcome.payout.toLocaleString('en-IN')}`
-                  : `-₹${bet.toLocaleString('en-IN')}`}
+                  : `-₹${totalWager.toLocaleString('en-IN')}`}
               </div>
             </div>
           ) : (
             <div className="px-5 py-2 rounded-full bg-black/35 border border-white/10 text-xs font-semibold text-slate-300">
-              Beat the Dealer's 3-card hand to win up to 5× your bet
+              Beat the Dealer's 3-card hand or hit a Pair+ combination up to 40×
             </div>
           )}
         </div>

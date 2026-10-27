@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { engine, formatINR, generateUTR } from '../services/engine';
 import { audio } from '../services/audio';
 import { LiveFeed } from './LiveFeed';
+import { GameStudioBar } from './GameStudioBar';
 import {
   TrendingUp,
   Grid,
@@ -918,6 +919,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <main className="flex-1 lg:overflow-y-auto custom-scrollbar">
             <div className="max-w-[1360px] mx-auto p-2.5 sm:p-5 lg:p-7 pb-20 md:pb-10">
               {children}
+              <GameStudioBar pathname={location.pathname} />
             </div>
           </main>
 

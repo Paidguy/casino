@@ -29,6 +29,7 @@ const RANKS = [
 export const Baccarat: React.FC = () => {
   const [bet, setBet] = useState<number>(200);
   const [selection, setSelection] = useState<'PLAYER' | 'BANKER' | 'TIE'>('PLAYER');
+  const [pairSideBet, setPairSideBet] = useState<'NONE' | 'PLAYER_PAIR' | 'BANKER_PAIR'>('NONE');
   const [dealing, setDealing] = useState(false);
   const [playerHand, setPlayerHand] = useState<Card[]>([
     { rank: '8', suit: '♠', val: 8 },
@@ -44,22 +45,28 @@ export const Baccarat: React.FC = () => {
   const [lastResult, setLastResult] = useState<{
     winner: 'PLAYER' | 'BANKER' | 'TIE';
     payout: number;
+    pairHit?: boolean;
   } | null>(null);
 
   const baccScore = (cards: Card[]) => cards.reduce((s, c) => s + c.val, 0) % 10;
 
   const dealHand = () => {
     const state = gameEngine.getState();
-    if (dealing || bet <= 0 || bet > state.balance) return;
+    const sideStake = pairSideBet !== 'NONE' ? Math.floor(bet * 0.25) : 0;
+    const totalWager = bet + sideStake;
+    if (dealing || totalWager <= 0 || totalWager > state.balance) return;
 
     sound.card();
     setDealing(true);
     setLastResult(null);
 
-    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
+    const floats = gameEngine.getNextFloats(12);
+    let cursor = 0;
     const drawCard = (): Card => {
-      const rk = RANKS[Math.floor(rng() * RANKS.length)];
-      const suit = SUITS[Math.floor(rng() * SUITS.length)];
+      const f1 = floats[cursor++] ?? 0.5;
+      const f2 = floats[cursor++] ?? 0.5;
+      const rk = RANKS[Math.floor(f1 * RANKS.length)];
+      const suit = SUITS[Math.floor(f2 * SUITS.length)];
       return { ...rk, suit };
     };
 
@@ -67,12 +74,35 @@ export const Baccarat: React.FC = () => {
       const p = [drawCard(), drawCard()];
       const b = [drawCard(), drawCard()];
 
+      const playerPair = p[0].rank === p[1].rank;
+      const bankerPair = b[0].rank === b[1].rank;
+
       let pScore = baccScore(p);
       let bScore = baccScore(b);
 
+      // Official Macau / Las Vegas Punto Banco Third-Card Tableau
       if (pScore < 8 && bScore < 8) {
-        if (pScore <= 5) p.push(drawCard());
-        if (bScore <= 5) b.push(drawCard());
+        let playerThirdVal: number | null = null;
+        if (pScore <= 5) {
+          const p3 = drawCard();
+          p.push(p3);
+          playerThirdVal = p3.val;
+        }
+
+        if (playerThirdVal === null) {
+          // Player stood on 6 or 7; Banker draws on 0–5
+          if (bScore <= 5) b.push(drawCard());
+        } else {
+          // Banker conditional draw based on Player's 3rd card value
+          const pt = playerThirdVal;
+          const bankerDraws =
+            bScore <= 2 ||
+            (bScore === 3 && pt !== 8) ||
+            (bScore === 4 && pt >= 2 && pt <= 7) ||
+            (bScore === 5 && pt >= 4 && pt <= 7) ||
+            (bScore === 6 && (pt === 6 || pt === 7));
+          if (bankerDraws) b.push(drawCard());
+        }
       }
 
       pScore = baccScore(p);
@@ -83,25 +113,41 @@ export const Baccarat: React.FC = () => {
 
       setPlayerHand(p);
       setBankerHand(b);
-      setRoadHistory((prev) => [...prev.slice(-15), winner === 'PLAYER' ? 'P' : winner === 'BANKER' ? 'B' : 'T']);
+      setRoadHistory((prev) => [
+        ...prev.slice(-15),
+        winner === 'PLAYER' ? 'P' : winner === 'BANKER' ? 'B' : 'T',
+      ]);
 
-      let mult = 0;
+      let totalPayout = 0;
       if (selection === winner) {
-        mult = winner === 'PLAYER' ? 2.0 : winner === 'BANKER' ? 1.95 : 9.0;
+        const mult = winner === 'PLAYER' ? 2.0 : winner === 'BANKER' ? 1.95 : 9.0;
+        totalPayout += Math.floor(bet * mult);
       } else if (winner === 'TIE') {
-        mult = 1.0; // Push on tie for Player/Banker bets
+        totalPayout += bet; // Push refund on Tie for Player/Banker bets
       }
 
-      gameEngine.placeBet('Royal Baccarat', bet, mult);
-      if (mult > 1) sound.win();
-      else if (mult === 0) sound.lose();
+      let pairHit = false;
+      if (pairSideBet === 'PLAYER_PAIR' && playerPair) {
+        totalPayout += sideStake * 12;
+        pairHit = true;
+      } else if (pairSideBet === 'BANKER_PAIR' && bankerPair) {
+        totalPayout += sideStake * 12;
+        pairHit = true;
+      }
+
+      const effectiveMult = Number((totalPayout / totalWager).toFixed(2));
+      gameEngine.placeBet('Royal Baccarat', totalWager, effectiveMult, `${winner} (${pScore}-${bScore})`);
+
+      if (totalPayout > totalWager) sound.win();
+      else if (totalPayout === 0) sound.lose();
 
       setLastResult({
         winner,
-        payout: Math.floor(bet * mult),
+        payout: totalPayout,
+        pairHit,
       });
       setDealing(false);
-    }, 550);
+    }, 520);
   };
 
   const renderCard = (c: Card) => {
@@ -122,6 +168,8 @@ export const Baccarat: React.FC = () => {
     );
   };
 
+  const totalWager = bet + (pairSideBet !== 'NONE' ? Math.floor(bet * 0.25) : 0);
+
   return (
     <div className="max-w-[1400px] mx-auto bg-[#111927] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col-reverse lg:flex-row min-h-[600px]">
       {/* Left Control Panel */}
@@ -129,7 +177,7 @@ export const Baccarat: React.FC = () => {
         {/* Bet Selection */}
         <div>
           <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-            Select Bet Outcome
+            Select Main Outcome
           </label>
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -156,7 +204,7 @@ export const Baccarat: React.FC = () => {
         {/* Bet Amount */}
         <div>
           <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1.5">
-            <span>Bet Amount (₹)</span>
+            <span>Main Bet (₹)</span>
             <span className="font-mono text-slate-300">₹{bet.toLocaleString('en-IN')}</span>
           </div>
           <div className="flex bg-[#151f30] rounded-xl border border-white/10 focus-within:border-amber-500/60 overflow-hidden">
@@ -183,20 +231,35 @@ export const Baccarat: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-1.5 mt-2">
-            {[100, 500, 1000, 5000].map((amt) => (
+        </div>
+
+        {/* 11:1 Pair Side Bet */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+            11:1 Pair Side Bet (+25% Stake · Pays 12×)
+          </label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {[
+              { id: 'NONE', label: 'Off' },
+              { id: 'PLAYER_PAIR', label: 'Player Pair' },
+              { id: 'BANKER_PAIR', label: 'Banker Pair' },
+            ].map((p) => (
               <button
-                key={amt}
-                onClick={() => setBet(amt)}
-                className="py-1.5 bg-[#151f30] hover:bg-[#1e2b42] border border-white/5 rounded-lg text-[11px] font-mono font-bold text-slate-300"
+                key={p.id}
+                onClick={() => setPairSideBet(p.id as any)}
+                className={`py-2 rounded-lg text-xs font-bold border transition-all ${
+                  pairSideBet === p.id
+                    ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                    : 'bg-[#151f30] border-white/10 text-slate-400 hover:text-white'
+                }`}
               >
-                ₹{amt >= 1000 ? `${amt / 1000}k` : amt}
+                {p.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Primary CTA Button (Top on mobile via order-first, natural bottom on desktop via lg:order-none) */}
+        {/* Primary CTA Button */}
         <div className="order-first lg:order-none">
           <button
             onClick={dealHand}
@@ -205,13 +268,13 @@ export const Baccarat: React.FC = () => {
           >
             {dealing
               ? 'Dealing Punto Banco...'
-              : `Deal ${selection} (₹${bet.toLocaleString('en-IN')})`}
+              : `Deal ${selection} (₹${totalWager.toLocaleString('en-IN')})`}
           </button>
         </div>
 
         <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
           <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Tie Pushes Player/Banker Bets
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Official Macau 3rd-Card Rules
           </span>
         </div>
       </div>
@@ -283,7 +346,7 @@ export const Baccarat: React.FC = () => {
           {lastResult ? (
             <div
               className={`px-6 py-2.5 rounded-xl border text-center ${
-                lastResult.payout > bet
+                lastResult.payout > totalWager
                   ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
                   : lastResult.payout === bet
                   ? 'bg-amber-500/20 border-amber-400 text-amber-300'
@@ -291,7 +354,7 @@ export const Baccarat: React.FC = () => {
               }`}
             >
               <span className="font-black uppercase text-sm mr-3">
-                {lastResult.winner} WINS!
+                {lastResult.winner} WINS! {lastResult.pairHit ? '· 12× PAIR HIT!' : ''}
               </span>
               <span className="font-mono font-bold text-white">
                 {lastResult.payout > 0
@@ -301,7 +364,7 @@ export const Baccarat: React.FC = () => {
             </div>
           ) : (
             <div className="text-xs text-slate-400">
-              Closest hand total to 9 wins · Natural 8 or 9 stands immediately
+              Official Macau Punto Banco third-card draw rules · Tie pushes Player & Banker bets
             </div>
           )}
         </div>

@@ -8,6 +8,7 @@ export const Dice: React.FC = () => {
   const [target, setTarget] = useState<number>(50);
   const [rollOver, setRollOver] = useState<boolean>(true);
   const [lastRoll, setLastRoll] = useState<number | null>(64.28);
+  const [lastWon, setLastWon] = useState<boolean>(true);
   const [rolling, setRolling] = useState(false);
   const [history, setHistory] = useState<{ val: number; won: boolean }[]>([
     { val: 64.28, won: true },
@@ -19,6 +20,11 @@ export const Dice: React.FC = () => {
   const winChance = rollOver ? 100 - target : target;
   const multiplier = Number((99 / Math.max(2, Math.min(98, winChance))).toFixed(4));
 
+  const handleChanceChange = (chanceVal: number) => {
+    const clamped = Math.max(2, Math.min(98, Math.round(chanceVal)));
+    setTarget(rollOver ? 100 - clamped : clamped);
+  };
+
   const rollDice = () => {
     const state = gameEngine.getState();
     if (rolling || bet <= 0 || bet > state.balance) return;
@@ -26,20 +32,25 @@ export const Dice: React.FC = () => {
     sound.click();
     setRolling(true);
 
-    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
+    const floatVal = gameEngine.getNextFloats(1)[0] ?? Math.random();
     setTimeout(() => {
-      const result = Number((rng() * 100).toFixed(2));
+      const result = Number((floatVal * 100).toFixed(2));
       const won = rollOver ? result > target : result < target;
 
       setLastRoll(result);
-      setHistory((prev) => [{ val: result, won }, ...prev.slice(0, 7)]);
+      setLastWon(won);
+      setHistory((prev) => [{ val: result, won }, ...prev.slice(0, 9)]);
 
       gameEngine.placeBet('Classic Dice', bet, won ? multiplier : 0);
       if (won) sound.win();
       else sound.lose();
       setRolling(false);
-    }, 220);
+    }, 180);
   };
+
+  const trackBackground = rollOver
+    ? `linear-gradient(to right, #e11d48 0%, #e11d48 ${target}%, #10b981 ${target}%, #10b981 100%)`
+    : `linear-gradient(to right, #10b981 0%, #10b981 ${target}%, #e11d48 ${target}%, #e11d48 100%)`;
 
   return (
     <div className="max-w-[1400px] mx-auto bg-[#111927] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col-reverse lg:flex-row min-h-[600px]">
@@ -94,7 +105,7 @@ export const Dice: React.FC = () => {
           </div>
         </div>
 
-        {/* Primary CTA Button (Top on mobile via order-first, natural bottom on desktop via lg:order-none) */}
+        {/* Primary CTA Button */}
         <div className="order-first lg:order-none">
           <button
             onClick={rollDice}
@@ -122,7 +133,7 @@ export const Dice: React.FC = () => {
               className={`px-3 py-1 rounded-full font-mono font-bold text-xs border ${
                 h.won
                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                  : 'bg-white/5 text-slate-400 border-white/10'
+                  : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
               }`}
             >
               {h.val.toFixed(2)}
@@ -130,10 +141,14 @@ export const Dice: React.FC = () => {
           ))}
         </div>
 
-        {/* Big Roll Readout & Range Slider */}
-        <div className="max-w-[640px] w-full mx-auto my-auto space-y-8">
+        {/* Dual-Zone Probability Bar & Floating Roll Marker */}
+        <div className="max-w-[680px] w-full mx-auto my-auto space-y-10">
           <div className="text-center">
-            <div className="text-6xl sm:text-7xl font-mono font-black text-white tracking-tight">
+            <div
+              className={`text-6xl sm:text-7xl font-mono font-black tracking-tight transition-colors ${
+                lastWon ? 'text-emerald-400' : 'text-rose-400'
+              }`}
+            >
               {lastRoll !== null ? lastRoll.toFixed(2) : '50.00'}
             </div>
             <div className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-2">
@@ -141,17 +156,36 @@ export const Dice: React.FC = () => {
             </div>
           </div>
 
-          {/* Custom Styled Range Track */}
-          <div className="bg-[#151f30] p-5 rounded-2xl border border-white/10">
+          {/* Stake-Style Dual-Zone Slider with Floating Cube Marker */}
+          <div className="bg-[#151f30] p-6 pt-12 rounded-2xl border border-white/10 relative">
+            {/* Floating Roll Cube Indicator */}
+            {lastRoll !== null && (
+              <div
+                className="absolute top-2.5 -translate-x-1/2 transition-all duration-300 z-20"
+                style={{ left: `calc(24px + (100% - 48px) * ${lastRoll / 100})` }}
+              >
+                <div
+                  className={`px-2.5 py-1 rounded-lg font-mono font-black text-xs shadow-lg border ${
+                    lastWon
+                      ? 'bg-emerald-500 text-slate-950 border-white'
+                      : 'bg-rose-500 text-white border-white/40'
+                  }`}
+                >
+                  {lastRoll.toFixed(2)}
+                </div>
+              </div>
+            )}
+
             <input
               type="range"
               min={2}
               max={98}
               value={target}
               onChange={(e) => setTarget(Number(e.target.value))}
-              className="w-full h-3 rounded-lg appearance-none cursor-pointer accent-amber-400 bg-slate-800"
+              style={{ background: trackBackground }}
+              className="w-full h-4 rounded-full appearance-none cursor-pointer accent-white shadow-inner"
             />
-            <div className="flex justify-between text-[11px] font-mono font-bold text-slate-400 mt-2">
+            <div className="flex justify-between text-[11px] font-mono font-bold text-slate-400 mt-3">
               <span>0</span>
               <span>25</span>
               <span>50</span>
@@ -161,13 +195,15 @@ export const Dice: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom 3 Parameter Cards */}
-        <div className="max-w-[640px] w-full mx-auto grid grid-cols-3 gap-3 bg-[#151f30] p-4 rounded-2xl border border-white/10">
-          <div>
+        {/* Bottom 3 Interactive Parameter Cards */}
+        <div className="max-w-[680px] w-full mx-auto grid grid-cols-3 gap-3 bg-[#151f30] p-4 rounded-2xl border border-white/10">
+          <div className="bg-[#0b101b] p-3 rounded-xl border border-white/5">
             <div className="text-[11px] font-semibold text-slate-400">Multiplier</div>
-            <div className="text-lg font-mono font-black text-white mt-0.5">{multiplier.toFixed(4)}×</div>
+            <div className="text-lg font-mono font-black text-white mt-0.5">
+              {multiplier.toFixed(4)}×
+            </div>
           </div>
-          <div>
+          <div className="bg-[#0b101b] p-3 rounded-xl border border-white/5">
             <div className="text-[11px] font-semibold text-slate-400">
               {rollOver ? 'Roll Over' : 'Roll Under'}
             </div>
@@ -178,9 +214,16 @@ export const Dice: React.FC = () => {
               {target}.00 <ArrowLeftRight className="w-4 h-4" />
             </button>
           </div>
-          <div>
-            <div className="text-[11px] font-semibold text-slate-400">Win Chance</div>
-            <div className="text-lg font-mono font-black text-emerald-400 mt-0.5">{winChance}%</div>
+          <div className="bg-[#0b101b] p-3 rounded-xl border border-white/5">
+            <div className="text-[11px] font-semibold text-slate-400">Win Chance (%)</div>
+            <input
+              type="number"
+              min={2}
+              max={98}
+              value={winChance}
+              onChange={(e) => handleChanceChange(Number(e.target.value))}
+              className="w-full bg-transparent text-lg font-mono font-black text-emerald-400 mt-0.5 focus:outline-none"
+            />
           </div>
         </div>
       </div>

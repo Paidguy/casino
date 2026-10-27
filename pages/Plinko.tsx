@@ -58,10 +58,10 @@ export const Plinko: React.FC = () => {
 
     sound.click();
 
+    const floats = gameEngine.getNextFloats(rows);
     const path: number[] = [];
-    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
     for (let i = 0; i < rows; i++) {
-      path.push(rng() > 0.5 ? 1 : 0);
+      path.push(floats[i] >= 0.5 ? 1 : 0);
     }
 
     const newBall: Ball = {

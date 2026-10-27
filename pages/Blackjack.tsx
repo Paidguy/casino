@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { gameEngine } from '../services/engine';
 import { sound } from '../services/sound';
-import { ShieldCheck, Hand, Plus, ChevronsUp } from 'lucide-react';
+import { ShieldCheck, Hand, Plus, ChevronsUp, ShieldAlert } from 'lucide-react';
 
 interface Card {
   rank: string;
@@ -38,6 +38,7 @@ function handScore(hand: Card[]): number {
 
 export const Blackjack: React.FC = () => {
   const [bet, setBet] = useState<number>(200);
+  const [lockedStake, setLockedStake] = useState<number>(200);
   const [status, setStatus] = useState<'IDLE' | 'PLAYING' | 'ENDED'>('IDLE');
   const [deck, setDeck] = useState<Card[]>([]);
   const [playerHand, setPlayerHand] = useState<Card[]>([
@@ -48,34 +49,37 @@ export const Blackjack: React.FC = () => {
     { rank: '10', suit: '♥', value: 10 },
     { rank: '9', suit: '♣', value: 9 },
   ]);
+  const [insuranceTaken, setInsuranceTaken] = useState<boolean>(false);
   const [message, setMessage] = useState<string>('');
   const [payout, setPayout] = useState<number>(0);
 
-  const buildShoe = (): Card[] => {
+  /**
+   * Deterministic 52-card Fisher-Yates shoe shuffle driven by HMAC-SHA256 floats
+   */
+  const buildDeterministicShoe = (): Card[] => {
     const d: Card[] = [];
-    for (let s = 0; s < 4; s++) {
-      SUITS.forEach((suit) => {
-        RANKS.forEach((rk) => d.push({ ...rk, suit }));
-      });
-    }
-    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
+    SUITS.forEach((suit) => {
+      RANKS.forEach((rk) => d.push({ ...rk, suit }));
+    });
+    const floats = gameEngine.getNextFloats(52);
     for (let i = d.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
+      const j = Math.floor(floats[i] * (i + 1));
       [d[i], d[j]] = [d[j], d[i]];
     }
     return d;
   };
 
   const deal = () => {
-    const state = gameEngine.getState();
-    if (bet <= 0 || bet > state.balance) return;
+    if (!gameEngine.deductStake(bet)) return;
 
     sound.card();
-    const shoe = buildShoe();
+    const shoe = buildDeterministicShoe();
     const p = [shoe[0], shoe[2]];
     const d = [shoe[1], shoe[3]];
     const rest = shoe.slice(4);
 
+    setLockedStake(bet);
+    setInsuranceTaken(false);
     setPlayerHand(p);
     setDealerHand(d);
     setDeck(rest);
@@ -88,18 +92,26 @@ export const Blackjack: React.FC = () => {
     if (pTotal === 21) {
       setStatus('ENDED');
       if (dTotal === 21) {
-        gameEngine.placeBet('Blackjack 21', bet, 1.0);
+        gameEngine.settleDeductedBet('Blackjack 21', bet, 1.0, 'Push — Both Blackjack (21)');
         setMessage('Push — Both Blackjack (21)');
         setPayout(bet);
       } else {
         sound.win();
-        gameEngine.placeBet('Blackjack 21', bet, 2.5);
+        gameEngine.settleDeductedBet('Blackjack 21', bet, 2.5, 'Natural Blackjack (3:2)');
         setMessage('Natural Blackjack! Pays 3:2 (2.5×)');
         setPayout(Math.floor(bet * 2.5));
       }
     } else {
       setStatus('PLAYING');
     }
+  };
+
+  const buyInsurance = () => {
+    if (status !== 'PLAYING' || insuranceTaken || dealerHand[0]?.rank !== 'A') return;
+    const insCost = Math.floor(lockedStake / 2);
+    if (!gameEngine.deductStake(insCost)) return;
+    sound.click();
+    setInsuranceTaken(true);
   };
 
   const hit = () => {
@@ -114,10 +126,10 @@ export const Blackjack: React.FC = () => {
     if (score > 21) {
       sound.lose();
       setStatus('ENDED');
-      setMessage('Bust! Over 21');
-      gameEngine.placeBet('Blackjack 21', bet, 0);
+      setMessage(`Bust! Hand Total ${score}`);
+      gameEngine.settleDeductedBet('Blackjack 21', lockedStake, 0, `Player Bust (${score})`);
     } else if (score === 21) {
-      standWithHand(nextHand, deck.slice(1), bet);
+      standWithHand(nextHand, deck.slice(1), lockedStake);
     }
   };
 
@@ -134,32 +146,45 @@ export const Blackjack: React.FC = () => {
 
     const pScore = handScore(pHand);
     const dScore = handScore(dHand);
+    const dealerHasNaturalBJ = dHand.length === 2 && dScore === 21;
+
+    if (insuranceTaken && dealerHasNaturalBJ) {
+      // Insurance 2:1 pays back full original stake
+      sound.win();
+      setPayout(activeBet * 1.5);
+      setMessage('Dealer Blackjack — Insurance Paid 2:1!');
+      gameEngine.settleDeductedBet('Blackjack 21', activeBet, 1.5, 'Insurance Paid 2:1');
+      return;
+    }
 
     if (dScore > 21 || pScore > dScore) {
       sound.win();
       const winAmt = activeBet * 2;
       setPayout(winAmt);
-      setMessage(dScore > 21 ? `Dealer Busts (${dScore}) — You Win!` : `You Win (${pScore} vs ${dScore})!`);
-      gameEngine.placeBet('Blackjack 21', activeBet, 2.0);
+      setMessage(
+        dScore > 21
+          ? `Dealer Busts (${dScore}) — You Win!`
+          : `You Win (${pScore} vs ${dScore})!`
+      );
+      gameEngine.settleDeductedBet('Blackjack 21', activeBet, 2.0, `Player Won (${pScore} vs ${dScore})`);
     } else if (pScore === dScore) {
       setPayout(activeBet);
-      setMessage(`Push (${pScore} Tie) — Bet Returned`);
-      gameEngine.placeBet('Blackjack 21', activeBet, 1.0);
+      setMessage(`Push (${pScore} Tie) — Stake Returned`);
+      gameEngine.settleDeductedBet('Blackjack 21', activeBet, 1.0, `Push (${pScore})`);
     } else {
       sound.lose();
       setPayout(0);
       setMessage(`Dealer Wins (${dScore} vs ${pScore})`);
-      gameEngine.placeBet('Blackjack 21', activeBet, 0);
+      gameEngine.settleDeductedBet('Blackjack 21', activeBet, 0, `Dealer Won (${dScore} vs ${pScore})`);
     }
   };
 
   const doubleDown = () => {
     if (status !== 'PLAYING' || playerHand.length !== 2) return;
-    const state = gameEngine.getState();
-    const doubledBet = bet * 2;
-    if (doubledBet > state.balance) return;
+    if (!gameEngine.deductStake(lockedStake)) return;
 
-    setBet(doubledBet);
+    const doubledStake = lockedStake * 2;
+    setLockedStake(doubledStake);
     const nextCard = deck[0];
     const nextHand = [...playerHand, nextCard];
     setPlayerHand(nextHand);
@@ -168,10 +193,10 @@ export const Blackjack: React.FC = () => {
     if (score > 21) {
       sound.lose();
       setStatus('ENDED');
-      setMessage('Bust on Double Down!');
-      gameEngine.placeBet('Blackjack 21', doubledBet, 0);
+      setMessage(`Bust on Double Down (${score})!`);
+      gameEngine.settleDeductedBet('Blackjack 21', doubledStake, 0, `Double Down Bust (${score})`);
     } else {
-      standWithHand(nextHand, deck.slice(1), doubledBet);
+      standWithHand(nextHand, deck.slice(1), doubledStake);
     }
   };
 
@@ -202,6 +227,8 @@ export const Blackjack: React.FC = () => {
 
   const pTotal = handScore(playerHand);
   const dTotal = status === 'PLAYING' ? dealerHand[0]?.value || 0 : handScore(dealerHand);
+  const canBuyInsurance =
+    status === 'PLAYING' && playerHand.length === 2 && dealerHand[0]?.rank === 'A' && !insuranceTaken;
 
   return (
     <div className="max-w-[1400px] mx-auto bg-[#111927] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col-reverse lg:flex-row min-h-[600px]">
@@ -211,7 +238,11 @@ export const Blackjack: React.FC = () => {
         <div>
           <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1.5">
             <span>Bet Amount (₹)</span>
-            <span className="font-mono text-slate-300">₹{bet.toLocaleString('en-IN')}</span>
+            <span className="font-mono text-slate-300">
+              {status === 'PLAYING'
+                ? `Active Stake: ₹${lockedStake.toLocaleString('en-IN')}`
+                : `₹${bet.toLocaleString('en-IN')}`}
+            </span>
           </div>
           <div className="flex bg-[#151f30] rounded-xl border border-white/10 focus-within:border-amber-500/60 overflow-hidden">
             <div className="flex items-center pl-3.5 text-amber-400 font-mono font-bold">₹</div>
@@ -271,7 +302,7 @@ export const Blackjack: React.FC = () => {
                 <Plus className="w-4 h-4" /> Hit
               </button>
               <button
-                onClick={() => standWithHand(playerHand, deck, bet)}
+                onClick={() => standWithHand(playerHand, deck, lockedStake)}
                 className="py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black uppercase rounded-xl flex items-center justify-center gap-1.5 text-sm shadow-lg"
               >
                 <Hand className="w-4 h-4" /> Stand
@@ -281,8 +312,16 @@ export const Blackjack: React.FC = () => {
                 disabled={playerHand.length !== 2}
                 className="col-span-2 py-3 bg-[#1e2b42] hover:bg-[#283956] disabled:opacity-40 text-white font-bold uppercase rounded-xl flex items-center justify-center gap-1.5 text-xs border border-white/10"
               >
-                <ChevronsUp className="w-4 h-4 text-amber-400" /> Double Down (2× Bet)
+                <ChevronsUp className="w-4 h-4 text-amber-400" /> Double Down (+₹{lockedStake.toLocaleString('en-IN')})
               </button>
+              {canBuyInsurance && (
+                <button
+                  onClick={buyInsurance}
+                  className="col-span-2 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold uppercase rounded-xl flex items-center justify-center gap-1.5 text-xs border border-amber-500/40"
+                >
+                  <ShieldAlert className="w-4 h-4" /> Buy 2:1 Insurance (₹{Math.floor(lockedStake / 2).toLocaleString('en-IN')})
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -301,6 +340,10 @@ export const Blackjack: React.FC = () => {
             <span className="font-mono font-bold text-white">All 17s</span>
           </div>
           <div className="flex justify-between">
+            <span className="text-slate-400">Insurance Pays</span>
+            <span className="font-mono font-bold text-white">2 to 1</span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-slate-400">Theoretical RTP</span>
             <span className="font-mono font-bold text-emerald-400">99.5%</span>
           </div>
@@ -308,7 +351,7 @@ export const Blackjack: React.FC = () => {
 
         <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
           <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 4-Deck Provably Fair Shoe
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> HMAC-SHA256 Fisher-Yates Shoe
           </span>
         </div>
       </div>
@@ -337,9 +380,9 @@ export const Blackjack: React.FC = () => {
           {message ? (
             <div
               className={`px-6 py-3 rounded-2xl border-2 text-center shadow-xl ${
-                payout > bet
+                payout > lockedStake
                   ? 'bg-emerald-950/90 border-emerald-400 text-emerald-300'
-                  : payout === bet
+                  : payout === lockedStake
                   ? 'bg-slate-900/90 border-amber-400 text-amber-300'
                   : 'bg-rose-950/90 border-rose-500/80 text-rose-200'
               }`}
@@ -353,7 +396,7 @@ export const Blackjack: React.FC = () => {
             </div>
           ) : (
             <div className="px-5 py-2 rounded-full bg-black/35 border border-white/10 text-xs font-semibold text-slate-300">
-              BLACKJACK PAYS 3 TO 2 · DEALER MUST STAND ON 17
+              BLACKJACK PAYS 3 TO 2 · DEALER MUST STAND ON 17 · INSURANCE PAYS 2 TO 1
             </div>
           )}
         </div>
@@ -372,6 +415,11 @@ export const Blackjack: React.FC = () => {
             <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 font-mono font-bold text-xs text-amber-300">
               {pTotal}
             </span>
+            {insuranceTaken && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-bold text-emerald-300">
+                Insured
+              </span>
+            )}
           </div>
         </div>
       </div>

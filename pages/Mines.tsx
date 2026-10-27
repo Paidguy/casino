@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { gameEngine } from '../services/engine';
-import { RefreshCw, ShieldCheck, Sparkles, Eye, Zap } from 'lucide-react';
+import { RefreshCw, ShieldCheck, Sparkles, Eye, Zap, CheckSquare } from 'lucide-react';
 import { sound } from '../services/sound';
 
 const GoldGemSVG = () => (
@@ -50,6 +50,7 @@ const MineBombSVG = ({ exploded }: { exploded?: boolean }) => (
 
 export const Mines: React.FC = () => {
   const [bet, setBet] = useState<number>(100);
+  const [lockedStake, setLockedStake] = useState<number>(100);
   const [mineCount, setMineCount] = useState<number>(3);
   const [gameState, setGameState] = useState<'IDLE' | 'PLAYING' | 'EXPLODED' | 'WON'>('IDLE');
   const [revealed, setRevealed] = useState<boolean[]>(Array(25).fill(false));
@@ -57,7 +58,7 @@ export const Mines: React.FC = () => {
   const [explodedIdx, setExplodedIdx] = useState<number | null>(null);
   const [currentMultiplier, setCurrentMultiplier] = useState<number>(1);
   const [mode, setMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
-  const [autoPickCount, setAutoPickCount] = useState<number>(4);
+  const [autoPattern, setAutoPattern] = useState<number[]>([6, 8, 12, 16, 18]);
 
   const getMultiplier = (m: number, r: number) => {
     if (r === 0) return 1.0;
@@ -68,26 +69,30 @@ export const Mines: React.FC = () => {
     return Math.max(1.01, Number((0.99 / prob).toFixed(2)));
   };
 
-  const generateBoard = () => {
-    const newMines = Array(25).fill(false);
-    let placed = 0;
-    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
-    while (placed < mineCount) {
-      const idx = Math.floor(rng() * 25);
-      if (!newMines[idx]) {
-        newMines[idx] = true;
-        placed++;
-      }
+  /**
+   * Deterministic Provably Fair Fisher-Yates 5x5 Board Permutation
+   * Uses 25 HMAC-SHA256 floats from the current session seed pair & nonce
+   */
+  const generateDeterministicBoard = (): boolean[] => {
+    const floats = gameEngine.getNextFloats(25);
+    const indices = Array.from({ length: 25 }, (_, i) => i);
+    for (let i = 24; i > 0; i--) {
+      const j = Math.floor(floats[i] * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
     }
-    return newMines;
+    const grid = Array(25).fill(false);
+    for (let m = 0; m < mineCount; m++) {
+      grid[indices[m]] = true;
+    }
+    return grid;
   };
 
   const startGame = () => {
-    const state = gameEngine.getState();
-    if (bet <= 0 || bet > state.balance) return;
+    if (!gameEngine.deductStake(bet)) return;
 
     sound.click();
-    const newMines = generateBoard();
+    const newMines = generateDeterministicBoard();
+    setLockedStake(bet);
     setMines(newMines);
     setRevealed(Array(25).fill(false));
     setExplodedIdx(null);
@@ -95,24 +100,45 @@ export const Mines: React.FC = () => {
     setCurrentMultiplier(1.0);
   };
 
-  const runAutoRound = () => {
-    const state = gameEngine.getState();
-    if (bet <= 0 || bet > state.balance) return;
-
+  const toggleAutoPatternTile = (idx: number) => {
+    if (gameState === 'PLAYING') return;
     sound.click();
-    const newMines = generateBoard();
-    const safePickLimit = Math.min(autoPickCount, 25 - mineCount);
+    setRevealed(Array(25).fill(false));
+    setGameState('IDLE');
+    if (autoPattern.includes(idx)) {
+      if (autoPattern.length > 1) {
+        setAutoPattern(autoPattern.filter((x) => x !== idx));
+      }
+    } else if (autoPattern.length < 25 - mineCount) {
+      setAutoPattern([...autoPattern, idx]);
+    }
+  };
+
+  const randomizeAutoPattern = (count = 4) => {
+    sound.click();
+    const maxSafe = Math.min(count, 25 - mineCount);
     const pool = Array.from({ length: 25 }, (_, i) => i);
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
+    setAutoPattern(pool.slice(0, maxSafe));
+    setRevealed(Array(25).fill(false));
+    setGameState('IDLE');
+  };
 
-    const pickedIndices = pool.slice(0, safePickLimit);
+  const runAutoRound = () => {
+    const validPattern = autoPattern.slice(0, 25 - mineCount);
+    if (validPattern.length === 0) return;
+    if (!gameEngine.deductStake(bet)) return;
+
+    sound.click();
+    setLockedStake(bet);
+    const newMines = generateDeterministicBoard();
     const newRevealed = Array(25).fill(false);
     let hitBomb: number | null = null;
 
-    for (const idx of pickedIndices) {
+    for (const idx of validPattern) {
       newRevealed[idx] = true;
       if (newMines[idx]) {
         hitBomb = idx;
@@ -127,18 +153,22 @@ export const Mines: React.FC = () => {
       sound.lose();
       setExplodedIdx(hitBomb);
       setGameState('EXPLODED');
-      gameEngine.placeBet('Gold Mines', bet, 0);
+      gameEngine.settleDeductedBet('Gold Mines', bet, 0, `Auto Hit Mine at Tile #${hitBomb + 1}`);
     } else {
-      const mult = getMultiplier(mineCount, safePickLimit);
+      const mult = getMultiplier(mineCount, validPattern.length);
       setCurrentMultiplier(mult);
       sound.win();
       setExplodedIdx(null);
       setGameState('WON');
-      gameEngine.placeBet('Gold Mines', bet, mult);
+      gameEngine.settleDeductedBet('Gold Mines', bet, mult, `Auto Cleared ${validPattern.length} Gems (${mult}×)`);
     }
   };
 
   const clickTile = (idx: number) => {
+    if (mode === 'AUTO' && gameState !== 'PLAYING') {
+      toggleAutoPatternTile(idx);
+      return;
+    }
     if (gameState !== 'PLAYING' || revealed[idx]) return;
 
     const newRevealed = [...revealed];
@@ -149,7 +179,7 @@ export const Mines: React.FC = () => {
       sound.lose();
       setExplodedIdx(idx);
       setGameState('EXPLODED');
-      gameEngine.placeBet('Gold Mines', bet, 0);
+      gameEngine.settleDeductedBet('Gold Mines', lockedStake, 0, `Hit Mine on Tile #${idx + 1}`);
     } else {
       const count = newRevealed.filter(Boolean).length;
       sound.gem(count);
@@ -159,7 +189,7 @@ export const Mines: React.FC = () => {
       if (count === 25 - mineCount) {
         sound.win();
         setGameState('WON');
-        gameEngine.placeBet('Gold Mines', bet, nextMult);
+        gameEngine.settleDeductedBet('Gold Mines', lockedStake, nextMult, `Cleared Full Board (${nextMult}×)`);
       }
     }
   };
@@ -168,7 +198,8 @@ export const Mines: React.FC = () => {
     if (gameState !== 'PLAYING') return;
     const hiddenIndices = revealed.map((r, i) => (!r ? i : -1)).filter((i) => i !== -1);
     if (hiddenIndices.length === 0) return;
-    const randomIdx = hiddenIndices[Math.floor(Math.random() * hiddenIndices.length)];
+    const floats = gameEngine.getNextFloats(1);
+    const randomIdx = hiddenIndices[Math.floor(floats[0] * hiddenIndices.length)];
     clickTile(randomIdx);
   };
 
@@ -179,12 +210,14 @@ export const Mines: React.FC = () => {
 
     sound.win();
     setGameState('WON');
-    gameEngine.placeBet('Gold Mines', bet, currentMultiplier);
+    gameEngine.settleDeductedBet('Gold Mines', lockedStake, currentMultiplier, `Cashed Out ${revealedCount} Gems (${currentMultiplier}×)`);
   };
 
   const revealedCount = revealed.filter(Boolean).length;
   const nextMultiplier = getMultiplier(mineCount, revealedCount + 1);
-  const currentPayout = Math.floor(bet * currentMultiplier);
+  const activeBet = gameState === 'PLAYING' ? lockedStake : bet;
+  const currentPayout = Math.floor(activeBet * currentMultiplier);
+  const autoTargetMult = getMultiplier(mineCount, Math.min(autoPattern.length, 25 - mineCount));
 
   const stepPreview = Array.from({ length: Math.min(6, 25 - mineCount) }, (_, i) => {
     const stepNum = Math.max(1, revealedCount) + i;
@@ -202,7 +235,11 @@ export const Mines: React.FC = () => {
         {/* Manual / Auto Tabs */}
         <div className="flex bg-[#151f30] p-1 rounded-xl border border-white/10">
           <button
-            onClick={() => setMode('MANUAL')}
+            onClick={() => {
+              setMode('MANUAL');
+              setGameState('IDLE');
+              setRevealed(Array(25).fill(false));
+            }}
             disabled={gameState === 'PLAYING'}
             className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
               mode === 'MANUAL'
@@ -213,7 +250,11 @@ export const Mines: React.FC = () => {
             Manual
           </button>
           <button
-            onClick={() => setMode('AUTO')}
+            onClick={() => {
+              setMode('AUTO');
+              setGameState('IDLE');
+              setRevealed(Array(25).fill(false));
+            }}
             disabled={gameState === 'PLAYING'}
             className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
               mode === 'AUTO'
@@ -221,7 +262,7 @@ export const Mines: React.FC = () => {
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            Auto Pick
+            Auto Pattern
           </button>
         </div>
 
@@ -281,7 +322,11 @@ export const Mines: React.FC = () => {
               </div>
               <select
                 value={mineCount}
-                onChange={(e) => setMineCount(Number(e.target.value))}
+                onChange={(e) => {
+                  const nextMines = Number(e.target.value);
+                  setMineCount(nextMines);
+                  setAutoPattern((prev) => prev.slice(0, Math.max(1, 25 - nextMines)));
+                }}
                 className="w-full bg-[#151f30] border border-white/10 rounded-xl px-3.5 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-amber-500/60"
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 24].map((n) => (
@@ -294,7 +339,10 @@ export const Mines: React.FC = () => {
                 {[1, 3, 5, 10, 24].map((preset) => (
                   <button
                     key={preset}
-                    onClick={() => setMineCount(preset)}
+                    onClick={() => {
+                      setMineCount(preset);
+                      setAutoPattern((prev) => prev.slice(0, Math.max(1, 25 - preset)));
+                    }}
                     className={`py-1.5 rounded-lg text-xs font-mono font-bold border transition-all ${
                       mineCount === preset
                         ? 'bg-amber-500/20 border-amber-500/60 text-amber-300'
@@ -308,27 +356,28 @@ export const Mines: React.FC = () => {
             </div>
 
             {mode === 'AUTO' && (
-              <div className="bg-[#151f30] p-3.5 rounded-xl border border-white/10">
-                <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1.5">
-                  <span>Auto Tiles to Reveal</span>
+              <div className="bg-[#151f30] p-3.5 rounded-xl border border-white/10 space-y-2.5">
+                <div className="flex justify-between text-xs font-semibold text-slate-400">
+                  <span className="flex items-center gap-1 text-white">
+                    <CheckSquare className="w-3.5 h-3.5 text-amber-400" /> {autoPattern.length} Pattern Tiles
+                  </span>
                   <span className="text-emerald-400 font-mono font-bold">
-                    {getMultiplier(mineCount, Math.min(autoPickCount, 25 - mineCount))}× Target
+                    {autoTargetMult}× (₹{Math.floor(bet * autoTargetMult).toLocaleString('en-IN')})
                   </span>
                 </div>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {[2, 3, 4, 5, 8].map((cnt) => (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[3, 4, 5, 8].map((cnt) => (
                     <button
                       key={cnt}
-                      onClick={() => setAutoPickCount(cnt)}
-                      className={`py-1.5 rounded-lg text-xs font-mono font-bold border ${
-                        autoPickCount === cnt
-                          ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
-                          : 'bg-[#0b101b] border-white/10 text-slate-400 hover:text-white'
-                      }`}
+                      onClick={() => randomizeAutoPattern(cnt)}
+                      className="py-1.5 rounded-lg bg-[#0b101b] hover:bg-[#1e2b42] border border-white/10 text-[11px] font-mono font-bold text-slate-300"
                     >
-                      {cnt}
+                      Pick {cnt}
                     </button>
                   ))}
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  Click any tiles on the 5×5 grid to customize your auto-reveal pattern.
                 </div>
               </div>
             )}
@@ -354,7 +403,7 @@ export const Mines: React.FC = () => {
               <div className="flex justify-between text-xs text-slate-400 font-semibold mb-1">
                 <span>Current Payout ({currentMultiplier.toFixed(2)}×)</span>
                 <span className="text-emerald-400 font-mono font-bold">
-                  +₹{Math.max(0, currentPayout - bet).toLocaleString('en-IN')}
+                  +₹{Math.max(0, currentPayout - lockedStake).toLocaleString('en-IN')}
                 </span>
               </div>
               <div className="text-xl font-mono font-black text-white">
@@ -379,7 +428,7 @@ export const Mines: React.FC = () => {
                 onClick={runAutoRound}
                 className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black uppercase tracking-wider rounded-xl transition-all shadow-[0_8px_25px_rgba(16,185,129,0.3)] active:scale-[0.99] text-sm flex items-center justify-center gap-2"
               >
-                <Zap className="w-4 h-4" /> Auto Pick {Math.min(autoPickCount, 25 - mineCount)} Tiles (₹{bet.toLocaleString('en-IN')})
+                <Zap className="w-4 h-4" /> Auto Reveal {autoPattern.length} Tiles (₹{bet.toLocaleString('en-IN')})
               </button>
             ) : (
               <button
@@ -405,9 +454,9 @@ export const Mines: React.FC = () => {
         {/* Provably Fair Footer */}
         <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
           <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 99% RTP Verified
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> HMAC-SHA256 Fisher-Yates
           </span>
-          <span className="font-mono text-slate-500">5×5 Grid</span>
+          <span className="font-mono text-slate-500">99% RTP</span>
         </div>
       </div>
 
@@ -452,10 +501,11 @@ export const Mines: React.FC = () => {
             const isRevealed = revealed[idx];
             const isMine = mines[idx];
             const showUnrevealed = (gameState === 'EXPLODED' || gameState === 'WON') && !isRevealed;
+            const isAutoSelected = mode === 'AUTO' && autoPattern.includes(idx);
 
             let tileStyle =
               'bg-[#1a263b] hover:bg-[#23334f] border-b-4 border-[#0e1624] shadow-md hover:-translate-y-0.5 cursor-pointer';
-            if (gameState === 'IDLE') {
+            if (gameState === 'IDLE' && mode === 'MANUAL') {
               tileStyle = 'bg-[#172236] border-b-4 border-[#0e1624] cursor-default opacity-90';
             } else if (isRevealed) {
               if (isMine) {
@@ -467,17 +517,24 @@ export const Mines: React.FC = () => {
               }
             } else if (showUnrevealed) {
               tileStyle = 'bg-[#111927] border border-white/5 opacity-45 scale-95 cursor-default';
+            } else if (isAutoSelected) {
+              tileStyle =
+                'bg-[#1e324a] border-2 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)] cursor-pointer';
             }
 
             return (
               <button
                 key={idx}
-                disabled={gameState !== 'PLAYING' || isRevealed}
+                disabled={mode === 'MANUAL' && (gameState !== 'PLAYING' || isRevealed)}
                 onClick={() => clickTile(idx)}
                 className={`rounded-xl flex items-center justify-center transition-all duration-150 relative overflow-hidden ${tileStyle}`}
               >
                 {!isRevealed && !showUnrevealed && (
-                  <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      isAutoSelected ? 'bg-amber-400 scale-125' : 'bg-white/10'
+                    }`}
+                  />
                 )}
                 {(isRevealed || showUnrevealed) && (
                   <div className={`transition-transform duration-200 ${isRevealed ? 'scale-100' : 'scale-75'}`}>
@@ -509,7 +566,7 @@ export const Mines: React.FC = () => {
         {/* Bottom Status Bar */}
         <div className="w-full max-w-[460px] mt-4 flex items-center justify-between text-xs text-slate-400 px-1">
           <span className="flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5 text-slate-500" /> All mine positions are revealed at the end of every round
+            <Eye className="w-3.5 h-3.5 text-slate-500" /> Stake is locked on round start and all mines reveal on completion
           </span>
         </div>
       </div>

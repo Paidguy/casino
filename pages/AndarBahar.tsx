@@ -11,23 +11,39 @@ interface Card {
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const SUITS: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
 
+type CardRangeSideBet = 'NONE' | '1_5' | '6_15' | '16_25' | '26_PLUS';
+
+const RANGE_OPTIONS: { id: CardRangeSideBet; label: string; mult: number }[] = [
+  { id: 'NONE', label: 'Off', mult: 0 },
+  { id: '1_5', label: '1–5 Cards (3.5×)', mult: 3.5 },
+  { id: '6_15', label: '6–15 Cards (2.5×)', mult: 2.5 },
+  { id: '16_25', label: '16–25 Cards (4.5×)', mult: 4.5 },
+  { id: '26_PLUS', label: '26+ Cards (8.0×)', mult: 8.0 },
+];
+
 export const AndarBahar: React.FC = () => {
   const [bet, setBet] = useState<number>(200);
   const [side, setSide] = useState<'ANDAR' | 'BAHAR'>('ANDAR');
-  const [fastMatchBonus, setFastMatchBonus] = useState<boolean>(false);
+  const [rangeBet, setRangeBet] = useState<CardRangeSideBet>('NONE');
   const [dealing, setDealing] = useState<boolean>(false);
   const [joker, setJoker] = useState<Card>({ rank: 'K', suit: '♠' });
-  const [andarPile, setAndarPile] = useState<Card[]>([{ rank: '7', suit: '♥' }, { rank: 'K', suit: '♦' }]);
+  const [andarPile, setAndarPile] = useState<Card[]>([
+    { rank: '7', suit: '♥' },
+    { rank: 'K', suit: '♦' },
+  ]);
   const [baharPile, setBaharPile] = useState<Card[]>([{ rank: '10', suit: '♣' }]);
   const [resultInfo, setResultInfo] = useState<{
     winningSide: 'ANDAR' | 'BAHAR';
     cardsDealt: number;
     payout: number;
+    rangeWon: boolean;
   } | null>(null);
+
+  const sideStake = rangeBet !== 'NONE' ? Math.floor(bet * 0.25) : 0;
+  const totalWager = bet + sideStake;
 
   const startDeal = () => {
     const state = gameEngine.getState();
-    const totalWager = fastMatchBonus ? Math.floor(bet * 1.25) : bet;
     if (dealing || totalWager <= 0 || totalWager > state.balance) return;
 
     sound.card();
@@ -36,26 +52,32 @@ export const AndarBahar: React.FC = () => {
     setAndarPile([]);
     setBaharPile([]);
 
-    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
-    const targetRank = RANKS[Math.floor(rng() * RANKS.length)];
-    const targetSuit = SUITS[Math.floor(rng() * SUITS.length)];
-    setJoker({ rank: targetRank, suit: targetSuit });
+    // Build and shuffle a real 52-card deck deterministically using HMAC-SHA256 floats
+    const deck: Card[] = [];
+    SUITS.forEach((s) => {
+      RANKS.forEach((r) => deck.push({ rank: r, suit: s }));
+    });
+    const floats = gameEngine.getNextFloats(52);
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(floats[i] * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
 
-    // Generate alternating cards until a card matches targetRank
+    const jokerCard = deck[0];
+    setJoker(jokerCard);
+
     const sequence: { side: 'ANDAR' | 'BAHAR'; card: Card }[] = [];
     let turn: 'ANDAR' | 'BAHAR' = 'ANDAR';
-    const maxSteps = 2 + Math.floor(rng() * 8);
-
-    for (let i = 0; i < maxSteps; i++) {
-      const isLast = i === maxSteps - 1;
-      const nonMatchingRanks = RANKS.filter((r) => r !== targetRank);
-      const rank = isLast
-        ? targetRank
-        : nonMatchingRanks[Math.floor(rng() * nonMatchingRanks.length)];
-      const suit = SUITS[Math.floor(rng() * SUITS.length)];
-      sequence.push({ side: turn, card: { rank, suit } });
+    for (let i = 1; i < deck.length; i++) {
+      const c = deck[i];
+      sequence.push({ side: turn, card: c });
+      if (c.rank === jokerCard.rank) {
+        break;
+      }
       turn = turn === 'ANDAR' ? 'BAHAR' : 'ANDAR';
     }
+
+    const stepDelay = Math.max(55, Math.min(140, Math.floor(900 / sequence.length)));
 
     sequence.forEach((step, idx) => {
       setTimeout(() => {
@@ -68,28 +90,46 @@ export const AndarBahar: React.FC = () => {
 
         if (idx === sequence.length - 1) {
           const winningSide = step.side;
+          const cardsDealt = sequence.length;
           const mainWin = winningSide === side;
           const baseMult = winningSide === 'ANDAR' ? 1.9 : 2.0;
           let totalReturn = mainWin ? Math.floor(bet * baseMult) : 0;
 
-          if (fastMatchBonus && sequence.length <= 3) {
-            totalReturn += Math.floor(bet * 0.25 * 3.5);
+          let rangeWon = false;
+          if (rangeBet !== 'NONE') {
+            const matchedRange =
+              (rangeBet === '1_5' && cardsDealt <= 5) ||
+              (rangeBet === '6_15' && cardsDealt >= 6 && cardsDealt <= 15) ||
+              (rangeBet === '16_25' && cardsDealt >= 16 && cardsDealt <= 25) ||
+              (rangeBet === '26_PLUS' && cardsDealt >= 26);
+
+            if (matchedRange) {
+              const rOpt = RANGE_OPTIONS.find((o) => o.id === rangeBet);
+              totalReturn += Math.floor(sideStake * (rOpt?.mult || 0));
+              rangeWon = true;
+            }
           }
 
-          const effectiveMult = totalReturn / totalWager;
-          gameEngine.placeBet('Andar Bahar Live', totalWager, Number(effectiveMult.toFixed(2)));
+          const effectiveMult = Number((totalReturn / totalWager).toFixed(2));
+          gameEngine.placeBet(
+            'Andar Bahar Live',
+            totalWager,
+            effectiveMult,
+            `${winningSide} on Card #${cardsDealt}`
+          );
 
           if (totalReturn > 0) sound.win();
           else sound.lose();
 
           setResultInfo({
             winningSide,
-            cardsDealt: sequence.length,
+            cardsDealt,
             payout: totalReturn,
+            rangeWon,
           });
           setDealing(false);
         }
-      }, (idx + 1) * 160);
+      }, (idx + 1) * stepDelay);
     });
   };
 
@@ -159,7 +199,7 @@ export const AndarBahar: React.FC = () => {
         {/* Bet Amount */}
         <div>
           <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1.5">
-            <span>Bet Amount (₹)</span>
+            <span>Main Bet (₹)</span>
             <span className="font-mono text-slate-300">₹{bet.toLocaleString('en-IN')}</span>
           </div>
           <div className="flex bg-[#151f30] rounded-xl border border-white/10 focus-within:border-amber-500/60 overflow-hidden">
@@ -186,47 +226,32 @@ export const AndarBahar: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-1.5 mt-2">
-            {[100, 500, 1000, 5000].map((amt) => (
+        </div>
+
+        {/* Total Cards Dealt Range Side Bet */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 mb-1.5 flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Cards Dealt Side Bet (+25% Stake)
+          </label>
+          <div className="grid grid-cols-2 gap-1.5">
+            {RANGE_OPTIONS.map((opt) => (
               <button
-                key={amt}
-                onClick={() => setBet(amt)}
-                className="py-1.5 bg-[#151f30] hover:bg-[#1e2b42] border border-white/5 rounded-lg text-[11px] font-mono font-bold text-slate-300"
+                key={opt.id}
+                onClick={() => setRangeBet(opt.id)}
+                disabled={dealing}
+                className={`py-2 px-2.5 rounded-lg text-xs font-bold border transition-all ${
+                  rangeBet === opt.id
+                    ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                    : 'bg-[#151f30] border-white/10 text-slate-400 hover:text-white'
+                } ${opt.id === 'NONE' ? 'col-span-2' : ''}`}
               >
-                ₹{amt >= 1000 ? `${amt / 1000}k` : amt}
+                {opt.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Fast Match Side Bet */}
-        <button
-          type="button"
-          onClick={() => setFastMatchBonus(!fastMatchBonus)}
-          className={`p-3.5 rounded-xl border text-left transition-all flex items-center justify-between ${
-            fastMatchBonus
-              ? 'bg-amber-500/15 border-amber-400 text-amber-200'
-              : 'bg-[#151f30] border-white/10 text-slate-400 hover:text-white'
-          }`}
-        >
-          <div>
-            <div className="text-xs font-bold flex items-center gap-1.5 text-white">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Fast Match Bonus (Cards 1–3)
-            </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
-              +25% side bet · Pays 3.5× if matched within first 3 cards
-            </div>
-          </div>
-          <div
-            className={`w-5 h-5 rounded-md border flex items-center justify-center text-xs font-bold ${
-              fastMatchBonus ? 'bg-amber-400 border-amber-400 text-slate-950' : 'border-slate-600'
-            }`}
-          >
-            {fastMatchBonus ? '✓' : ''}
-          </div>
-        </button>
-
-        {/* Primary CTA Button (Top on mobile via order-first, natural bottom on desktop via lg:order-none) */}
+        {/* Primary CTA Button */}
         <div className="order-first lg:order-none">
           <button
             onClick={startDeal}
@@ -234,14 +259,14 @@ export const AndarBahar: React.FC = () => {
             className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 text-slate-950 font-black uppercase tracking-wider rounded-xl transition-all shadow-[0_8px_25px_rgba(16,185,129,0.3)] active:scale-[0.99] text-sm"
           >
             {dealing
-              ? 'Dealing Alternating Cards...'
-              : `Deal Cards (₹${(fastMatchBonus ? Math.floor(bet * 1.25) : bet).toLocaleString('en-IN')})`}
+              ? 'Dealing 52-Card Shoe...'
+              : `Deal Cards (₹${totalWager.toLocaleString('en-IN')})`}
           </button>
         </div>
 
         <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
           <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Classic Indian 50/50 Card Match
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> HMAC-SHA256 52-Card Shoe
           </span>
         </div>
       </div>
@@ -275,6 +300,7 @@ export const AndarBahar: React.FC = () => {
             >
               <div className="text-xs font-bold uppercase">
                 {resultInfo.winningSide} Matched on Card #{resultInfo.cardsDealt}
+                {resultInfo.rangeWon ? ' · Range Bonus Hit!' : ''}
               </div>
               <div className="text-xl font-mono font-black">
                 {resultInfo.payout > 0
@@ -298,7 +324,7 @@ export const AndarBahar: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <span className="text-sm font-black uppercase tracking-wider text-sky-400">
-                  Inside — Andar
+                  Inside — Andar ({andarPile.length})
                 </span>
                 <span className="ml-2 text-xs font-mono text-slate-400">1.90×</span>
               </div>
@@ -312,7 +338,7 @@ export const AndarBahar: React.FC = () => {
               {andarPile.length === 0 ? (
                 <div className="text-xs text-slate-500 italic">Waiting for deal...</div>
               ) : (
-                andarPile.map((c, idx) => (
+                andarPile.slice(-6).map((c, idx) => (
                   <div key={idx}>{renderCard(c, c.rank === joker.rank)}</div>
                 ))
               )}
@@ -330,7 +356,7 @@ export const AndarBahar: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <span className="text-sm font-black uppercase tracking-wider text-rose-400">
-                  Outside — Bahar
+                  Outside — Bahar ({baharPile.length})
                 </span>
                 <span className="ml-2 text-xs font-mono text-slate-400">2.00×</span>
               </div>
@@ -344,7 +370,7 @@ export const AndarBahar: React.FC = () => {
               {baharPile.length === 0 ? (
                 <div className="text-xs text-slate-500 italic">Waiting for deal...</div>
               ) : (
-                baharPile.map((c, idx) => (
+                baharPile.slice(-6).map((c, idx) => (
                   <div key={idx}>{renderCard(c, c.rank === joker.rank)}</div>
                 ))
               )}

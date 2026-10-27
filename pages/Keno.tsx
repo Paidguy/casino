@@ -52,10 +52,10 @@ export const Keno: React.FC = () => {
     sound.click();
     setDrawing(true);
 
-    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
+    const floats = gameEngine.getNextFloats(40);
     const pool = Array.from({ length: 40 }, (_, i) => i + 1);
     for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
+      const j = Math.floor(floats[i] * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     const resultNumbers = pool.slice(0, 10);

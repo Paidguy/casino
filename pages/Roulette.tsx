@@ -1,12 +1,44 @@
 import React, { useState } from 'react';
 import { gameEngine } from '../services/engine';
 import { sound } from '../services/sound';
-import { RotateCcw, Trash2, ShieldCheck } from 'lucide-react';
+import { RotateCcw, Trash2, ShieldCheck, Compass } from 'lucide-react';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 const WHEEL_ORDER = [
   0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14,
   31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26,
+];
+
+const FRENCH_CALL_BETS: {
+  id: string;
+  name: string;
+  desc: string;
+  numbers: number[];
+}[] = [
+  {
+    id: 'VOISINS',
+    name: 'Voisins du Zéro',
+    desc: '17 Neighbors of Zero',
+    numbers: [22, 18, 29, 7, 28, 12, 35, 3, 26, 0, 32, 15, 19, 4, 21, 2, 25],
+  },
+  {
+    id: 'TIERS',
+    name: 'Tiers du Cylindre',
+    desc: '12 Opposite Wheel Pocket Numbers',
+    numbers: [27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33],
+  },
+  {
+    id: 'ORPHELINS',
+    name: 'Orphelins',
+    desc: '8 Orphan Wheel Slice Numbers',
+    numbers: [1, 20, 14, 31, 9, 17, 34, 6],
+  },
+  {
+    id: 'JEU_ZERO',
+    name: 'Jeu Zéro (Zero Game)',
+    desc: '7 Closest Pockets to Green 0',
+    numbers: [12, 35, 3, 26, 0, 32, 15],
+  },
 ];
 
 type BetSpot = string;
@@ -17,6 +49,7 @@ export const Roulette: React.FC = () => {
   const [lastBets, setLastBets] = useState<Record<BetSpot, number>>({});
   const [spinning, setSpinning] = useState(false);
   const [wheelAngle, setWheelAngle] = useState(0);
+  const [ballAngle, setBallAngle] = useState(0);
   const [winningNumber, setWinningNumber] = useState<number | null>(17);
   const [history, setHistory] = useState<number[]>([17, 0, 32, 8, 19, 23, 4, 12]);
   const [winPayout, setWinPayout] = useState<number>(0);
@@ -33,6 +66,23 @@ export const Roulette: React.FC = () => {
       ...prev,
       [spot]: (prev[spot] || 0) + selectedChip,
     }));
+  };
+
+  const addCallBet = (numbers: number[]) => {
+    if (spinning) return;
+    const state = gameEngine.getState();
+    const totalCost = numbers.length * selectedChip;
+    if (totalBet + totalCost > state.balance) return;
+
+    sound.click();
+    setBets((prev) => {
+      const next = { ...prev };
+      numbers.forEach((n) => {
+        const key = `N_${n}`;
+        next[key] = (next[key] || 0) + selectedChip;
+      });
+      return next;
+    });
   };
 
   const clearBets = () => {
@@ -67,12 +117,13 @@ export const Roulette: React.FC = () => {
     setWinPayout(0);
     setLastBets(bets);
 
-    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
-    const result = Math.floor(rng() * 37);
+    const floatVal = gameEngine.getNextFloats(1)[0] ?? Math.random();
+    const result = Math.floor(floatVal * 37);
     const targetIdx = WHEEL_ORDER.indexOf(result);
     const pocketDeg = 360 / 37;
     const nextAngle = wheelAngle + 1440 + (360 - targetIdx * pocketDeg);
     setWheelAngle(nextAngle);
+    setBallAngle((prev) => prev - 2160);
 
     setTimeout(() => {
       setWinningNumber(result);
@@ -177,14 +228,37 @@ export const Roulette: React.FC = () => {
           </div>
         </div>
 
+        {/* French Racetrack Call Bets */}
+        <div className="bg-[#151f30]/60 rounded-xl border border-white/10 p-3 space-y-2">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+            <Compass className="w-3.5 h-3.5" /> French Racetrack Call Bets
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {FRENCH_CALL_BETS.map((call) => (
+              <button
+                key={call.id}
+                type="button"
+                disabled={spinning}
+                onClick={() => addCallBet(call.numbers)}
+                className="p-2 rounded-lg bg-[#0b101b] hover:bg-[#1e2b42] border border-white/10 text-left transition-colors disabled:opacity-40"
+              >
+                <div className="text-[11px] font-black text-white truncate">{call.name}</div>
+                <div className="text-[9px] font-mono text-slate-400">
+                  {call.numbers.length} Chips (₹{(call.numbers.length * selectedChip).toLocaleString('en-IN')})
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Active Spots Breakdown */}
-        <div className="flex-1 bg-[#151f30]/60 rounded-xl border border-white/5 p-3 overflow-y-auto max-h-40 space-y-1.5">
+        <div className="flex-1 bg-[#151f30]/60 rounded-xl border border-white/5 p-3 overflow-y-auto max-h-36 space-y-1.5">
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
             Active Chips on Felt ({Object.keys(bets).length})
           </div>
           {Object.keys(bets).length === 0 ? (
-            <div className="text-xs text-slate-500 py-4 text-center">
-              Click any number, dozen, or color on the table to place chips
+            <div className="text-xs text-slate-500 py-3 text-center">
+              Click any number, racetrack sector, or color to place chips
             </div>
           ) : (
             (Object.entries(bets) as [string, number][]).map(([spot, amt]) => (
@@ -196,7 +270,7 @@ export const Roulette: React.FC = () => {
           )}
         </div>
 
-        {/* Primary CTA Button (Top on mobile via order-first, natural bottom on desktop via lg:order-none) */}
+        {/* Primary CTA Button */}
         <div className="order-first lg:order-none">
           <button
             onClick={spinWheel}
@@ -223,8 +297,8 @@ export const Roulette: React.FC = () => {
         {/* Top Wheel & Recent Numbers Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 bg-[#0b111e]/85 border border-white/10 p-4 rounded-2xl">
           <div className="flex items-center gap-4">
-            {/* Animated SVG 37-Pocket European Roulette Wheel */}
-            <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex items-center justify-center">
+            {/* Animated SVG 37-Pocket European Roulette Wheel with Orbiting Ivory Ball */}
+            <div className="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0 flex items-center justify-center">
               <svg
                 viewBox="0 0 120 120"
                 className="w-full h-full drop-shadow-[0_4px_15px_rgba(0,0,0,0.7)] transition-transform duration-[1400ms] ease-out"
@@ -255,6 +329,13 @@ export const Roulette: React.FC = () => {
                 <circle cx="60" cy="60" r="32" fill="#0f172a" stroke="#f59e0b" strokeWidth="2" />
                 <circle cx="60" cy="60" r="10" fill="#f59e0b" />
               </svg>
+              {/* Counter-Orbiting Ivory Ball */}
+              <div
+                className="absolute inset-0 pointer-events-none transition-transform duration-[1400ms] ease-out"
+                style={{ transform: `rotate(${ballAngle}deg)` }}
+              >
+                <div className="w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_8px_#fff] mx-auto mt-2.5" />
+              </div>
               {/* Center Winning Number Badge */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div
@@ -271,7 +352,7 @@ export const Roulette: React.FC = () => {
 
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                {spinning ? 'Ball in Motion...' : 'Winning Pocket'}
+                {spinning ? 'Ivory Ball in Motion...' : 'Winning Pocket'}
               </div>
               <div className="text-xl sm:text-2xl font-black text-white">
                 {winningNumber === 0

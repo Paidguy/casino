@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
-import { gameEngine, sha256Sync, generateProvablyFairFloats } from '../services/engine';
-import { ShieldCheck, RefreshCw, Lock, Calculator } from 'lucide-react';
+import {
+  gameEngine,
+  sha256Sync,
+  hmacSha256Sync,
+  generateProvablyFairFloats,
+} from '../services/engine';
+import { ShieldCheck, RefreshCw, Lock, Calculator, Cpu } from 'lucide-react';
 
 export const Fairness: React.FC = () => {
   const [state, setState] = useState(gameEngine.getState());
@@ -11,6 +16,7 @@ export const Fairness: React.FC = () => {
   const [verifyServerSeed, setVerifyServerSeed] = useState('e3b0c44298fc1c149afbf4c8996fb924');
   const [verifyClientSeed, setVerifyClientSeed] = useState(state.seeds.clientSeed);
   const [verifyNonce, setVerifyNonce] = useState<number>(0);
+  const [webCryptoVerified, setWebCryptoVerified] = useState<boolean>(false);
 
   const handleRotate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,9 +30,38 @@ export const Fairness: React.FC = () => {
     setTimeout(() => setRotated(false), 2500);
   };
 
-  const sampleFloat = generateProvablyFairFloats(verifyServerSeed, verifyClientSeed, verifyNonce, 1)[0] ?? 0;
-  const sampleDigest = sha256Sync(`${verifyServerSeed}:${verifyClientSeed}:${verifyNonce}:0`);
-  const sampleCrash = sampleFloat < 0.01 ? 1.0 : Math.min(10000, Number((0.99 / (1 - sampleFloat)).toFixed(2)));
+  const verifyWithWebCrypto = async () => {
+    try {
+      const enc = new TextEncoder();
+      const key = await window.crypto.subtle.importKey(
+        'raw',
+        enc.encode(verifyServerSeed),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      const sig = await window.crypto.subtle.sign(
+        'HMAC',
+        key,
+        enc.encode(`${verifyClientSeed}:${verifyNonce}:0`)
+      );
+      const hex = Array.from(new Uint8Array(sig))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+      const engineHex = hmacSha256Sync(verifyServerSeed, `${verifyClientSeed}:${verifyNonce}:0`);
+      if (hex === engineHex) {
+        setWebCryptoVerified(true);
+        setTimeout(() => setWebCryptoVerified(false), 3000);
+      }
+    } catch (e) {}
+  };
+
+  const sampleFloat =
+    generateProvablyFairFloats(verifyServerSeed, verifyClientSeed, verifyNonce, 1)[0] ?? 0;
+  const sampleCommitment = sha256Sync(verifyServerSeed);
+  const sampleHmac = hmacSha256Sync(verifyServerSeed, `${verifyClientSeed}:${verifyNonce}:0`);
+  const sampleCrash =
+    sampleFloat < 0.01 ? 1.0 : Math.min(10000, Number((0.99 / (1 - sampleFloat)).toFixed(2)));
   const sampleDice = Number((sampleFloat * 100).toFixed(2));
   const sampleRoulette = Math.floor(sampleFloat * 37);
 
@@ -34,10 +69,10 @@ export const Fairness: React.FC = () => {
     <div className="max-w-[1100px] mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-black text-white flex items-center gap-2">
-          <ShieldCheck className="w-6 h-6 text-emerald-400" /> Provably Fair Verification
+          <ShieldCheck className="w-6 h-6 text-emerald-400" /> Provably Fair Cryptographic Audit
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Every game outcome on Maharaja Club is generated deterministically using cryptographic SHA-256 server and client seed pairs.
+          Every round uses 100% client-side RFC 2104 HMAC-SHA256 (`HMAC_SHA256(serverSeed, clientSeed:nonce:cursor)`) with 4-byte uniform float extraction.
         </p>
       </div>
 
@@ -93,7 +128,7 @@ export const Fairness: React.FC = () => {
           </div>
           {rotated && (
             <div className="text-xs text-emerald-400 font-semibold">
-              Seed pair rotated! Previous Server Seed loaded into the verifier below.
+              Seed pair rotated! Unhashed Server Seed loaded into the verifier below.
             </div>
           )}
         </form>
@@ -101,11 +136,23 @@ export const Fairness: React.FC = () => {
 
       {/* Interactive Outcome Calculator */}
       <div className="bg-[#111927] p-6 rounded-2xl border border-white/10 space-y-5">
-        <div className="flex items-center gap-2">
-          <Calculator className="w-5 h-5 text-amber-400" />
-          <h2 className="text-base font-black text-white uppercase tracking-wider">
-            Interactive Outcome Verifier
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Calculator className="w-5 h-5 text-amber-400" />
+            <h2 className="text-base font-black text-white uppercase tracking-wider">
+              Interactive HMAC-SHA256 Outcome Verifier
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={verifyWithWebCrypto}
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-1.5"
+          >
+            <Cpu className="w-3.5 h-3.5" />
+            {webCryptoVerified
+              ? 'Cross-Verified with Browser WebCrypto API ✓'
+              : 'Cross-Verify with Browser WebCrypto API'}
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -146,13 +193,17 @@ export const Fairness: React.FC = () => {
         </div>
 
         <div className="bg-[#0b101b] p-4 rounded-xl border border-white/10 space-y-2">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-400">SHA-256 Digest (`server:client:nonce:0`)</span>
-            <span className="font-mono text-slate-300 truncate max-w-[260px] sm:max-w-md">{sampleDigest}</span>
+          <div className="flex justify-between text-xs gap-4">
+            <span className="text-slate-400 shrink-0">SHA-256(serverSeed)</span>
+            <span className="font-mono text-slate-300 truncate">{sampleCommitment}</span>
+          </div>
+          <div className="flex justify-between text-xs gap-4">
+            <span className="text-slate-400 shrink-0">HMAC-SHA256(`client:nonce:0`)</span>
+            <span className="font-mono text-emerald-400 truncate">{sampleHmac}</span>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-slate-400">Normalized Float `r ∈ [0, 1)`</span>
-            <span className="font-mono font-bold text-amber-400">{sampleFloat.toFixed(8)}</span>
+            <span className="text-slate-400">4-Byte Normalized Float `r ∈ [0, 1)`</span>
+            <span className="font-mono font-bold text-amber-400">{sampleFloat.toFixed(9)}</span>
           </div>
         </div>
 
@@ -171,6 +222,50 @@ export const Fairness: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Rotated Seed History */}
+      {state.seedHistory && state.seedHistory.length > 0 && (
+        <div className="bg-[#111927] rounded-2xl border border-white/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/10">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white">
+              Revealed Server Seed History
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-[#0b101b] text-slate-400 uppercase">
+                <tr>
+                  <th className="py-3 px-4">Unhashed Server Seed</th>
+                  <th className="py-3 px-4">Client Seed</th>
+                  <th className="py-3 px-4">Bets</th>
+                  <th className="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {state.seedHistory.map((item, idx) => (
+                  <tr key={idx}>
+                    <td className="py-3 px-4 text-emerald-400">{item.serverSeed}</td>
+                    <td className="py-3 px-4 text-slate-300">{item.clientSeed}</td>
+                    <td className="py-3 px-4 text-amber-400">#{item.totalBets}</td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => {
+                          setVerifyServerSeed(item.serverSeed);
+                          setVerifyClientSeed(item.clientSeed);
+                          setVerifyNonce(0);
+                        }}
+                        className="px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 text-white font-sans font-bold"
+                      >
+                        Load in Verifier
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
