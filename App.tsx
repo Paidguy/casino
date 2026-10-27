@@ -1,24 +1,25 @@
 import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { Layout } from './components/Layout';
 import Lobby from './pages/Lobby';
 import Crash from './pages/Crash';
-import Dice from './pages/Dice';
-import Roulette from './pages/Roulette';
-import Slots from './pages/Slots';
-import Mines from './pages/Mines';
-import Plinko from './pages/Plinko';
-import Blackjack from './pages/Blackjack';
-import Coinflip from './pages/Coinflip';
-import Fairness from './pages/Fairness';
-import TeenPatti from './pages/TeenPatti';
-import AndarBahar from './pages/AndarBahar';
-import Matka from './pages/Matka';
-import Admin from './pages/Admin';
-import Wheel from './pages/Wheel';
-import Baccarat from './pages/Baccarat';
-import Keno from './pages/Keno';
-import Transactions from './pages/Transactions';
-import Statistics from './pages/Statistics';
+import { Dice } from './pages/Dice';
+import { Roulette } from './pages/Roulette';
+import { Slots } from './pages/Slots';
+import { Mines } from './pages/Mines';
+import { Plinko } from './pages/Plinko';
+import { Blackjack } from './pages/Blackjack';
+import { Coinflip } from './pages/Coinflip';
+import { Fairness } from './pages/Fairness';
+import { TeenPatti } from './pages/TeenPatti';
+import { AndarBahar } from './pages/AndarBahar';
+import { Matka } from './pages/Matka';
+import { Admin } from './pages/Admin';
+import { Wheel } from './pages/Wheel';
+import { Baccarat } from './pages/Baccarat';
+import { Keno } from './pages/Keno';
+import { Transactions } from './pages/Transactions';
+import { Statistics } from './pages/Statistics';
 import { engine } from './services/engine';
 
 function ScrollToTop() {
@@ -88,23 +89,23 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<Lobby />} />
           <Route path="/crash" element={<Crash />} />
-          <Route path="/dice" element={<Dice />} />
-          <Route path="/roulette" element={<Roulette />} />
-          <Route path="/slots" element={<Slots />} />
-          <Route path="/mines" element={<Mines />} />
-          <Route path="/plinko" element={<Plinko />} />
-          <Route path="/blackjack" element={<Blackjack />} />
-          <Route path="/coinflip" element={<Coinflip />} />
-          <Route path="/fairness" element={<Fairness />} />
-          <Route path="/teenpatti" element={<TeenPatti />} />
-          <Route path="/andarbahar" element={<AndarBahar />} />
-          <Route path="/matka" element={<Matka />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/wheel" element={<Wheel />} />
-          <Route path="/baccarat" element={<Baccarat />} />
-          <Route path="/keno" element={<Keno />} />
-          <Route path="/transactions" element={<Transactions />} />
-          <Route path="/statistics" element={<Statistics />} />
+          <Route path="/dice" element={<Layout><Dice /></Layout>} />
+          <Route path="/roulette" element={<Layout><Roulette /></Layout>} />
+          <Route path="/slots" element={<Layout><Slots /></Layout>} />
+          <Route path="/mines" element={<Layout><Mines /></Layout>} />
+          <Route path="/plinko" element={<Layout><Plinko /></Layout>} />
+          <Route path="/blackjack" element={<Layout><Blackjack /></Layout>} />
+          <Route path="/coinflip" element={<Layout><Coinflip /></Layout>} />
+          <Route path="/fairness" element={<Layout><Fairness /></Layout>} />
+          <Route path="/teenpatti" element={<Layout><TeenPatti /></Layout>} />
+          <Route path="/andarbahar" element={<Layout><AndarBahar /></Layout>} />
+          <Route path="/matka" element={<Layout><Matka /></Layout>} />
+          <Route path="/admin" element={<Layout><Admin /></Layout>} />
+          <Route path="/wheel" element={<Layout><Wheel /></Layout>} />
+          <Route path="/baccarat" element={<Layout><Baccarat /></Layout>} />
+          <Route path="/keno" element={<Layout><Keno /></Layout>} />
+          <Route path="/transactions" element={<Layout><Transactions /></Layout>} />
+          <Route path="/statistics" element={<Layout><Statistics /></Layout>} />
           <Route path="*" element={<Lobby />} />
         </Routes>
       </HashRouter>

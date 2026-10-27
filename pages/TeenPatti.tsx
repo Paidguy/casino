@@ -1,356 +1,339 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Layout } from '../components/Layout';
-import { engine, formatINR } from '../services/engine';
-import { audio } from '../services/audio';
-import { GameType } from '../types';
-import { ShieldCheck, Eye } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { gameEngine } from '../services/engine';
+import { sound } from '../services/sound';
+import { ShieldCheck, Sparkles, Eye, EyeOff } from 'lucide-react';
 
-type TCard = { suit: '♠' | '♥' | '♦' | '♣'; label: string; rank: number };
+interface Card {
+  rank: number;
+  label: string;
+  suit: '♠' | '♥' | '♦' | '♣';
+}
 
-const evaluateTeenPattiHand = (cards: TCard[]): { name: string; score: number } => {
-  const sorted = [...cards].sort((a, b) => b.rank - a.rank);
-  const r0 = sorted[0].rank;
-  const r1 = sorted[1].rank;
-  const r2 = sorted[2].rank;
+const SUITS: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
+const RANKS = [
+  { rank: 2, label: '2' },
+  { rank: 3, label: '3' },
+  { rank: 4, label: '4' },
+  { rank: 5, label: '5' },
+  { rank: 6, label: '6' },
+  { rank: 7, label: '7' },
+  { rank: 8, label: '8' },
+  { rank: 9, label: '9' },
+  { rank: 10, label: '10' },
+  { rank: 11, label: 'J' },
+  { rank: 12, label: 'Q' },
+  { rank: 13, label: 'K' },
+  { rank: 14, label: 'A' },
+];
 
-  const isFlush = sorted[0].suit === sorted[1].suit && sorted[1].suit === sorted[2].suit;
+function evaluateHand(hand: Card[]): { score: number; name: string; bonusMult: number } {
+  const sorted = [...hand].sort((a, b) => b.rank - a.rank);
+  const r = sorted.map((c) => c.rank);
+  const isFlush = hand[0].suit === hand[1].suit && hand[1].suit === hand[2].suit;
   const isStraight =
-    (r0 - r1 === 1 && r1 - r2 === 1) || (r0 === 14 && r1 === 3 && r2 === 2);
+    (r[0] - r[1] === 1 && r[1] - r[2] === 1) ||
+    (r[0] === 14 && r[1] === 3 && r[2] === 2);
 
-  if (r0 === r1 && r1 === r2) {
-    return { name: 'Trail (Three of a Kind)', score: 60000 + r0 };
+  if (r[0] === r[1] && r[1] === r[2]) {
+    return { score: 600 + r[0], name: 'Three of a Kind (Trail)', bonusMult: 5.0 };
   }
   if (isFlush && isStraight) {
-    return { name: 'Pure Sequence (Pakki Rung)', score: 50000 + r0 };
+    return { score: 500 + r[0], name: 'Straight Flush (Pure Sequence)', bonusMult: 4.0 };
   }
   if (isStraight) {
-    return { name: 'Sequence (Rung)', score: 40000 + r0 };
+    return { score: 400 + r[0], name: 'Straight (Sequence)', bonusMult: 3.0 };
   }
   if (isFlush) {
-    return { name: 'Color (Flush)', score: 30000 + r0 * 100 + r1 * 10 + r2 };
+    return { score: 300 + r[0], name: 'Flush (Same Suit)', bonusMult: 2.2 };
   }
-  if (r0 === r1 || r1 === r2) {
-    const pairRank = r1;
-    const kicker = r0 === r1 ? r2 : r0;
-    return { name: 'Joot (Pair)', score: 20000 + pairRank * 20 + kicker };
+  if (r[0] === r[1] || r[1] === r[2]) {
+    const pairRank = r[1];
+    return { score: 200 + pairRank, name: 'Pair', bonusMult: 1.95 };
   }
-  return { name: `${sorted[0].label} High`, score: 10000 + r0 * 200 + r1 * 15 + r2 };
-};
+  return { score: 100 + r[0] + r[1] * 0.1, name: `${sorted[0].label} High Card`, bonusMult: 1.95 };
+}
 
-const CardView: React.FC<{ card?: TCard; blind?: boolean }> = ({ card, blind }) => {
-  if (!card || blind) {
+export const TeenPatti: React.FC = () => {
+  const [bet, setBet] = useState<number>(200);
+  const [playStyle, setPlayStyle] = useState<'SEEN' | 'BLIND'>('SEEN');
+  const [dealing, setDealing] = useState(false);
+  const [playerHand, setPlayerHand] = useState<Card[]>([
+    { rank: 14, label: 'A', suit: '♠' },
+    { rank: 13, label: 'K', suit: '♠' },
+    { rank: 12, label: 'Q', suit: '♠' },
+  ]);
+  const [dealerHand, setDealerHand] = useState<Card[]>([
+    { rank: 11, label: 'J', suit: '♥' },
+    { rank: 11, label: 'J', suit: '♦' },
+    { rank: 9, label: '9', suit: '♣' },
+  ]);
+  const [outcome, setOutcome] = useState<{
+    won: boolean;
+    payout: number;
+    mult: number;
+    playerTitle: string;
+    dealerTitle: string;
+  } | null>(null);
+
+  const dealHand = () => {
+    const state = gameEngine.getState();
+    if (dealing || bet <= 0 || bet > state.balance) return;
+
+    sound.card();
+    setDealing(true);
+    setOutcome(null);
+
+    const deck: Card[] = [];
+    SUITS.forEach((s) => {
+      RANKS.forEach((rk) => deck.push({ ...rk, suit: s }));
+    });
+
+    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+
+    const pHand = [deck[0], deck[1], deck[2]];
+    const dHand = [deck[3], deck[4], deck[5]];
+
+    setTimeout(() => {
+      setPlayerHand(pHand);
+      setDealerHand(dHand);
+
+      const pEval = evaluateHand(pHand);
+      const dEval = evaluateHand(dHand);
+      const won = pEval.score >= dEval.score;
+
+      let baseMult = playStyle === 'BLIND' ? 2.1 : 1.95;
+      const finalMult = won ? Math.max(baseMult, pEval.bonusMult) : 0;
+      const payout = Math.floor(bet * finalMult);
+
+      gameEngine.placeBet('Teen Patti Royal', bet, finalMult);
+      if (won) sound.win();
+      else sound.lose();
+
+      setOutcome({
+        won,
+        payout,
+        mult: finalMult,
+        playerTitle: pEval.name,
+        dealerTitle: dEval.name,
+      });
+      setDealing(false);
+    }, 550);
+  };
+
+  const renderCard = (c: Card, hidden = false) => {
+    const isRed = c.suit === '♥' || c.suit === '♦';
+    if (hidden) {
+      return (
+        <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-xl bg-gradient-to-br from-amber-600 via-amber-700 to-slate-900 border-2 border-amber-400/80 shadow-xl flex items-center justify-center">
+          <div className="w-12 h-16 rounded-lg border border-amber-300/40 flex items-center justify-center text-amber-300 font-black text-lg">
+            👑
+          </div>
+        </div>
+      );
+    }
     return (
-      <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-2xl bg-[#131c31] border-2 border-[#f59e0b]/50 flex flex-col items-center justify-center shadow-xl">
-        <span className="text-xs font-extrabold text-[#fbbf24]">TEEN PATTI</span>
-        {blind && <span className="text-[10px] text-[#10b981] font-mono mt-1">BLIND</span>}
+      <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-xl bg-white border-2 border-slate-200 shadow-xl p-2.5 flex flex-col justify-between select-none">
+        <div className={`text-sm sm:text-base font-black leading-none ${isRed ? 'text-rose-600' : 'text-slate-900'}`}>
+          <div>{c.label}</div>
+          <div>{c.suit}</div>
+        </div>
+        <div className={`text-2xl sm:text-3xl self-center ${isRed ? 'text-rose-600' : 'text-slate-900'}`}>
+          {c.suit}
+        </div>
+        <div className={`text-xs font-bold self-end rotate-180 ${isRed ? 'text-rose-600' : 'text-slate-900'}`}>
+          {c.label}
+        </div>
       </div>
     );
-  }
-  const isRed = card.suit === '♥' || card.suit === '♦';
+  };
+
   return (
-    <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-2xl bg-white border border-slate-200 shadow-xl flex flex-col justify-between p-2.5 select-none">
-      <div className={`text-sm sm:text-base font-extrabold font-mono leading-none ${isRed ? 'text-[#e11d48]' : 'text-[#070b14]'}`}>
-        {card.label}
-        <div>{card.suit}</div>
+    <div className="max-w-[1400px] mx-auto bg-[#111927] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col-reverse lg:flex-row min-h-[600px]">
+      {/* Left Control Panel */}
+      <div className="w-full lg:w-[340px] bg-[#0b101b] p-5 flex flex-col gap-4 border-t lg:border-t-0 lg:border-r border-white/10 shrink-0">
+        {/* Seen vs Blind Mode */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+            Select Hand Mode
+          </label>
+          <div className="grid grid-cols-2 gap-1.5 bg-[#151f30] p-1 rounded-xl border border-white/10">
+            <button
+              onClick={() => setPlayStyle('SEEN')}
+              className={`py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                playStyle === 'SEEN'
+                  ? 'bg-[#22304a] text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5 text-amber-400" /> Seen (1.95×)
+            </button>
+            <button
+              onClick={() => setPlayStyle('BLIND')}
+              className={`py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                playStyle === 'BLIND'
+                  ? 'bg-[#22304a] text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <EyeOff className="w-3.5 h-3.5 text-emerald-400" /> Blind (2.10×)
+            </button>
+          </div>
+        </div>
+
+        {/* Bet Amount */}
+        <div>
+          <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1.5">
+            <span>Bet Amount (₹)</span>
+            <span className="font-mono text-slate-300">₹{bet.toLocaleString('en-IN')}</span>
+          </div>
+          <div className="flex bg-[#151f30] rounded-xl border border-white/10 focus-within:border-amber-500/60 overflow-hidden">
+            <div className="flex items-center pl-3.5 text-amber-400 font-mono font-bold">₹</div>
+            <input
+              type="number"
+              value={bet}
+              disabled={dealing}
+              onChange={(e) => setBet(Math.max(10, Number(e.target.value)))}
+              className="w-full bg-transparent px-2.5 py-2.5 text-white font-mono font-bold text-sm focus:outline-none"
+            />
+            <div className="flex items-center gap-1 pr-1.5">
+              <button
+                onClick={() => setBet(Math.max(10, Math.floor(bet / 2)))}
+                className="px-2.5 py-1.5 bg-[#1e2b42] hover:bg-[#2a3b59] rounded-lg text-xs font-bold text-slate-300"
+              >
+                ½
+              </button>
+              <button
+                onClick={() => setBet(bet * 2)}
+                className="px-2.5 py-1.5 bg-[#1e2b42] hover:bg-[#2a3b59] rounded-lg text-xs font-bold text-slate-300"
+              >
+                2×
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 mt-2">
+            {[100, 500, 1000, 5000].map((amt) => (
+              <button
+                key={amt}
+                onClick={() => setBet(amt)}
+                className="py-1.5 bg-[#151f30] hover:bg-[#1e2b42] border border-white/5 rounded-lg text-[11px] font-mono font-bold text-slate-300"
+              >
+                ₹{amt >= 1000 ? `${amt / 1000}k` : amt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Bonus Payout Table */}
+        <div className="bg-[#151f30] rounded-xl border border-white/10 p-3.5 space-y-2">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" /> Winning Hand Multipliers
+          </div>
+          {[
+            { name: 'Three of a Kind (Trail)', mult: '5.00×' },
+            { name: 'Straight Flush', mult: '4.00×' },
+            { name: 'Straight (Sequence)', mult: '3.00×' },
+            { name: 'Flush (Same Suit)', mult: '2.20×' },
+            { name: 'Pair / High Card (Blind)', mult: '2.10×' },
+            { name: 'Pair / High Card (Seen)', mult: '1.95×' },
+          ].map((row) => (
+            <div key={row.name} className="flex justify-between text-xs">
+              <span className="text-slate-300">{row.name}</span>
+              <span className="font-mono font-bold text-emerald-400">{row.mult}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Primary CTA Button (Top on mobile via order-first, natural bottom on desktop via lg:order-none) */}
+        <div className="order-first lg:order-none">
+          <button
+            onClick={dealHand}
+            disabled={dealing}
+            className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 text-slate-950 font-black uppercase tracking-wider rounded-xl transition-all shadow-[0_8px_25px_rgba(245,158,11,0.3)] active:scale-[0.99] text-sm"
+          >
+            {dealing
+              ? 'Dealing 3 Cards...'
+              : `Deal ${playStyle === 'BLIND' ? 'Blind' : 'Seen'} Hand (₹${bet.toLocaleString('en-IN')})`}
+          </button>
+        </div>
+
+        <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Standard 52-Card Deck
+          </span>
+          <span className="font-mono text-slate-500">3-Card Poker</span>
+        </div>
       </div>
-      <div className={`text-3xl sm:text-4xl self-center ${isRed ? 'text-[#e11d48]' : 'text-[#070b14]'}`}>
-        {card.suit}
-      </div>
-      <div className={`text-sm sm:text-base font-extrabold font-mono leading-none self-end rotate-180 ${isRed ? 'text-[#e11d48]' : 'text-[#070b14]'}`}>
-        {card.label}
+
+      {/* Main Teen Patti Table Stage */}
+      <div className="flex-1 felt-surface p-6 sm:p-8 flex flex-col items-center justify-between relative">
+        {/* Dealer Hand */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              Dealer Hand
+            </span>
+            {outcome && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-black/40 text-slate-200 border border-white/10">
+                {outcome.dealerTitle}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3">
+            {dealerHand.map((card, i) => (
+              <div key={i}>{renderCard(card, dealing)}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* Center Result Banner */}
+        <div className="my-4 h-16 flex items-center justify-center">
+          {outcome ? (
+            <div
+              className={`px-6 py-3 rounded-2xl border-2 text-center shadow-2xl ${
+                outcome.won
+                  ? 'bg-emerald-950/90 border-emerald-400 text-emerald-300'
+                  : 'bg-rose-950/90 border-rose-500/70 text-rose-200'
+              }`}
+            >
+              <div className="text-xs font-bold uppercase tracking-widest">
+                {outcome.won ? `You Win (${outcome.mult.toFixed(2)}×)` : 'Dealer Wins Hand'}
+              </div>
+              <div className="text-xl font-mono font-black text-white">
+                {outcome.won
+                  ? `+₹${outcome.payout.toLocaleString('en-IN')}`
+                  : `-₹${bet.toLocaleString('en-IN')}`}
+              </div>
+            </div>
+          ) : (
+            <div className="px-5 py-2 rounded-full bg-black/35 border border-white/10 text-xs font-semibold text-slate-300">
+              Beat the Dealer's 3-card hand to win up to 5× your bet
+            </div>
+          )}
+        </div>
+
+        {/* Player Hand */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex gap-3">
+            {playerHand.map((card, i) => (
+              <div key={i}>{renderCard(card, dealing && playStyle === 'BLIND')}</div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+              Your Hand ({playStyle})
+            </span>
+            {outcome && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                {outcome.playerTitle}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-
-export default function TeenPatti() {
-  const [betAmount, setBetAmount] = useState<number>(500);
-  const [playStyle, setPlayStyle] = useState<'CHAAL' | 'BLIND'>('CHAAL');
-  const [dealing, setDealing] = useState(false);
-  const [cardsSeen, setCardsSeen] = useState(true);
-  const [playerHand, setPlayerHand] = useState<TCard[]>([]);
-  const [dealerHand, setDealerHand] = useState<TCard[]>([]);
-  const [result, setResult] = useState<{
-    pEval: string;
-    dEval: string;
-    won: boolean;
-    mult: number;
-    payout: number;
-  } | null>(null);
-
-  const dealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (dealTimerRef.current) clearTimeout(dealTimerRef.current);
-    };
-  }, []);
-
-  const deal = () => {
-    if (dealing) return;
-    const validStake = Math.max(10, betAmount || 100);
-    if (betAmount <= 0) setBetAmount(validStake);
-
-    if (engine.getSession().balance < validStake) {
-      engine.reloadBalance(Math.max(10000, validStake * 5));
-    }
-
-    setDealing(true);
-    setResult(null);
-    setCardsSeen(playStyle === 'CHAAL');
-    audio.playBet();
-
-    const suits: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
-    const labels = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-    const deck: TCard[] = [];
-    for (const s of suits) {
-      labels.forEach((l, idx) => {
-        deck.push({ suit: s, label: l, rank: idx + 2 });
-      });
-    }
-
-    const floats = engine.getNextFloats(12);
-    for (let i = 0; i < 6; i++) {
-      const f = floats[i] ?? Math.random();
-      const swapIdx = i + Math.floor(f * (deck.length - i));
-      [deck[i], deck[swapIdx]] = [deck[swapIdx], deck[i]];
-    }
-
-    const pCards = [deck[0], deck[2], deck[4]];
-    const dCards = [deck[1], deck[3], deck[5]];
-
-    const delay = engine.getSession().settings.instantBet ? 150 : 550;
-
-    if (dealTimerRef.current) clearTimeout(dealTimerRef.current);
-    dealTimerRef.current = setTimeout(() => {
-      engine.placeBet(
-        GameType.TEENPATTI,
-        validStake,
-        () => {
-          const pEval = evaluateTeenPattiHand(pCards);
-          const dEval = evaluateTeenPattiHand(dCards);
-          const won = pEval.score > dEval.score;
-          const isTie = pEval.score === dEval.score;
-
-          let mult = 0;
-          if (isTie) {
-            mult = 1.0;
-          } else if (won) {
-            if (pEval.score >= 60000) mult = 5.0;
-            else if (pEval.score >= 50000) mult = 3.5;
-            else mult = playStyle === 'BLIND' ? 2.1 : 1.95;
-          }
-
-          setPlayerHand(pCards);
-          setDealerHand(dCards);
-          setResult({
-            pEval: pEval.name,
-            dEval: dEval.name,
-            won,
-            mult,
-            payout: +(validStake * mult).toFixed(2),
-          });
-          setDealing(false);
-
-          if (won) audio.playWin();
-          else audio.playLoss();
-
-          return {
-            multiplier: mult,
-            outcome: `Teen Patti (${playStyle}): ${pEval.name} vs ${dEval.name}`,
-          };
-        },
-        ''
-      );
-    }, delay);
-  };
-
-  return (
-    <Layout>
-      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[580px]">
-          {/* Left Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
-            <div className="space-y-4">
-              {/* Primary Action CTA at Top for Mobile Thumb Reach */}
-              <button
-                type="button"
-                onClick={deal}
-                disabled={dealing}
-                className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
-              >
-                {dealing
-                  ? 'Dealing 3 Cards...'
-                  : `${playStyle === 'BLIND' ? 'Play Blind Show' : 'Deal Chaal Hand'} (${formatINR(betAmount, 0)})`}
-              </button>
-
-              {/* Seen Chaal vs Blind Mode */}
-              <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
-                <button
-                  type="button"
-                  onClick={() => setPlayStyle('CHAAL')}
-                  disabled={dealing}
-                  className={`py-2 rounded-lg text-xs font-bold ${
-                    playStyle === 'CHAAL' ? 'bg-[#f59e0b] text-[#070b14]' : 'text-[#94a3b8] hover:text-white'
-                  }`}
-                >
-                  Seen Chaal (1.95×)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPlayStyle('BLIND')}
-                  disabled={dealing}
-                  className={`py-2 rounded-lg text-xs font-bold ${
-                    playStyle === 'BLIND' ? 'bg-[#f59e0b] text-[#070b14]' : 'text-[#94a3b8] hover:text-white'
-                  }`}
-                >
-                  Blind Show (2.10×)
-                </button>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
-                  <span>Boot / Chaal Stake (INR)</span>
-                  <span className="font-mono text-[#fbbf24] font-bold tabular-nums">
-                    {formatINR(betAmount)}
-                  </span>
-                </div>
-                <div className="flex h-11 bg-[#070b14] border border-[#24324f] rounded-xl overflow-hidden">
-                  <input
-                    type="number"
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
-                    disabled={dealing}
-                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setBetAmount(Math.max(10, +(betAmount / 2).toFixed(0)))}
-                    disabled={dealing}
-                    className="px-3 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
-                  >
-                    ½
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBetAmount(+(betAmount * 2).toFixed(0))}
-                    disabled={dealing}
-                    className="px-3 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
-                  >
-                    2×
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5 mt-2">
-                  {[100, 500, 1000, 5000].map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => setBetAmount(chip)}
-                      disabled={dealing}
-                      className="py-1.5 bg-[#070b14] hover:bg-[#1d2a47] border border-[#24324f] rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
-                    >
-                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-3.5 bg-[#070b14] rounded-xl border border-[#24324f] text-xs text-[#94a3b8] space-y-1.5">
-                <div className="font-bold text-[#fbbf24] mb-1">Teen Patti Royal Bhav</div>
-                <div className="flex justify-between">
-                  <span>Seen Chaal Win</span>
-                  <span className="font-mono text-white">1.95×</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Blind Show Win</span>
-                  <span className="font-mono text-[#10b981] font-bold">2.10×</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Pakki Rung (Pure Sequence)</span>
-                  <span className="font-mono text-[#fbbf24] font-bold">3.50×</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Trail (Three of a Kind)</span>
-                  <span className="font-mono text-[#fbbf24] font-bold">5.00×</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
-              <span>97.5% RTP · Desi Cards</span>
-              <Link to="/fairness" className="hover:text-white flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Fairness
-              </Link>
-            </div>
-          </div>
-
-          {/* Right Teen Patti Royal Felt Stage */}
-          <div className="flex-1 flex flex-col justify-between items-center p-4 sm:p-10 felt-surface">
-            {/* Dealer Hand */}
-            <div className="flex flex-col items-center space-y-2.5">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white/80">Maharaja Dealer</span>
-                {result && (
-                  <span className="px-2.5 py-0.5 rounded-lg bg-[#070b14]/80 border border-white/20 text-xs font-bold text-white">
-                    {result.dEval}
-                  </span>
-                )}
-              </div>
-              <div className="flex gap-2 sm:gap-3">
-                {dealerHand.length > 0
-                  ? dealerHand.map((c, idx) => <CardView key={idx} card={c} />)
-                  : [0, 1, 2].map((i) => <CardView key={i} />)}
-              </div>
-            </div>
-
-            {/* Result Banner */}
-            <div className="my-3 min-h-[44px] flex items-center justify-center">
-              {result && (
-                <div
-                  className={`px-4 sm:px-6 py-2 rounded-xl font-extrabold text-xs sm:text-sm border shadow-xl text-center ${
-                    result.won
-                      ? 'bg-[#070b14]/90 border-[#10b981] text-[#10b981]'
-                      : 'bg-[#070b14]/90 border-[#f43f5e] text-[#f43f5e]'
-                  }`}
-                >
-                  {result.won
-                    ? `YOU WIN WITH ${result.pEval.toUpperCase()}! (+${formatINR(result.payout)})`
-                    : `Dealer Wins with ${result.dEval}`}
-                </div>
-              )}
-            </div>
-
-            {/* Player Hand */}
-            <div className="flex flex-col items-center space-y-2.5">
-              <div className="flex gap-2 sm:gap-3">
-                {playerHand.length > 0
-                  ? playerHand.map((c, idx) => (
-                      <CardView key={idx} card={c} blind={!cardsSeen && dealing} />
-                    ))
-                  : [0, 1, 2].map((i) => <CardView key={i} />)}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white">Your Patti Hand</span>
-                {result && (
-                  <span className="px-2.5 py-0.5 rounded-lg bg-[#fbbf24] text-xs font-extrabold text-[#070b14]">
-                    {result.pEval}
-                  </span>
-                )}
-                {!cardsSeen && playerHand.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setCardsSeen(true)}
-                    className="px-2.5 py-1 rounded-lg bg-[#070b14] text-[#fbbf24] text-xs font-bold flex items-center gap-1"
-                  >
-                    <Eye className="w-3.5 h-3.5" /> See Cards
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Layout>
-  );
-}

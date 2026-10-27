@@ -187,12 +187,12 @@ export const KENO_PAYOUTS: Record<'LOW' | 'MEDIUM' | 'HIGH', Record<number, numb
 };
 
 const BOTS: LeaderboardEntry[] = [
-  { username: 'Vikram_MumbaiVIP', wagered: 1842500, profit: 464200, maxMultiplier: 412.5, vipTier: 'Kohinoor', city: 'Mumbai' },
-  { username: 'Raja_SattaKing', wagered: 1319000, profit: 328900, maxMultiplier: 1000.0, vipTier: 'Maharaja', city: 'Surat' },
-  { username: 'Aarav_DelhiHigh', wagered: 894200, profit: 194000, maxMultiplier: 150.0, vipTier: 'Maharaja', city: 'New Delhi' },
-  { username: 'KalyanBoss_07', wagered: 528400, profit: 114200, maxMultiplier: 95.0, vipTier: 'Royal', city: 'Kalyan' },
-  { username: 'Kabir_PuneBookie', wagered: 284500, profit: 54200, maxMultiplier: 88.4, vipTier: 'Gold', city: 'Pune' },
-  { username: 'Nawab_Lucknow', wagered: 142100, profit: 25300, maxMultiplier: 41.0, vipTier: 'Silver', city: 'Lucknow' },
+  { username: 'Vikram_Mumbai', wagered: 1842500, profit: 464200, maxMultiplier: 412.5, vipTier: 'Diamond', city: 'Mumbai' },
+  { username: 'Rohan_Bengaluru', wagered: 1319000, profit: 328900, maxMultiplier: 1000.0, vipTier: 'Platinum', city: 'Bengaluru' },
+  { username: 'Aarav_Delhi', wagered: 894200, profit: 194000, maxMultiplier: 150.0, vipTier: 'Platinum', city: 'New Delhi' },
+  { username: 'Karan_Hyderabad', wagered: 528400, profit: 114200, maxMultiplier: 95.0, vipTier: 'Gold', city: 'Hyderabad' },
+  { username: 'Kabir_Pune', wagered: 284500, profit: 54200, maxMultiplier: 88.4, vipTier: 'Gold', city: 'Pune' },
+  { username: 'Aditya_Jaipur', wagered: 142100, profit: 25300, maxMultiplier: 41.0, vipTier: 'Silver', city: 'Jaipur' },
 ];
 
 export class SimulationEngine {
@@ -239,7 +239,7 @@ export class SimulationEngine {
 
     return {
       id: randomHex(8),
-      username: 'Punter_' + Math.floor(1000 + Math.random() * 9000),
+      username: 'Player_' + Math.floor(1000 + Math.random() * 9000),
       balance: DAILY_ALLOWANCE,
       vaultBalance: 0,
       rakebackBalance: 0,
@@ -260,7 +260,7 @@ export class SimulationEngine {
           amount: DAILY_ALLOWANCE,
           timestamp: Date.now(),
           status: 'COMPLETED',
-          method: 'Instant UPI Welcome Bonus',
+          method: 'Welcome Bonus Credit',
           utr: generateUTR(),
         },
       ],
@@ -358,14 +358,14 @@ export class SimulationEngine {
     progress: number;
     rakebackRate: number;
   } {
-    if (wagered >= 1000000) return { name: 'Kohinoor', next: 'Max Tier', progress: 100, rakebackRate: 0.02 };
+    if (wagered >= 1000000) return { name: 'Diamond', next: 'Max Tier', progress: 100, rakebackRate: 0.02 };
     if (wagered >= 300000)
-      return { name: 'Maharaja', next: 'Kohinoor', progress: ((wagered - 300000) / 700000) * 100, rakebackRate: 0.015 };
+      return { name: 'Platinum', next: 'Diamond', progress: ((wagered - 300000) / 700000) * 100, rakebackRate: 0.015 };
     if (wagered >= 100000)
-      return { name: 'Royal', next: 'Maharaja', progress: ((wagered - 100000) / 200000) * 100, rakebackRate: 0.012 };
+      return { name: 'Gold', next: 'Platinum', progress: ((wagered - 100000) / 200000) * 100, rakebackRate: 0.012 };
     if (wagered >= 25000)
-      return { name: 'Gold', next: 'Royal', progress: ((wagered - 25000) / 75000) * 100, rakebackRate: 0.01 };
-    return { name: 'Silver', next: 'Gold', progress: (wagered / 25000) * 100, rakebackRate: 0.0075 };
+      return { name: 'Silver', next: 'Gold', progress: ((wagered - 25000) / 75000) * 100, rakebackRate: 0.01 };
+    return { name: 'Bronze', next: 'Silver', progress: (wagered / 25000) * 100, rakebackRate: 0.0075 };
   }
 
   public rotateSeedPair(newClientSeed?: string): { revealedServerSeed: string; newServerSeedHash: string } {
@@ -507,17 +507,33 @@ export class SimulationEngine {
   }
 
   public placeBet(
-    game: GameType,
+    game: GameType | string,
     amount: number,
     multiplierOrResolver: number | ((r: number) => { multiplier: number; outcome: string }),
     outcomeStr?: string
   ): BetResult {
+    const nameMap: Record<string, GameType> = {
+      'Gold Mines': GameType.MINES,
+      'Plinko': GameType.PLINKO,
+      'European Roulette': GameType.ROULETTE,
+      'Kalyan Matka': GameType.MATKA,
+      'Teen Patti Royal': GameType.TEENPATTI,
+      'Andar Bahar Live': GameType.ANDARBAHAR,
+      'Blackjack 21': GameType.BLACKJACK,
+      'Royal Baccarat': GameType.BACCARAT,
+      'Maharaja Gold Slots': GameType.SLOTS,
+      'Fortune Wheel': GameType.WHEEL,
+      'Keno 40': GameType.KENO,
+      'Classic Dice': GameType.DICE,
+      'Coin Flip': GameType.COINFLIP,
+    };
+    const resolvedGame: GameType = nameMap[game as string] || (game as GameType);
     const currentSession = this.session;
 
     if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount) || amount <= 0) {
       return {
         id: 'ERR',
-        gameType: game,
+        gameType: resolvedGame,
         betAmount: 0,
         payoutMultiplier: 0,
         payoutAmount: 0,
@@ -534,7 +550,7 @@ export class SimulationEngine {
     if (amount > currentSession.balance) {
       return {
         id: 'ERR_BAL',
-        gameType: game,
+        gameType: resolvedGame,
         betAmount: 0,
         payoutMultiplier: 0,
         payoutAmount: 0,
@@ -559,7 +575,7 @@ export class SimulationEngine {
         outcome = res.outcome;
       } else {
         multiplier = multiplierOrResolver;
-        outcome = outcomeStr || '';
+        outcome = outcomeStr || (multiplier > 0 ? `Won ${multiplier}×` : 'Lost');
       }
       if (isNaN(multiplier) || !isFinite(multiplier) || multiplier < 0) {
         multiplier = 0;
@@ -571,7 +587,49 @@ export class SimulationEngine {
     }
 
     this.session.balance = +(this.session.balance - amount).toFixed(2);
-    return this.settleDeductedBet(game, amount, multiplier, outcome, r);
+    return this.settleDeductedBet(resolvedGame, amount, multiplier, outcome, r);
+  }
+
+  public getState() {
+    const s = this.session;
+    return {
+      ...s,
+      vipPoints: s.totalWagered,
+      stats: {
+        totalWagered: s.totalWagered,
+        netProfit: s.totalPayout - s.totalWagered,
+        highestMultiplier: s.maxMultiplier,
+      },
+      seeds: {
+        serverSeedHash: s.serverSeedHash,
+        clientSeed: s.clientSeed,
+        nonce: s.nonce,
+      },
+      history: (s.history || []).map((h) => ({
+        ...h,
+        game: h.gameType,
+        wager: h.betAmount,
+        multiplier: h.payoutMultiplier,
+        payout: h.payoutAmount,
+      })),
+    };
+  }
+
+  public getProvablyFairRNG(): () => number {
+    let offset = 0;
+    return () => {
+      const val = this.peekNextRandom(offset);
+      offset++;
+      return val;
+    };
+  }
+
+  public rotateSeeds(newClientSeed?: string) {
+    return this.rotateSeedPair(newClientSeed);
+  }
+
+  public resetAccount() {
+    this.resetBalance();
   }
 
   public deposit(amount: number, method = 'UPI Instant (GPay / PhonePe)', utr?: string): string {
@@ -583,7 +641,7 @@ export class SimulationEngine {
   }
 
   public reloadBalance(amount = 25000): string {
-    return this.deposit(amount, 'Instant Khata Top-Up');
+    return this.deposit(amount, 'Instant Wallet Top-Up');
   }
 
   public withdraw(amount: number, method = 'IMPS / UPI Instant Payout'): { ok: boolean; utr: string } {
@@ -598,7 +656,7 @@ export class SimulationEngine {
     if (amount <= 0 || isNaN(amount) || amount > this.session.balance) return false;
     this.session.balance = +(this.session.balance - amount).toFixed(2);
     this.session.vaultBalance = +(this.session.vaultBalance + amount).toFixed(2);
-    this.logTransaction('VAULT_DEPOSIT', amount, 'Tijori Safe Lock');
+    this.logTransaction('VAULT_DEPOSIT', amount, 'Vault Deposit');
     return true;
   }
 
@@ -606,7 +664,7 @@ export class SimulationEngine {
     if (amount <= 0 || isNaN(amount) || amount > this.session.vaultBalance) return false;
     this.session.vaultBalance = +(this.session.vaultBalance - amount).toFixed(2);
     this.session.balance = +(this.session.balance + amount).toFixed(2);
-    this.logTransaction('VAULT_WITHDRAW', amount, 'Tijori Safe Unlock');
+    this.logTransaction('VAULT_WITHDRAW', amount, 'Vault Withdrawal');
     return true;
   }
 
@@ -620,7 +678,7 @@ export class SimulationEngine {
     if (amount > 0) {
       this.session.balance = +(this.session.balance + amount).toFixed(2);
       this.session.rakebackBalance = 0;
-      this.logTransaction('RAKEBACK', amount, 'VIP Chhoot / Rebate Claim');
+      this.logTransaction('RAKEBACK', amount, 'VIP Rakeback Claim');
     }
     return amount;
   }
@@ -700,7 +758,7 @@ export class SimulationEngine {
 
   public resetBalance() {
     this.session.balance = DAILY_ALLOWANCE;
-    this.logTransaction('BAILOUT', DAILY_ALLOWANCE, 'Bookie Credit Refill');
+    this.logTransaction('BAILOUT', DAILY_ALLOWANCE, 'Demo Balance Refill');
     this.saveSession(this.session);
   }
 
@@ -722,139 +780,7 @@ export class SimulationEngine {
     this.session.settings = { ...this.session.settings, ...settings };
     this.saveSession(this.session);
   }
-
-  public calculateDiceResult(r: number, target: number, mode: 'over' | 'under') {
-    let finalR = r;
-    if (this.session.settings.isRigged) {
-      if (mode === 'over') finalR = Math.min(r, target / 100 - 0.01);
-      else finalR = Math.max(r, target / 100 + 0.01);
-      finalR = Math.max(0, Math.min(0.9999, finalR));
-    }
-    const roll = +(finalR * 100).toFixed(2);
-    const won = mode === 'over' ? roll > target : roll < target;
-    return { roll, won };
-  }
-
-  public calculateRouletteResult(r: number) {
-    return Math.floor(r * 37);
-  }
-
-  public calculateSlotsResult(r: number) {
-    const symbols = ['💎', '7️⃣', '👑', '🔔', '🍉', '🍒'];
-    const floats = this.getNextFloats(15);
-    const grid: string[][] = [];
-    for (let col = 0; col < 5; col++) {
-      const reel: string[] = [];
-      for (let row = 0; row < 3; row++) {
-        const f = floats[col * 3 + row] ?? Math.random();
-        reel.push(symbols[Math.floor(((f + r * (col + 1)) % 1) * symbols.length)]);
-      }
-      grid.push(reel);
-    }
-
-    const paylines = [
-      [1, 1, 1, 1, 1],
-      [0, 0, 0, 0, 0],
-      [2, 2, 2, 2, 2],
-      [0, 1, 2, 1, 0],
-      [2, 1, 0, 1, 2],
-    ];
-
-    const baseValues: Record<string, number> = {
-      '💎': 25,
-      '7️⃣': 15,
-      '👑': 10,
-      '🔔': 6,
-      '🍉': 4,
-      '🍒': 2.5,
-    };
-
-    let totalMultiplier = 0;
-    const winningLines: number[] = [];
-
-    paylines.forEach((line, lineIdx) => {
-      const lineSyms = line.map((row, col) => grid[col][row]);
-      const first = lineSyms[0];
-      let matchCount = 1;
-      for (let i = 1; i < 5; i++) {
-        if (lineSyms[i] === first || lineSyms[i] === '💎') {
-          matchCount++;
-        } else {
-          break;
-        }
-      }
-      if (matchCount >= 3) {
-        const base = baseValues[first] || 2;
-        const lineMult = matchCount === 5 ? base * 4 : matchCount === 4 ? base * 1.5 : base * 0.5;
-        totalMultiplier += lineMult;
-        winningLines.push(lineIdx);
-      }
-    });
-
-    const centerRow = [grid[0][1], grid[1][1], grid[2][1]];
-    return {
-      symbols: centerRow,
-      grid,
-      winningLines,
-      multiplier: +totalMultiplier.toFixed(2),
-    };
-  }
-
-  public generateMinesGrid(r: number, minesCount: number): boolean[] {
-    const grid = Array(25).fill(false);
-    const indices = Array.from({ length: 25 }, (_, i) => i);
-    const floats = this.getNextFloats(25);
-    for (let i = 24; i > 0; i--) {
-      const f = floats[i] ?? Math.random();
-      const j = Math.floor(((f + r * (i + 1)) % 1) * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
-    }
-    for (let m = 0; m < Math.min(24, Math.max(1, minesCount)); m++) {
-      grid[indices[m]] = true;
-    }
-    return grid;
-  }
-
-  public getMinesMultiplier(minesCount: number, revealedSafeCount: number): number {
-    if (revealedSafeCount <= 0) return 1.0;
-    let prob = 1;
-    for (let i = 0; i < revealedSafeCount; i++) {
-      prob *= (25 - minesCount - i) / (25 - i);
-    }
-    const houseEdge = this.session.settings.houseEdgeOverrides[GameType.MINES] ?? 0.01;
-    return +((1 - houseEdge) / prob).toFixed(2);
-  }
-
-  public calculatePlinkoResult(
-    r: number,
-    rows: number = 16,
-    risk: 'LOW' | 'MEDIUM' | 'HIGH' = 'HIGH'
-  ) {
-    const floats = this.getNextFloats(rows);
-    const path: number[] = [];
-    for (let i = 0; i < rows; i++) {
-      const f = ((floats[i] ?? Math.random()) + r * (i + 1)) % 1;
-      const goRight = this.session.settings.isRigged
-        ? i % 2 === 0
-          ? 1
-          : 0
-        : f >= 0.5
-        ? 1
-        : 0;
-      path.push(goRight);
-    }
-    const finalBin = path.reduce((a, b) => a + b, 0);
-    const table = PLINKO_MULTIPLIERS[risk]?.[rows] || PLINKO_MULTIPLIERS.HIGH[16];
-    const multiplier = table[finalBin] ?? 1;
-    return { path, finalBin, multiplier };
-  }
-
-  public calculateTeenPatti(r: number) {
-    const won = r > 0.5125;
-    const hands = ['Trail (Three of a Kind)', 'Pure Sequence', 'Sequence', 'Color (Flush)', 'Pair', 'High Card'];
-    const hand = hands[Math.floor((r * 17) % hands.length)];
-    return { won, hand };
-  }
 }
 
 export const engine = new SimulationEngine();
+export const gameEngine = engine;

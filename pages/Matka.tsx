@@ -1,450 +1,423 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Layout } from '../components/Layout';
-import { engine, formatINR, LIVE_BAZAR_MARKETS } from '../services/engine';
-import { audio } from '../services/audio';
-import { GameType } from '../types';
-import { ShieldCheck, Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { gameEngine } from '../services/engine';
+import { sound } from '../services/sound';
+import { ShieldCheck, Sparkles, History } from 'lucide-react';
 
-export default function Matka() {
-  const [selectedBazar, setSelectedBazar] = useState(LIVE_BAZAR_MARKETS[0].name);
-  const [betAmount, setBetAmount] = useState<number>(500);
-  const [betMode, setBetMode] = useState<'ANK' | 'JODI' | 'PANNA' | 'EVEN_ODD'>('ANK');
-  const [selectedAnk, setSelectedAnk] = useState<number>(7);
-  const [selectedJodi, setSelectedJodi] = useState<string>('37');
-  const [selectedPannaType, setSelectedPannaType] = useState<'SINGLE' | 'DOUBLE' | 'TRIPLE'>('SINGLE');
+type MatkaMode = 'SINGLE' | 'DOUBLE' | 'COMBO' | 'PARITY';
+
+interface DrawResult {
+  cards: [number, number, number];
+  single: number;
+  closeSingle: number;
+  doubleDigit: string;
+  panna: string;
+}
+
+const PANNA_PRESETS = [
+  '128', '137', '146', '236', '245', '290', '380', '470', '489', '560',
+  '119', '155', '227', '335', '344', '399', '588', '669', '777', '000',
+];
+
+export const Matka: React.FC = () => {
+  const [bet, setBet] = useState<number>(100);
+  const [mode, setMode] = useState<MatkaMode>('SINGLE');
+  const [selectedSingle, setSelectedSingle] = useState<number>(7);
+  const [selectedDouble, setSelectedDouble] = useState<string>('47');
+  const [selectedCombo, setSelectedCombo] = useState<string>('128');
   const [selectedParity, setSelectedParity] = useState<'EVEN' | 'ODD'>('ODD');
-  const [isDrawing, setIsDrawing] = useState(false);
-
-  const drawTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (drawTimerRef.current) clearTimeout(drawTimerRef.current);
-    };
-  }, []);
-
-  const [result, setResult] = useState<{
-    cards: string;
-    closeCards: string;
-    single: number;
-    jodi: string;
-    pannaType: string;
-    won: boolean;
-    payout: number;
-  } | null>(null);
-
-  const [history, setHistory] = useState<
-    { bazar: string; openPanna: string; jodi: string; closePanna: string }[]
-  >([
-    { bazar: 'KALYAN', openPanna: '148', jodi: '37', closePanna: '250' },
-    { bazar: 'WORLI', openPanna: '369', jodi: '81', closePanna: '146' },
-    { bazar: 'MILAN', openPanna: '279', jodi: '84', closePanna: '130' },
-    { bazar: 'RAJDHANI', openPanna: '458', jodi: '72', closePanna: '246' },
+  const [drawing, setDrawing] = useState<boolean>(false);
+  const [lastDraw, setLastDraw] = useState<DrawResult>({
+    cards: [2, 4, 8],
+    single: 4,
+    closeSingle: 7,
+    doubleDigit: '47',
+    panna: '248',
+  });
+  const [winAmount, setWinAmount] = useState<number | null>(null);
+  const [history, setHistory] = useState<DrawResult[]>([
+    { cards: [2, 4, 8], single: 4, closeSingle: 7, doubleDigit: '47', panna: '248' },
+    { cards: [1, 3, 5], single: 9, closeSingle: 2, doubleDigit: '92', panna: '135' },
+    { cards: [7, 7, 7], single: 1, closeSingle: 8, doubleDigit: '18', panna: '777' },
+    { cards: [2, 5, 9], single: 6, closeSingle: 0, doubleDigit: '60', panna: '259' },
   ]);
 
-  const getActiveMultiplier = () => {
-    if (betMode === 'ANK') return 9.5;
-    if (betMode === 'JODI') return 95.0;
-    if (betMode === 'PANNA') {
-      return selectedPannaType === 'TRIPLE' ? 600 : selectedPannaType === 'DOUBLE' ? 300 : 150;
-    }
-    return 1.95;
+  const getMultiplier = () => {
+    if (mode === 'SINGLE') return 9.5;
+    if (mode === 'DOUBLE') return 95;
+    if (mode === 'PARITY') return 1.95;
+    if (selectedCombo === '777' || selectedCombo === '000') return 600;
+    return 150;
   };
 
-  const play = () => {
-    if (isDrawing) return;
-    const validStake = Math.max(10, betAmount || 100);
-    if (betAmount <= 0) setBetAmount(validStake);
+  const runDraw = () => {
+    const state = gameEngine.getState();
+    if (drawing || bet <= 0 || bet > state.balance) return;
 
-    if (engine.getSession().balance < validStake) {
-      engine.reloadBalance(Math.max(10000, validStake * 5));
-    }
+    sound.click();
+    setDrawing(true);
+    setWinAmount(null);
 
-    setIsDrawing(true);
-    setResult(null);
-    audio.playBet();
+    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
 
-    const delay = engine.getSession().settings.instantBet ? 150 : 600;
+    setTimeout(() => {
+      const c1 = Math.floor(rng() * 10);
+      const c2 = Math.floor(rng() * 10);
+      const c3 = Math.floor(rng() * 10);
+      const sorted = [c1, c2, c3].sort((a, b) => {
+        const va = a === 0 ? 10 : a;
+        const vb = b === 0 ? 10 : b;
+        return va - vb;
+      }) as [number, number, number];
 
-    if (drawTimerRef.current) clearTimeout(drawTimerRef.current);
-    drawTimerRef.current = setTimeout(() => {
-      engine.placeBet(
-        GameType.MATKA,
-        validStake,
-        (r) => {
-          const res = engine.getSattaMatkaResult(r);
-          let mult = 0;
+      const single = (c1 + c2 + c3) % 10;
+      const closeSingle = Math.floor(rng() * 10);
+      const doubleDigit = `${single}${closeSingle}`;
+      const panna = sorted.join('');
 
-          if (betMode === 'ANK') {
-            if (res.single === selectedAnk) mult = 9.5;
-          } else if (betMode === 'JODI') {
-            const cleanJodi = (selectedJodi || '00').padStart(2, '0');
-            if (res.jodi === cleanJodi) mult = 95.0;
-          } else if (betMode === 'PANNA') {
-            if (res.pannaType === selectedPannaType) {
-              mult = selectedPannaType === 'TRIPLE' ? 600 : selectedPannaType === 'DOUBLE' ? 300 : 150;
-            }
-          } else {
-            const isEven = res.single % 2 === 0;
-            if ((selectedParity === 'EVEN' && isEven) || (selectedParity === 'ODD' && !isEven)) {
-              mult = 1.95;
-            }
-          }
+      const result: DrawResult = {
+        cards: sorted,
+        single,
+        closeSingle,
+        doubleDigit,
+        panna,
+      };
 
-          const won = mult > 0;
-          setResult({
-            cards: res.cards,
-            closeCards: res.closeCards,
-            single: res.single,
-            jodi: res.jodi,
-            pannaType: res.pannaType,
-            won,
-            payout: +(validStake * mult).toFixed(2),
-          });
-          setHistory((prev) =>
-            [
-              {
-                bazar: selectedBazar.split(' ')[0],
-                openPanna: res.cards,
-                jodi: res.jodi,
-                closePanna: res.closeCards,
-              },
-              ...prev,
-            ].slice(0, 8)
-          );
-          setIsDrawing(false);
+      setLastDraw(result);
+      setHistory((prev) => [result, ...prev.slice(0, 7)]);
 
-          if (won) audio.playWin();
-          else audio.playLoss();
+      let won = false;
+      let mult = 0;
 
-          return {
-            multiplier: mult,
-            outcome: `${selectedBazar}: ${res.cards}-${res.jodi}-${res.closeCards}`,
-          };
-        },
-        ''
-      );
-    }, delay);
+      if (mode === 'SINGLE' && single === selectedSingle) {
+        won = true;
+        mult = 9.5;
+      } else if (mode === 'DOUBLE' && doubleDigit === selectedDouble.padStart(2, '0')) {
+        won = true;
+        mult = 95;
+      } else if (mode === 'COMBO' && panna === selectedCombo) {
+        won = true;
+        mult = selectedCombo === '777' || selectedCombo === '000' ? 600 : 150;
+      } else if (mode === 'PARITY') {
+        const isEven = single % 2 === 0;
+        if ((selectedParity === 'EVEN' && isEven) || (selectedParity === 'ODD' && !isEven)) {
+          won = true;
+          mult = 1.95;
+        }
+      }
+
+      gameEngine.placeBet('Kalyan Matka', bet, won ? mult : 0);
+
+      if (won) {
+        sound.win();
+        setWinAmount(Math.floor(bet * mult));
+      } else {
+        sound.lose();
+        setWinAmount(0);
+      }
+
+      setDrawing(false);
+    }, 650);
   };
 
   return (
-    <Layout>
-      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[580px]">
-          {/* Left Bookie Matka Slip Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
-            <div className="space-y-4">
-              {/* Primary Action Button at Top for Mobile Thumb Reach */}
+    <div className="max-w-[1400px] mx-auto bg-[#111927] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col-reverse lg:flex-row min-h-[600px]">
+      {/* Left Control Panel */}
+      <div className="w-full lg:w-[340px] bg-[#0b101b] p-5 flex flex-col gap-4 border-t lg:border-t-0 lg:border-r border-white/10 shrink-0">
+        {/* Game Mode Selector */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+            Select Draw Mode
+          </label>
+          <div className="grid grid-cols-2 gap-1.5 bg-[#151f30] p-1.5 rounded-xl border border-white/10">
+            {[
+              { id: 'SINGLE', label: 'Single Digit', sub: '9.5× Payout' },
+              { id: 'DOUBLE', label: 'Double Digit', sub: '95× Payout' },
+              { id: 'COMBO', label: '3-Card Combo', sub: '150×–600×' },
+              { id: 'PARITY', label: 'Even / Odd', sub: '1.95× Payout' },
+            ].map((m) => (
               <button
-                type="button"
-                onClick={play}
-                disabled={isDrawing}
-                className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
+                key={m.id}
+                onClick={() => setMode(m.id as MatkaMode)}
+                className={`p-2 rounded-lg text-left transition-all ${
+                  mode === m.id
+                    ? 'bg-[#22304a] text-white border border-amber-500/40 shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
-                {isDrawing ? 'Drawing Matka Pot...' : `Lock Matka Parchi (${formatINR(betAmount, 0)})`}
+                <div className="text-xs font-bold">{m.label}</div>
+                <div className="text-[10px] font-mono text-amber-400">{m.sub}</div>
               </button>
+            ))}
+          </div>
+        </div>
 
-              {/* Bazar Market Selector */}
-              <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">
-                  Select Official Matka Bazar
-                </label>
-                <select
-                  value={selectedBazar}
-                  onChange={(e) => setSelectedBazar(e.target.value)}
-                  disabled={isDrawing}
-                  className="w-full h-11 bg-[#070b14] border border-[#24324f] rounded-xl px-3 text-xs font-bold text-[#fbbf24] outline-none"
+        {/* Bet Amount */}
+        <div>
+          <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1.5">
+            <span>Bet Amount (₹)</span>
+            <span className="font-mono text-emerald-400">
+              Potential Win: ₹{Math.floor(bet * getMultiplier()).toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div className="flex bg-[#151f30] rounded-xl border border-white/10 focus-within:border-amber-500/60 overflow-hidden">
+            <div className="flex items-center pl-3.5 text-amber-400 font-mono font-bold">₹</div>
+            <input
+              type="number"
+              value={bet}
+              disabled={drawing}
+              onChange={(e) => setBet(Math.max(10, Number(e.target.value)))}
+              className="w-full bg-transparent px-2.5 py-2.5 text-white font-mono font-bold text-sm focus:outline-none"
+            />
+            <div className="flex items-center gap-1 pr-1.5">
+              <button
+                onClick={() => setBet(Math.max(10, Math.floor(bet / 2)))}
+                className="px-2.5 py-1.5 bg-[#1e2b42] hover:bg-[#2a3b59] rounded-lg text-xs font-bold text-slate-300"
+              >
+                ½
+              </button>
+              <button
+                onClick={() => setBet(bet * 2)}
+                className="px-2.5 py-1.5 bg-[#1e2b42] hover:bg-[#2a3b59] rounded-lg text-xs font-bold text-slate-300"
+              >
+                2×
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 mt-2">
+            {[100, 500, 1000, 5000].map((amt) => (
+              <button
+                key={amt}
+                onClick={() => setBet(amt)}
+                className="py-1.5 bg-[#151f30] hover:bg-[#1e2b42] border border-white/5 rounded-lg text-[11px] font-mono font-bold text-slate-300"
+              >
+                ₹{amt >= 1000 ? `${amt / 1000}k` : amt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Active Pick Summary */}
+        <div className="bg-[#151f30] p-3.5 rounded-xl border border-white/10 flex justify-between items-center">
+          <div>
+            <div className="text-[11px] text-slate-400 font-semibold">Selected Pick</div>
+            <div className="text-lg font-mono font-black text-amber-400">
+              {mode === 'SINGLE' && `Digit #${selectedSingle}`}
+              {mode === 'DOUBLE' && `Pair #${selectedDouble}`}
+              {mode === 'COMBO' && `Combo #${selectedCombo}`}
+              {mode === 'PARITY' && `${selectedParity} Digit`}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-[11px] text-slate-400 font-semibold">Multiplier</div>
+            <div className="text-lg font-mono font-black text-white">{getMultiplier()}×</div>
+          </div>
+        </div>
+
+        {/* Primary CTA Button (Top on mobile via order-first, natural bottom on desktop via lg:order-none) */}
+        <div className="order-first lg:order-none">
+          <button
+            onClick={runDraw}
+            disabled={drawing}
+            className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 text-slate-950 font-black uppercase tracking-wider rounded-xl transition-all shadow-[0_8px_25px_rgba(245,158,11,0.3)] active:scale-[0.99] text-sm"
+          >
+            {drawing ? 'Drawing 3 Cards...' : `Draw Now (₹${bet.toLocaleString('en-IN')})`}
+          </button>
+        </div>
+
+        <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Instant 3-Card Number Draw
+          </span>
+          <span className="font-mono text-slate-500">Kalyan Format</span>
+        </div>
+      </div>
+
+      {/* Main Matka Stage */}
+      <div className="flex-1 royal-surface p-4 sm:p-6 lg:p-8 flex flex-col justify-between gap-6">
+        {/* Top Live Draw Pot Showcase */}
+        <div className="bg-[#0b111e]/90 border border-white/10 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            {/* 3 Drawn Cards */}
+            <div className="flex gap-2">
+              {lastDraw.cards.map((c, idx) => (
+                <div
+                  key={idx}
+                  className={`w-14 h-20 sm:w-16 sm:h-24 rounded-xl bg-gradient-to-b from-white to-slate-200 border-2 border-amber-400 shadow-lg flex flex-col items-center justify-between p-2 text-slate-900 ${
+                    drawing ? 'animate-pulse scale-95' : ''
+                  }`}
                 >
-                  {LIVE_BAZAR_MARKETS.map((m) => (
-                    <option key={m.id} value={m.name}>
-                      {m.name} ({m.openTime})
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <span className="text-[10px] font-bold text-slate-500 self-start">C{idx + 1}</span>
+                  <span className="text-2xl sm:text-3xl font-mono font-black">{c}</span>
+                  <span className="text-[10px] font-bold text-amber-600 self-end">♠</span>
+                </div>
+              ))}
+            </div>
 
-              {/* 4 Bet Mode Tabs */}
-              <div className="grid grid-cols-2 gap-1.5 bg-[#070b14] p-1.5 rounded-xl border border-[#24324f]">
-                {[
-                  { id: 'ANK', label: 'Single Ank (9.5×)' },
-                  { id: 'JODI', label: 'Jodi (95×)' },
-                  { id: 'PANNA', label: 'Panna (150×+)' },
-                  { id: 'EVEN_ODD', label: 'Even/Odd (1.95×)' },
-                ].map((m) => (
+            <div className="pl-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" /> Official Draw Result
+              </div>
+              <div className="text-2xl sm:text-3xl font-mono font-black text-white mt-1">
+                {lastDraw.panna} — <span className="text-amber-400">{lastDraw.single}</span> (Pair {lastDraw.doubleDigit})
+              </div>
+              <div className="text-xs text-slate-400 mt-1">
+                Sum of 3 cards ({lastDraw.cards.join(' + ')}) last digit ={' '}
+                <span className="text-white font-bold">#{lastDraw.single}</span>
+              </div>
+            </div>
+          </div>
+
+          {winAmount !== null && (
+            <div
+              className={`px-5 py-3 rounded-xl border text-center shrink-0 ${
+                winAmount > 0
+                  ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                  : 'bg-white/5 border-white/10 text-slate-400'
+              }`}
+            >
+              <div className="text-[10px] font-bold uppercase tracking-wider">
+                {winAmount > 0 ? 'Winning Ticket!' : 'Result'}
+              </div>
+              <div className="text-xl font-mono font-black">
+                {winAmount > 0 ? `+₹${winAmount.toLocaleString('en-IN')}` : 'No Match'}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Selection Grid Based on Active Mode */}
+        <div className="my-auto bg-[#0b111e]/80 border border-white/10 rounded-2xl p-5">
+          {mode === 'SINGLE' && (
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-bold text-white">
+                  Pick a Single Digit (0–9) — Pays 9.5×
+                </span>
+                <span className="text-xs text-slate-400">
+                  Matches the last digit of the 3-card sum
+                </span>
+              </div>
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2.5">
+                {Array.from({ length: 10 }, (_, n) => (
                   <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setBetMode(m.id as any)}
-                    disabled={isDrawing}
-                    className={`py-2 rounded-lg text-xs font-bold whitespace-nowrap ${
-                      betMode === m.id
-                        ? 'bg-[#f59e0b] text-[#070b14]'
-                        : 'text-[#94a3b8] hover:text-white'
+                    key={n}
+                    onClick={() => setSelectedSingle(n)}
+                    className={`h-16 rounded-xl font-mono font-black text-xl border transition-all flex flex-col items-center justify-center ${
+                      selectedSingle === n
+                        ? 'bg-amber-500 text-slate-950 border-white shadow-[0_0_20px_rgba(245,158,11,0.45)] scale-105'
+                        : 'bg-[#151f30] hover:bg-[#1e2b42] text-white border-white/10'
                     }`}
                   >
-                    {m.label}
+                    <span>{n}</span>
+                    <span className="text-[9px] font-bold opacity-75">9.5×</span>
                   </button>
                 ))}
               </div>
+            </div>
+          )}
 
-              {/* Stake Input */}
-              <div>
-                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
-                  <span>Parchi Stake (INR)</span>
-                  <span className="font-mono text-[#fbbf24] font-bold tabular-nums">
-                    {formatINR(betAmount)}
-                  </span>
-                </div>
-                <div className="flex h-11 bg-[#070b14] border border-[#24324f] rounded-xl overflow-hidden">
-                  <input
-                    type="number"
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
-                    disabled={isDrawing}
-                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setBetAmount(Math.max(10, +(betAmount / 2).toFixed(0)))}
-                    disabled={isDrawing}
-                    className="px-3 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
-                  >
-                    ½
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBetAmount(+(betAmount * 2).toFixed(0))}
-                    disabled={isDrawing}
-                    className="px-3 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
-                  >
-                    2×
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5 mt-2">
-                  {[100, 500, 1000, 5000].map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => setBetAmount(chip)}
-                      disabled={isDrawing}
-                      className="py-1.5 bg-[#070b14] hover:bg-[#1d2a47] border border-[#24324f] rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
-                    >
-                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {betMode === 'JODI' && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-medium text-[#94a3b8]">
-                    Enter 2-Digit Jodi (00 to 99) · Pays 95×
-                  </label>
+          {mode === 'DOUBLE' && (
+            <div>
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
+                <span className="text-sm font-bold text-white">
+                  Pick a Double Digit Pair (00–99) — Pays 95×
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">Custom Pair:</span>
                   <input
                     type="text"
                     maxLength={2}
-                    value={selectedJodi}
-                    onChange={(e) => setSelectedJodi(e.target.value.replace(/\D/g, ''))}
-                    disabled={isDrawing}
-                    className="w-full h-11 bg-[#070b14] border border-[#f59e0b] rounded-xl px-3.5 text-center text-lg font-mono font-extrabold text-[#fbbf24] outline-none"
+                    value={selectedDouble}
+                    onChange={(e) => setSelectedDouble(e.target.value.replace(/\D/g, ''))}
+                    className="w-16 bg-[#151f30] border border-amber-500/50 rounded-lg px-2.5 py-1 text-center font-mono font-bold text-white"
                   />
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {['37', '81', '42', '50', '07', '99'].map((j) => (
-                      <button
-                        key={j}
-                        type="button"
-                        onClick={() => setSelectedJodi(j)}
-                        disabled={isDrawing}
-                        className={`py-1.5 rounded-lg font-mono text-xs font-bold border ${
-                          selectedJodi === j
-                            ? 'bg-[#f59e0b] text-[#070b14] border-white'
-                            : 'bg-[#070b14] text-[#94a3b8] border-[#24324f]'
-                        }`}
-                      >
-                        {j}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {betMode === 'PANNA' && (
-                <div>
-                  <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">
-                    Select Panna Category
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { id: 'SINGLE', label: 'Single', odds: '150×' },
-                      { id: 'DOUBLE', label: 'Double', odds: '300×' },
-                      { id: 'TRIPLE', label: 'Triple', odds: '600×' },
-                    ].map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setSelectedPannaType(p.id as any)}
-                        disabled={isDrawing}
-                        className={`py-2.5 rounded-xl border text-center ${
-                          selectedPannaType === p.id
-                            ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-white'
-                            : 'bg-[#070b14] border-[#24324f] text-[#94a3b8]'
-                        }`}
-                      >
-                        <div className="text-xs font-bold">{p.label}</div>
-                        <div className="text-[11px] font-mono text-[#fbbf24]">{p.odds}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {betMode === 'EVEN_ODD' && (
-                <div>
-                  <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">
-                    Select Open Ank Parity
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['EVEN', 'ODD'] as const).map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setSelectedParity(p)}
-                        disabled={isDrawing}
-                        className={`h-11 rounded-xl font-bold text-xs border ${
-                          selectedParity === p
-                            ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-[#fbbf24]'
-                            : 'bg-[#070b14] border-[#24324f] text-[#94a3b8]'
-                        }`}
-                      >
-                        {p} ANK (1.95×)
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <div className="flex justify-between text-xs font-medium text-[#94a3b8] mb-1.5">
-                  <span>Potential Bhav Payout</span>
-                  <span className="font-mono text-[#fbbf24]">{getActiveMultiplier()}×</span>
-                </div>
-                <div className="h-11 bg-[#070b14] border border-[#24324f] rounded-xl px-3 flex items-center text-sm font-mono font-extrabold text-[#10b981] tabular-nums">
-                  {formatINR(betAmount * getActiveMultiplier())}
                 </div>
               </div>
-            </div>
-
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
-              <span>95.0% RTP · Official Matka</span>
-              <Link to="/fairness" className="hover:text-white flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
-              </Link>
-            </div>
-          </div>
-
-          {/* Right Kalyan Matka Stage */}
-          <div className="flex-1 flex flex-col justify-between p-4 sm:p-8 lg:p-10 space-y-5 royal-surface min-w-0">
-            {/* Top Draw Chart History */}
-            <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-              <span className="text-xs font-bold text-[#fbbf24] flex items-center gap-1.5 shrink-0">
-                <Sparkles className="w-4 h-4" /> {selectedBazar}
-              </span>
-              <div className="flex items-center gap-2">
-                {history.map((h, i) => (
-                  <div
-                    key={i}
-                    className="px-3 py-1 rounded-lg bg-[#131c31] border border-[#24324f] font-mono text-xs font-bold text-white tabular-nums shrink-0"
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                {[
+                  '07', '12', '18', '24', '29', '36', '42', '47', '53', '58',
+                  '64', '69', '71', '77', '82', '88', '91', '95', '99', '00',
+                ].map((pair) => (
+                  <button
+                    key={pair}
+                    onClick={() => setSelectedDouble(pair)}
+                    className={`py-3 rounded-xl font-mono font-bold text-sm border transition-all ${
+                      selectedDouble === pair
+                        ? 'bg-amber-500 text-slate-950 border-white shadow-lg'
+                        : 'bg-[#151f30] hover:bg-[#1e2b42] text-slate-200 border-white/10'
+                    }`}
                   >
-                    <span className="text-[#94a3b8] mr-1">{h.bazar}:</span>
-                    {h.openPanna}-<span className="text-[#fbbf24]">{h.jodi}</span>-{h.closePanna}
-                  </div>
+                    {pair}
+                  </button>
                 ))}
               </div>
             </div>
+          )}
 
-            {/* 3-Card Panna & Jodi Draw Display */}
-            <div className="my-auto flex flex-col items-center space-y-5">
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
-                {(result ? result.cards.split('') : ['1', '4', '8']).map((digit, idx) => (
-                  <div
-                    key={idx}
-                    className="w-14 h-20 sm:w-20 sm:h-28 rounded-2xl bg-[#131c31] border-2 border-[#f59e0b]/60 flex flex-col items-center justify-center font-mono text-2xl sm:text-4xl font-extrabold text-white shadow-xl"
-                  >
-                    <span className="text-[9px] sm:text-[10px] text-[#94a3b8] font-sans mb-0.5">
-                      PATTI {idx + 1}
-                    </span>
-                    <span>{isDrawing ? '•' : digit}</span>
-                  </div>
-                ))}
-
-                <div className="text-lg sm:text-2xl font-bold text-[#fbbf24]">→</div>
-
-                <div
-                  className={`w-16 h-20 sm:w-24 sm:h-28 rounded-2xl border-2 flex flex-col items-center justify-center shadow-xl ${
-                    result?.won
-                      ? 'bg-[#10b981] text-[#070b14] border-white'
-                      : 'bg-[#f59e0b] text-[#070b14] border-[#fef08a]'
-                  }`}
-                >
-                  <span className="text-[9px] sm:text-[10px] font-extrabold uppercase">ANK / JODI</span>
-                  <span className="font-mono text-xl sm:text-4xl font-extrabold">
-                    {isDrawing ? '••' : result ? (betMode === 'JODI' ? result.jodi : result.single) : '3 / 37'}
-                  </span>
-                </div>
+          {mode === 'COMBO' && (
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-bold text-white">
+                  Pick a 3-Card Combo — Pays 150× (Triple pays 600×)
+                </span>
               </div>
+              <div className="grid grid-cols-4 sm:grid-cols-10 gap-2">
+                {PANNA_PRESETS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setSelectedCombo(p)}
+                    className={`py-3 rounded-xl font-mono font-bold text-sm border transition-all ${
+                      selectedCombo === p
+                        ? 'bg-amber-500 text-slate-950 border-white shadow-lg'
+                        : 'bg-[#151f30] hover:bg-[#1e2b42] text-slate-200 border-white/10'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-              {result && (
-                <div
-                  className={`px-4 py-2 rounded-xl font-mono text-xs sm:text-sm font-extrabold border text-center ${
-                    result.won
-                      ? 'bg-[#10b981]/20 border-[#10b981] text-[#10b981]'
-                      : 'bg-[#131c31] border-[#24324f] text-[#94a3b8]'
+          {mode === 'PARITY' && (
+            <div className="grid grid-cols-2 gap-4">
+              {(['ODD', 'EVEN'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setSelectedParity(p)}
+                  className={`py-6 rounded-2xl border-2 font-black text-lg transition-all ${
+                    selectedParity === p
+                      ? 'bg-amber-500 text-slate-950 border-white shadow-[0_0_25px_rgba(245,158,11,0.4)]'
+                      : 'bg-[#151f30] text-white border-white/10 hover:bg-[#1e2b42]'
                   }`}
                 >
-                  {result.won
-                    ? `PASS! Won +${formatINR(result.payout)} (${result.cards}-${result.jodi}-${result.closeCards})`
-                    : `Declared: ${result.cards}-${result.jodi}-${result.closeCards} (${result.pannaType} PANNA)`}
-                </div>
-              )}
-
-              {/* 0-9 Ank Selection Grid */}
-              {betMode === 'ANK' && (
-                <div className="w-full max-w-xl space-y-2">
-                  <div className="text-xs font-semibold text-[#94a3b8] text-center">
-                    Tap Lucky Single Ank (0–9) · Pays 9.50× Bhav
-                  </div>
-                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
-                    {Array.from({ length: 10 }, (_, i) => i).map((num) => (
-                      <button
-                        key={num}
-                        type="button"
-                        onClick={() => {
-                          setSelectedAnk(num);
-                          audio.playClick();
-                        }}
-                        disabled={isDrawing}
-                        className={`h-11 sm:h-14 rounded-xl font-mono font-extrabold text-base sm:text-lg border transition-colors ${
-                          selectedAnk === num
-                            ? 'bg-[#f59e0b] text-[#070b14] border-white shadow-lg'
-                            : 'bg-[#131c31] hover:bg-[#1d2a47] text-white border-[#24324f]'
-                        }`}
-                      >
-                        {num}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+                  <div>{p === 'ODD' ? 'ODD DIGIT (1, 3, 5, 7, 9)' : 'EVEN DIGIT (0, 2, 4, 6, 8)'}</div>
+                  <div className="text-xs font-mono mt-1 opacity-80">1.95× Instant Payout</div>
+                </button>
+              ))}
             </div>
+          )}
+        </div>
 
-            <div className="text-xs text-[#94a3b8] flex flex-wrap justify-between gap-2 pt-2 border-t border-[#24324f]">
-              <span>Ank: 9.5× · Jodi: 95× · Single Panna: 150× · Double: 300× · Triple: 600×</span>
-              <span>SHA-256 Verified Draw</span>
-            </div>
+        {/* Recent Draw History */}
+        <div className="flex items-center justify-between gap-3 flex-wrap bg-[#0b111e]/70 border border-white/10 px-4 py-3 rounded-xl">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <History className="w-3.5 h-3.5 text-amber-400" /> Recent Draws
+          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {history.map((h, i) => (
+              <div
+                key={i}
+                className="px-3 py-1 rounded-lg bg-[#151f30] border border-white/10 text-xs font-mono flex items-center gap-1.5"
+              >
+                <span className="text-slate-400">{h.panna}</span>
+                <span className="text-amber-400 font-black">#{h.single}</span>
+                <span className="text-slate-500">({h.doubleDigit})</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
-}
+};

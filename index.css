@@ -112,9 +112,9 @@ button:disabled {
 }
 
 .felt-surface {
-  background: radial-gradient(circle at center, #065f46 0%, #064e3b 65%, #022c22 100%);
+  background: radial-gradient(circle at 50% 35%, #0c2b22 0%, #091d19 58%, #070b14 100%);
 }
 
 .royal-surface {
-  background: radial-gradient(circle at top right, #1e1b4b 0%, #0d1322 60%, #070b14 100%);
+  background: radial-gradient(circle at 50% 25%, #161f38 0%, #0d1322 62%, #070b14 100%);
 }

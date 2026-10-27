@@ -1,494 +1,414 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Layout } from '../components/Layout';
-import { engine, formatINR } from '../services/engine';
-import { audio } from '../services/audio';
-import { GameType } from '../types';
-import { ShieldCheck, RotateCcw, Trash2, Shuffle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { gameEngine } from '../services/engine';
+import { sound } from '../services/sound';
+import { RotateCcw, Trash2, ShieldCheck } from 'lucide-react';
 
-const REDS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-const CHIPS = [100, 500, 1000, 5000];
+const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+const WHEEL_ORDER = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14,
+  31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26,
+];
 
-export default function Roulette() {
-  const [balance, setBalance] = useState<number>(engine.getSession().balance);
-  const [selectedChip, setSelectedChip] = useState<number>(500);
-  // Pre-populate a ₹500 chip on RED so Spin Wheel works immediately on first tap!
-  const [bets, setBets] = useState<Record<string, number>>({ RED: 500 });
-  const [betHistoryStack, setBetHistoryStack] = useState<string[]>(['RED']);
+type BetSpot = string;
+
+export const Roulette: React.FC = () => {
+  const [selectedChip, setSelectedChip] = useState<number>(100);
+  const [bets, setBets] = useState<Record<BetSpot, number>>({});
+  const [lastBets, setLastBets] = useState<Record<BetSpot, number>>({});
   const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<number | null>(null);
-  const [lastPayout, setLastPayout] = useState<number | null>(null);
-  const [history, setHistory] = useState<number[]>([17, 0, 32, 8, 19, 24, 5]);
+  const [wheelAngle, setWheelAngle] = useState(0);
+  const [winningNumber, setWinningNumber] = useState<number | null>(17);
+  const [history, setHistory] = useState<number[]>([17, 0, 32, 8, 19, 23, 4, 12]);
+  const [winPayout, setWinPayout] = useState<number>(0);
 
-  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const totalBet: number = (Object.values(bets) as number[]).reduce((a, b) => a + b, 0);
 
-  useEffect(() => {
-    const unsub = engine.subscribe((s) => setBalance(s.balance));
-    return () => {
-      unsub();
-      if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
-    };
-  }, []);
-
-  const totalWager = (Object.values(bets) as number[]).reduce((sum, v) => sum + v, 0);
-
-  const placeChip = (spot: string) => {
+  const addBet = (spot: BetSpot) => {
     if (spinning) return;
-    audio.playClick();
+    const state = gameEngine.getState();
+    if (totalBet + selectedChip > state.balance) return;
+
+    sound.click();
     setBets((prev) => ({
       ...prev,
       [spot]: (prev[spot] || 0) + selectedChip,
     }));
-    setBetHistoryStack((prev) => [...prev, spot]);
-  };
-
-  const quickPickLucky5 = () => {
-    if (spinning) return;
-    audio.playClick();
-    const nextBets: Record<string, number> = {};
-    const stack: string[] = [];
-    for (let i = 0; i < 5; i++) {
-      const n = Math.floor(Math.random() * 37);
-      const key = `NUM_${n}`;
-      nextBets[key] = (nextBets[key] || 0) + selectedChip;
-      stack.push(key);
-    }
-    setBets(nextBets);
-    setBetHistoryStack(stack);
-  };
-
-  const undoBet = () => {
-    if (spinning || betHistoryStack.length === 0) return;
-    audio.playClick();
-    const lastSpot = betHistoryStack[betHistoryStack.length - 1];
-    setBetHistoryStack((prev) => prev.slice(0, -1));
-    setBets((prev) => {
-      const next = { ...prev };
-      if (next[lastSpot] <= selectedChip) delete next[lastSpot];
-      else next[lastSpot] -= selectedChip;
-      return next;
-    });
   };
 
   const clearBets = () => {
     if (spinning) return;
-    audio.playClick();
     setBets({});
-    setBetHistoryStack([]);
+    setWinPayout(0);
+  };
+
+  const repeatBets = () => {
+    if (spinning || Object.keys(lastBets).length === 0) return;
+    setBets(lastBets);
   };
 
   const doubleBets = () => {
-    if (spinning || totalWager === 0) return;
-    audio.playClick();
-    setBets((prev) => {
-      const next: Record<string, number> = {};
-      Object.entries(prev).forEach(([k, v]) => {
-        next[k] = (v as number) * 2;
-      });
-      return next;
+    if (spinning || totalBet === 0) return;
+    const state = gameEngine.getState();
+    if (totalBet * 2 > state.balance) return;
+    const doubled: Record<BetSpot, number> = {};
+    (Object.entries(bets) as [string, number][]).forEach(([k, v]) => {
+      doubled[k] = v * 2;
     });
+    setBets(doubled);
   };
 
-  const evaluateSpotMultiplier = (spot: string, winningNumber: number): number => {
-    if (spot.startsWith('NUM_')) {
-      const n = parseInt(spot.replace('NUM_', ''), 10);
-      return n === winningNumber ? 36 : 0;
-    }
-    if (winningNumber === 0) return 0;
+  const spinWheel = () => {
+    if (spinning || totalBet <= 0) return;
+    const state = gameEngine.getState();
+    if (totalBet > state.balance) return;
 
-    const isRed = REDS.includes(winningNumber);
-    const isEven = winningNumber % 2 === 0;
-
-    switch (spot) {
-      case 'RED':
-        return isRed ? 2 : 0;
-      case 'BLACK':
-        return !isRed ? 2 : 0;
-      case 'EVEN':
-        return isEven ? 2 : 0;
-      case 'ODD':
-        return !isEven ? 2 : 0;
-      case '1_18':
-        return winningNumber >= 1 && winningNumber <= 18 ? 2 : 0;
-      case '19_36':
-        return winningNumber >= 19 && winningNumber <= 36 ? 2 : 0;
-      case 'DOZ_1':
-        return winningNumber >= 1 && winningNumber <= 12 ? 3 : 0;
-      case 'DOZ_2':
-        return winningNumber >= 13 && winningNumber <= 24 ? 3 : 0;
-      case 'DOZ_3':
-        return winningNumber >= 25 && winningNumber <= 36 ? 3 : 0;
-      default:
-        return 0;
-    }
-  };
-
-  const spin = () => {
-    if (spinning) return;
-
-    let activeBets = bets;
-    let activeWager = totalWager;
-
-    // If user cleared table and clicked Spin, default to selectedChip on RED so Spin always works!
-    if (activeWager <= 0) {
-      activeBets = { RED: selectedChip };
-      activeWager = selectedChip;
-      setBets(activeBets);
-      setBetHistoryStack(['RED']);
-    }
-
-    if (engine.getSession().balance < activeWager) {
-      engine.resetBalance();
-    }
-
+    sound.click();
     setSpinning(true);
-    setLastPayout(null);
-    audio.playBet();
-    audio.playSpin();
+    setWinPayout(0);
+    setLastBets(bets);
 
-    const delay = engine.getSession().settings.instantBet ? 180 : 900;
+    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
+    const result = Math.floor(rng() * 37);
+    const targetIdx = WHEEL_ORDER.indexOf(result);
+    const pocketDeg = 360 / 37;
+    const nextAngle = wheelAngle + 1440 + (360 - targetIdx * pocketDeg);
+    setWheelAngle(nextAngle);
 
-    if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
-    spinTimerRef.current = setTimeout(() => {
-      engine.placeBet(
-        GameType.ROULETTE,
-        activeWager,
-        (r) => {
-          const num = engine.calculateRouletteResult(r);
-          let totalReturn = 0;
+    setTimeout(() => {
+      setWinningNumber(result);
+      setHistory((prev) => [result, ...prev.slice(0, 11)]);
 
-          Object.entries(activeBets).forEach(([spot, stake]) => {
-            const mult = evaluateSpotMultiplier(spot, num);
-            totalReturn += (stake as number) * mult;
-          });
+      let totalReturn = 0;
+      (Object.entries(bets) as [string, number][]).forEach(([spot, amount]) => {
+        if (spot === `N_${result}`) totalReturn += amount * 36;
+        else if (spot === 'RED' && result !== 0 && RED_NUMBERS.has(result)) totalReturn += amount * 2;
+        else if (spot === 'BLACK' && result !== 0 && !RED_NUMBERS.has(result)) totalReturn += amount * 2;
+        else if (spot === 'EVEN' && result !== 0 && result % 2 === 0) totalReturn += amount * 2;
+        else if (spot === 'ODD' && result !== 0 && result % 2 === 1) totalReturn += amount * 2;
+        else if (spot === '1_18' && result >= 1 && result <= 18) totalReturn += amount * 2;
+        else if (spot === '19_36' && result >= 19 && result <= 36) totalReturn += amount * 2;
+        else if (spot === 'DOZ_1' && result >= 1 && result <= 12) totalReturn += amount * 3;
+        else if (spot === 'DOZ_2' && result >= 13 && result <= 24) totalReturn += amount * 3;
+        else if (spot === 'DOZ_3' && result >= 25 && result <= 36) totalReturn += amount * 3;
+        else if (spot === 'COL_1' && result !== 0 && result % 3 === 1) totalReturn += amount * 3;
+        else if (spot === 'COL_2' && result !== 0 && result % 3 === 2) totalReturn += amount * 3;
+        else if (spot === 'COL_3' && result !== 0 && result % 3 === 0) totalReturn += amount * 3;
+      });
 
-          const effectiveMultiplier = activeWager > 0 ? +(totalReturn / activeWager).toFixed(4) : 0;
+      const effectiveMultiplier = totalBet > 0 ? totalReturn / totalBet : 0;
+      gameEngine.placeBet('European Roulette', totalBet, Number(effectiveMultiplier.toFixed(2)));
 
-          setResult(num);
-          setLastPayout(totalReturn);
-          setHistory((prev) => [num, ...prev].slice(0, 12));
-          setSpinning(false);
+      if (totalReturn > 0) {
+        sound.win();
+        setWinPayout(totalReturn);
+      } else {
+        sound.lose();
+      }
 
-          if (totalReturn > 0) audio.playWin();
-          else audio.playLoss();
+      setSpinning(false);
+    }, 1400);
+  };
 
-          return {
-            multiplier: effectiveMultiplier,
-            outcome: `Roulette: ${num} (${num === 0 ? 'Zero' : REDS.includes(num) ? 'Red' : 'Black'})`,
-          };
-        },
-        ''
-      );
-    }, delay);
+  const getNumColor = (n: number) => {
+    if (n === 0) return 'bg-emerald-600 text-white border-emerald-400';
+    return RED_NUMBERS.has(n)
+      ? 'bg-rose-600 text-white border-rose-400'
+      : 'bg-slate-800 text-white border-slate-600';
   };
 
   return (
-    <Layout>
-      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        {/* flex-col-reverse on mobile puts the Roulette Stage on TOP and Spin button right below */}
-        <div className="flex flex-col-reverse lg:flex-row min-h-[560px]">
-          {/* Left Stake Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
-            <div className="space-y-4">
-              {/* Primary Spin CTA at top of controls */}
+    <div className="max-w-[1400px] mx-auto bg-[#111927] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col-reverse lg:flex-row min-h-[600px]">
+      {/* Left Control Panel */}
+      <div className="w-full lg:w-[340px] bg-[#0b101b] p-5 flex flex-col gap-4 border-t lg:border-t-0 lg:border-r border-white/10 shrink-0">
+        {/* Chip Selector */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 mb-2">
+            Select Chip Value (₹)
+          </label>
+          <div className="grid grid-cols-5 gap-2">
+            {[50, 100, 500, 1000, 5000].map((val) => (
               <button
-                type="button"
-                onClick={spin}
-                disabled={spinning}
-                className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
+                key={val}
+                onClick={() => setSelectedChip(val)}
+                className={`aspect-square rounded-full font-mono font-black text-xs flex items-center justify-center border-2 border-dashed transition-all ${
+                  selectedChip === val
+                    ? 'bg-amber-500 text-slate-950 border-white scale-110 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
+                    : 'bg-[#151f30] text-slate-300 border-slate-600 hover:border-slate-400'
+                }`}
               >
-                {spinning
-                  ? 'Spinning Wheel...'
-                  : totalWager > 0
-                  ? balance < totalWager
-                    ? `Refill ₹25,000 & Spin (${formatINR(totalWager, 0)})`
-                    : `Spin Wheel (${formatINR(totalWager, 0)})`
-                  : `Spin Red (${formatINR(selectedChip, 0)})`}
+                {val >= 1000 ? `${val / 1000}K` : val}
               </button>
+            ))}
+          </div>
+        </div>
 
-              {/* Chip Value Selector */}
-              <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-2">
-                  Select INR Chip ({formatINR(selectedChip, 0)})
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {CHIPS.map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => {
-                        setSelectedChip(chip);
-                        audio.playClick();
-                      }}
-                      disabled={spinning}
-                      className={`h-11 rounded-full font-mono text-xs font-extrabold border-2 flex items-center justify-center shadow ${
-                        selectedChip === chip
-                          ? 'bg-[#f59e0b] text-[#070b14] border-white'
-                          : 'bg-[#070b14] text-[#fbbf24] border-[#24324f] hover:border-[#f59e0b]'
-                      }`}
-                    >
-                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
-                    </button>
-                  ))}
-                </div>
+        {/* Total Stake Summary */}
+        <div className="bg-[#151f30] p-3.5 rounded-xl border border-white/10 flex justify-between items-center">
+          <div>
+            <div className="text-[11px] font-semibold text-slate-400">Total Table Bet</div>
+            <div className="text-lg font-mono font-black text-white">
+              ₹{totalBet.toLocaleString('en-IN')}
+            </div>
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              onClick={repeatBets}
+              disabled={spinning || Object.keys(lastBets).length === 0}
+              className="p-2 bg-[#1e2b42] hover:bg-[#283956] rounded-lg text-slate-300 disabled:opacity-40"
+              title="Repeat Last Bet"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={doubleBets}
+              disabled={spinning || totalBet === 0}
+              className="px-2.5 py-1.5 bg-[#1e2b42] hover:bg-[#283956] rounded-lg text-xs font-bold text-slate-300 disabled:opacity-40"
+            >
+              2×
+            </button>
+            <button
+              onClick={clearBets}
+              disabled={spinning || totalBet === 0}
+              className="p-2 bg-[#1e2b42] hover:bg-rose-500/20 hover:text-rose-400 rounded-lg text-slate-300 disabled:opacity-40"
+              title="Clear Table"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Active Spots Breakdown */}
+        <div className="flex-1 bg-[#151f30]/60 rounded-xl border border-white/5 p-3 overflow-y-auto max-h-40 space-y-1.5">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            Active Chips on Felt ({Object.keys(bets).length})
+          </div>
+          {Object.keys(bets).length === 0 ? (
+            <div className="text-xs text-slate-500 py-4 text-center">
+              Click any number, dozen, or color on the table to place chips
+            </div>
+          ) : (
+            (Object.entries(bets) as [string, number][]).map(([spot, amt]) => (
+              <div key={spot} className="flex justify-between text-xs font-mono">
+                <span className="text-slate-300 font-semibold">{spot.replace('N_', 'Straight #')}</span>
+                <span className="text-amber-400 font-bold">₹{amt.toLocaleString('en-IN')}</span>
               </div>
+            ))
+          )}
+        </div>
 
-              {/* Quick Bet Buttons */}
-              <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-1.5">
-                  1-Tap Quick Bets
-                </label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => placeChip('RED')}
-                    disabled={spinning}
-                    className="h-9 rounded-lg bg-[#be123c] hover:bg-[#e11d48] text-white text-xs font-bold"
-                  >
-                    + Red (2×)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => placeChip('BLACK')}
-                    disabled={spinning}
-                    className="h-9 rounded-lg bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-white text-xs font-bold"
-                  >
-                    + Black (2×)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={quickPickLucky5}
-                    disabled={spinning}
-                    className="h-9 rounded-lg bg-[#1d2a47] hover:bg-[#24324f] text-[#fbbf24] text-xs font-bold flex items-center justify-center gap-1"
-                  >
-                    <Shuffle className="w-3 h-3" /> Lucky 5
-                  </button>
-                </div>
-              </div>
+        {/* Primary CTA Button (Top on mobile via order-first, natural bottom on desktop via lg:order-none) */}
+        <div className="order-first lg:order-none">
+          <button
+            onClick={spinWheel}
+            disabled={spinning || totalBet <= 0}
+            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:bg-[#1e2b42] disabled:from-transparent disabled:to-transparent disabled:text-slate-500 text-slate-950 font-black uppercase tracking-wider rounded-xl transition-all shadow-[0_8px_25px_rgba(16,185,129,0.3)] active:scale-[0.99] text-sm"
+          >
+            {spinning
+              ? 'Spinning Wheel...'
+              : totalBet > 0
+              ? `Spin Wheel (₹${totalBet.toLocaleString('en-IN')})`
+              : 'Place Chips to Spin'}
+          </button>
+        </div>
 
-              {/* Total Bet Readout */}
-              <div>
-                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
-                  <span>Total Table Stake</span>
-                  <span className="font-mono text-[#fbbf24] font-bold tabular-nums">
-                    {formatINR(totalWager)}
-                  </span>
-                </div>
-                <div className="flex h-11 bg-[#070b14] border border-[#24324f] rounded-xl px-3 items-center justify-between">
-                  <span className="font-mono text-sm font-bold text-white tabular-nums">
-                    {formatINR(totalWager)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={doubleBets}
-                    disabled={spinning || totalWager === 0}
-                    className="px-2.5 py-1 bg-[#131c31] hover:bg-[#1d2a47] rounded-lg text-xs font-bold text-[#fbbf24]"
-                  >
-                    2× All
-                  </button>
-                </div>
-              </div>
+        <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Single-Zero European (97.3% RTP)
+          </span>
+        </div>
+      </div>
 
-              {/* Undo / Clear */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={undoBet}
-                  disabled={spinning || betHistoryStack.length === 0}
-                  className="h-10 bg-[#1d2a47] hover:bg-[#24324f] rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
+      {/* Main Roulette Stage */}
+      <div className="flex-1 felt-surface p-4 sm:p-6 flex flex-col justify-between gap-6 overflow-x-auto">
+        {/* Top Wheel & Recent Numbers Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-[#0b111e]/85 border border-white/10 p-4 rounded-2xl">
+          <div className="flex items-center gap-4">
+            {/* Animated SVG 37-Pocket European Roulette Wheel */}
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex items-center justify-center">
+              <svg
+                viewBox="0 0 120 120"
+                className="w-full h-full drop-shadow-[0_4px_15px_rgba(0,0,0,0.7)] transition-transform duration-[1400ms] ease-out"
+                style={{ transform: `rotate(${wheelAngle}deg)` }}
+              >
+                <circle cx="60" cy="60" r="58" fill="#1e293b" stroke="#f59e0b" strokeWidth="3" />
+                {WHEEL_ORDER.map((num, idx) => {
+                  const startAngle = (idx * 360) / 37;
+                  const endAngle = ((idx + 1) * 360) / 37;
+                  const rad1 = ((startAngle - 90) * Math.PI) / 180;
+                  const rad2 = ((endAngle - 90) * Math.PI) / 180;
+                  const x1 = 60 + 54 * Math.cos(rad1);
+                  const y1 = 60 + 54 * Math.sin(rad1);
+                  const x2 = 60 + 54 * Math.cos(rad2);
+                  const y2 = 60 + 54 * Math.sin(rad2);
+                  const color =
+                    num === 0 ? '#10b981' : RED_NUMBERS.has(num) ? '#e11d48' : '#0f172a';
+                  return (
+                    <path
+                      key={num}
+                      d={`M60,60 L${x1},${y1} A54,54 0 0,1 ${x2},${y2} Z`}
+                      fill={color}
+                      stroke="#334155"
+                      strokeWidth="0.5"
+                    />
+                  );
+                })}
+                <circle cx="60" cy="60" r="32" fill="#0f172a" stroke="#f59e0b" strokeWidth="2" />
+                <circle cx="60" cy="60" r="10" fill="#f59e0b" />
+              </svg>
+              {/* Center Winning Number Badge */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-mono font-black text-base border-2 shadow-lg ${
+                    winningNumber !== null ? getNumColor(winningNumber) : 'bg-slate-800 text-white'
+                  }`}
                 >
-                  <RotateCcw className="w-3.5 h-3.5" /> Undo
-                </button>
-                <button
-                  type="button"
-                  onClick={clearBets}
-                  disabled={spinning || totalWager === 0}
-                  className="h-10 bg-[#1d2a47] hover:bg-[#24324f] rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Clear Table
-                </button>
+                  {winningNumber ?? '0'}
+                </div>
               </div>
+              {/* Top Pointer */}
+              <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-amber-400 rotate-45 border border-slate-950" />
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
-              <span>97.3% RTP · 36× Straight</span>
-              <Link to="/fairness" className="hover:text-white flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Fairness
-              </Link>
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                {spinning ? 'Ball in Motion...' : 'Winning Pocket'}
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-white">
+                {winningNumber === 0
+                  ? '0 — Green Zero'
+                  : `${winningNumber} — ${RED_NUMBERS.has(winningNumber || 0) ? 'Red' : 'Black'} ${
+                      (winningNumber || 0) % 2 === 0 ? 'Even' : 'Odd'
+                    }`}
+              </div>
+              {winPayout > 0 && (
+                <div className="text-sm font-mono font-bold text-emerald-400 mt-0.5">
+                  Won +₹{winPayout.toLocaleString('en-IN')}!
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right European Roulette Felt Stage (Top on Mobile, Right on Desktop) */}
-          <div className="flex-1 flex flex-col justify-between p-3.5 sm:p-6 space-y-4 felt-surface min-w-0">
-            {/* Top History & Wheel Result Header */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-[#070b14]/80 p-3.5 sm:p-4 rounded-2xl border border-[#f59e0b]/30">
-              <div className="flex items-center gap-3.5">
-                <div
-                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 border-[#fbbf24] flex items-center justify-center font-mono text-xl sm:text-2xl font-extrabold shadow-xl shrink-0 ${
-                    spinning ? 'animate-spin' : ''
-                  } ${
-                    result === null
-                      ? 'bg-[#0d1322] text-[#fbbf24]'
-                      : result === 0
-                      ? 'bg-[#10b981] text-[#070b14]'
-                      : REDS.includes(result)
-                      ? 'bg-[#e11d48] text-white'
-                      : 'bg-[#0f172a] text-white'
-                  }`}
-                >
-                  {result !== null ? result : '0'}
-                </div>
-                <div>
-                  <div className="text-[11px] sm:text-xs text-[#94a3b8]">Maharaja European Wheel</div>
-                  <div className="text-xs sm:text-sm font-extrabold text-white">
-                    {spinning
-                      ? 'Ivory ball spinning in wheel...'
-                      : result !== null
-                      ? `Winning Number: ${result} (${
-                          result === 0 ? 'Green Zero · 36×' : REDS.includes(result) ? 'Red' : 'Black'
-                        })`
-                      : 'Tap numbers or boxes below to place INR chips'}
-                  </div>
-                  {lastPayout !== null && !spinning && (
-                    <div
-                      className={`text-xs font-mono font-extrabold mt-0.5 ${
-                        lastPayout > 0 ? 'text-[#10b981]' : 'text-[#94a3b8]'
-                      }`}
-                    >
-                      {lastPayout > 0 ? `WON +${formatINR(lastPayout)}` : 'No win on this spin'}
-                    </div>
-                  )}
-                </div>
+          {/* Recent Roll History */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {history.map((n, idx) => (
+              <div
+                key={idx}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs border ${getNumColor(
+                  n
+                )} ${idx === 0 ? 'ring-2 ring-amber-400 scale-105' : 'opacity-80'}`}
+              >
+                {n}
               </div>
+            ))}
+          </div>
+        </div>
 
-              {/* Recent Numbers Strip */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                {history.map((n, i) => (
-                  <span
-                    key={i}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono font-bold tabular-nums shrink-0 border border-white/20 ${
-                      n === 0
-                        ? 'bg-[#10b981] text-[#070b14]'
-                        : REDS.includes(n)
-                        ? 'bg-[#e11d48] text-white'
-                        : 'bg-[#0f172a] text-white'
-                    }`}
-                  >
-                    {n}
-                  </span>
-                ))}
-              </div>
-            </div>
+        {/* European Roulette Felt Board */}
+        <div className="min-w-[660px] my-auto bg-[#0b1320]/90 p-4 rounded-2xl border border-white/10 shadow-inner">
+          <div className="grid grid-cols-[56px_repeat(12,1fr)_52px] gap-1.5">
+            {/* Zero */}
+            <button
+              onClick={() => addBet('N_0')}
+              className="row-span-3 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-black text-lg rounded-lg border border-emerald-400 flex items-center justify-center relative transition-colors"
+            >
+              0
+              {bets['N_0'] && (
+                <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-950 text-[10px] font-mono font-black px-1.5 py-0.5 rounded-full border border-white">
+                  {bets['N_0']}
+                </span>
+              )}
+            </button>
 
-            {/* Responsive European Roulette Board — Fits Mobile & Desktop without horizontal clipping */}
-            <div className="w-full space-y-2 bg-[#070b14]/70 p-3 sm:p-4 rounded-2xl border border-[#f59e0b]/30">
-              {/* Even-Money Outside Bets Row (2x) */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                {[
-                  { id: 'RED', label: 'Red (2×)', bg: 'bg-[#be123c] hover:bg-[#e11d48]' },
-                  { id: 'BLACK', label: 'Black (2×)', bg: 'bg-[#0f172a] hover:bg-[#1e293b]' },
-                  { id: 'EVEN', label: 'Even (2×)', bg: 'bg-[#0d1322] hover:bg-[#131c31]' },
-                  { id: 'ODD', label: 'Odd (2×)', bg: 'bg-[#0d1322] hover:bg-[#131c31]' },
-                  { id: '1_18', label: '1–18 (2×)', bg: 'bg-[#0d1322] hover:bg-[#131c31]' },
-                  { id: '19_36', label: '19–36 (2×)', bg: 'bg-[#0d1322] hover:bg-[#131c31]' },
-                ].map((o) => (
+            {/* 3 Rows of 12 Numbers */}
+            {[3, 2, 1].map((rem) =>
+              Array.from({ length: 12 }, (_, col) => {
+                const num = col * 3 + rem;
+                const isRed = RED_NUMBERS.has(num);
+                const spot = `N_${num}`;
+                const isWinner = !spinning && winningNumber === num;
+                return (
                   <button
-                    key={o.id}
-                    type="button"
-                    onClick={() => placeChip(o.id)}
-                    className={`h-10 rounded-xl ${o.bg} border border-[#24324f] text-xs font-bold text-white flex items-center justify-center gap-1`}
+                    key={num}
+                    onClick={() => addBet(spot)}
+                    className={`h-12 rounded-lg font-mono font-bold text-sm border transition-all relative flex items-center justify-center ${
+                      isRed
+                        ? 'bg-rose-600/90 hover:bg-rose-500 border-rose-400/50 text-white'
+                        : 'bg-[#1a2436] hover:bg-[#25334d] border-white/15 text-white'
+                    } ${isWinner ? 'ring-2 ring-amber-400 scale-105 z-10' : ''}`}
                   >
-                    <span>{o.label}</span>
-                    {bets[o.id] && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-[#fbbf24] text-[#070b14] font-mono text-[10px] font-extrabold">
-                        ₹{bets[o.id] >= 1000 ? `${bets[o.id] / 1000}K` : bets[o.id]}
+                    {num}
+                    {bets[spot] && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-950 text-[9px] font-mono font-black px-1.5 py-0.5 rounded-full border border-white shadow">
+                        {bets[spot] >= 1000 ? `${bets[spot] / 1000}k` : bets[spot]}
                       </span>
                     )}
                   </button>
-                ))}
-              </div>
-
-              {/* Dozens Row (3x) */}
-              <div className="grid grid-cols-3 gap-1.5">
-                {[
-                  { id: 'DOZ_1', label: '1st 12 (3×)' },
-                  { id: 'DOZ_2', label: '2nd 12 (3×)' },
-                  { id: 'DOZ_3', label: '3rd 12 (3×)' },
-                ].map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => placeChip(d.id)}
-                    className="h-9 rounded-xl bg-[#0d1322] hover:bg-[#131c31] border border-[#24324f] text-xs font-bold text-white flex items-center justify-center gap-1.5"
-                  >
-                    <span>{d.label}</span>
-                    {bets[d.id] && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-[#fbbf24] text-[#070b14] font-mono text-[10px] font-extrabold">
-                        ₹{bets[d.id] >= 1000 ? `${bets[d.id] / 1000}K` : bets[d.id]}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Zero + 1-36 Straight-Up Numbers (36x) */}
-              <div className="space-y-1.5">
+                );
+              }).concat(
                 <button
-                  type="button"
-                  onClick={() => placeChip('NUM_0')}
-                  className={`w-full h-9 rounded-xl font-mono font-extrabold text-xs flex items-center justify-center gap-2 border ${
-                    result === 0
-                      ? 'bg-[#10b981] text-[#070b14] border-white'
-                      : 'bg-[#059669] hover:bg-[#10b981] text-white border-[#10b981]/50'
-                  }`}
+                  key={`col_${rem}`}
+                  onClick={() => addBet(`COL_${rem === 3 ? 3 : rem}`)}
+                  className="h-12 rounded-lg bg-[#151f30] hover:bg-[#1e2b42] border border-white/10 text-xs font-bold text-slate-300 relative"
                 >
-                  <span>0 GREEN ZERO (36×)</span>
-                  {bets['NUM_0'] && (
-                    <span className="px-2 py-0.5 rounded-full bg-[#fbbf24] text-[#070b14] text-[10px] font-extrabold">
-                      ₹{bets['NUM_0']}
+                  2:1
+                  {bets[`COL_${rem === 3 ? 3 : rem}`] && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-950 text-[9px] font-mono font-black px-1.5 py-0.5 rounded-full">
+                      {bets[`COL_${rem === 3 ? 3 : rem}`]}
                     </span>
                   )}
                 </button>
+              )
+            )}
+          </div>
 
-                <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
-                  {Array.from({ length: 36 }, (_, idx) => idx + 1).map((num) => {
-                    const isRed = REDS.includes(num);
-                    const spotKey = `NUM_${num}`;
-                    const chipAmt = bets[spotKey];
-                    const isWinner = result === num;
-                    return (
-                      <button
-                        key={num}
-                        type="button"
-                        onClick={() => placeChip(spotKey)}
-                        className={`h-10 sm:h-11 rounded-xl font-mono font-bold text-xs flex flex-col items-center justify-center relative border ${
-                          isWinner ? 'ring-2 ring-[#fbbf24] z-10' : ''
-                        } ${
-                          isRed
-                            ? 'bg-[#be123c] hover:bg-[#e11d48] text-white border-[#f43f5e]/40'
-                            : 'bg-[#0f172a] hover:bg-[#1e293b] text-white border-[#334155]'
-                        }`}
-                      >
-                        <span>{num}</span>
-                        {chipAmt && (
-                          <span className="px-1 rounded-full bg-[#fbbf24] text-[#070b14] text-[9px] font-extrabold leading-tight">
-                            ₹{chipAmt >= 1000 ? `${chipAmt / 1000}K` : chipAmt}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+          {/* Dozens */}
+          <div className="grid grid-cols-3 gap-1.5 mt-2 pl-[62px] pr-[58px]">
+            {[
+              { id: 'DOZ_1', label: '1st 12 (1–12)' },
+              { id: 'DOZ_2', label: '2nd 12 (13–24)' },
+              { id: 'DOZ_3', label: '3rd 12 (25–36)' },
+            ].map((d) => (
+              <button
+                key={d.id}
+                onClick={() => addBet(d.id)}
+                className="py-2.5 bg-[#151f30] hover:bg-[#1e2b42] border border-white/10 rounded-lg text-xs font-bold text-slate-200 relative transition-colors"
+              >
+                {d.label}
+                {bets[d.id] && (
+                  <span className="ml-2 bg-amber-400 text-slate-950 text-[10px] font-mono font-black px-2 py-0.5 rounded-full">
+                    ₹{bets[d.id]}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
 
-            <div className="text-[11px] sm:text-xs text-white/80 flex flex-wrap justify-between gap-2 pt-1 border-t border-white/15">
-              <span>Straight Up: 36× · Dozens: 3× · Red/Black/Even/Odd: 2×</span>
-              <span>Maharaja Single-Zero Felt Table</span>
-            </div>
+          {/* Outside 1:1 Bets */}
+          <div className="grid grid-cols-6 gap-1.5 mt-1.5 pl-[62px] pr-[58px]">
+            {[
+              { id: '1_18', label: '1 to 18', cls: 'bg-[#151f30] hover:bg-[#1e2b42]' },
+              { id: 'EVEN', label: 'EVEN', cls: 'bg-[#151f30] hover:bg-[#1e2b42]' },
+              { id: 'RED', label: 'RED', cls: 'bg-rose-600/80 hover:bg-rose-600' },
+              { id: 'BLACK', label: 'BLACK', cls: 'bg-slate-800 hover:bg-slate-700' },
+              { id: 'ODD', label: 'ODD', cls: 'bg-[#151f30] hover:bg-[#1e2b42]' },
+              { id: '19_36', label: '19 to 36', cls: 'bg-[#151f30] hover:bg-[#1e2b42]' },
+            ].map((o) => (
+              <button
+                key={o.id}
+                onClick={() => addBet(o.id)}
+                className={`py-2.5 border border-white/10 rounded-lg text-xs font-bold text-white relative transition-colors ${o.cls}`}
+              >
+                {o.label}
+                {bets[o.id] && (
+                  <span className="ml-1.5 bg-amber-400 text-slate-950 text-[10px] font-mono font-black px-1.5 py-0.5 rounded-full">
+                    ₹{bets[o.id]}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
-}
+};

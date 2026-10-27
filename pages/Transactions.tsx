@@ -1,126 +1,93 @@
-import React, { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
-import { engine, formatINR } from '../services/engine';
-import { UserSession } from '../types';
-import { Receipt, Smartphone, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { gameEngine } from '../services/engine';
+import { ArrowDownLeft, ArrowUpRight, Lock, Gift } from 'lucide-react';
 
-export default function Transactions() {
-  const [session, setSession] = useState<UserSession>(engine.getSession());
-  const [filter, setFilter] = useState<'ALL' | 'CASHIER' | 'VAULT' | 'REWARDS'>('ALL');
+export const Transactions: React.FC = () => {
+  const [state, setState] = useState(gameEngine.getState());
 
   useEffect(() => {
-    return engine.subscribe((s) => setSession(s));
+    return gameEngine.subscribe(() => setState({ ...gameEngine.getState() }));
   }, []);
 
-  const filteredTx = (session.transactions || []).filter((tx) => {
-    if (filter === 'ALL') return true;
-    if (filter === 'CASHIER') return tx.type === 'DEPOSIT' || tx.type === 'WITHDRAW';
-    if (filter === 'VAULT') return tx.type === 'VAULT_DEPOSIT' || tx.type === 'VAULT_WITHDRAW';
-    if (filter === 'REWARDS') return tx.type === 'RAKEBACK' || tx.type === 'BONUS' || tx.type === 'BAILOUT';
-    return true;
-  });
-
-  const isPositiveCredit = (type: string) =>
-    ['DEPOSIT', 'VAULT_WITHDRAW', 'RAKEBACK', 'BONUS', 'BAILOUT'].includes(type);
-
   return (
-    <Layout>
-      <div className="space-y-6">
-        <header className="bg-[#0d1322] border border-[#1e293b] rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-[#fbbf24] text-xs font-extrabold uppercase tracking-wider mb-1">
-              <Receipt className="w-4 h-4" />
-              <span>UPI, Paytm & IMPS Ledger</span>
+    <div className="max-w-[1400px] mx-auto space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-white">Wallet & Vault Ledger</h1>
+          <p className="text-sm text-slate-400">
+            Complete history of your INR deposits, withdrawals, vault transfers, and VIP rewards.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <div className="bg-[#111927] px-4 py-2.5 rounded-xl border border-white/10">
+            <div className="text-[10px] uppercase font-bold text-slate-400">Wallet Balance</div>
+            <div className="text-base font-mono font-black text-white">
+              ₹{Math.floor(state.balance).toLocaleString('en-IN')}
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white">
-              Khata Passbook & UTR Receipts
-            </h1>
           </div>
-
-          <div className="flex items-center gap-1 p-1 bg-[#070b14] border border-[#1e293b] rounded-xl w-fit">
-            {[
-              { id: 'ALL', label: 'All Entries' },
-              { id: 'CASHIER', label: 'UPI / IMPS' },
-              { id: 'VAULT', label: 'Tijori Safe' },
-              { id: 'REWARDS', label: 'VIP Chhoot' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setFilter(t.id as any)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ${
-                  filter === t.id
-                    ? 'bg-[#f59e0b] text-[#070b14]'
-                    : 'text-[#94a3b8] hover:text-white'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="bg-[#111927] px-4 py-2.5 rounded-xl border border-white/10">
+            <div className="text-[10px] uppercase font-bold text-amber-400">Vault Balance</div>
+            <div className="text-base font-mono font-black text-amber-400">
+              ₹{Math.floor(state.vaultBalance).toLocaleString('en-IN')}
+            </div>
           </div>
-        </header>
-
-        <div className="bg-[#0d1322] rounded-2xl border border-[#1e293b] overflow-hidden shadow-xl">
-          {filteredTx.length === 0 ? (
-            <div className="py-16 text-center text-xs text-[#64748b]">
-              No matching Khata transactions recorded yet. Use the UPI Cashier in the header to add or withdraw INR.
-            </div>
-          ) : (
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#131c31] text-[#94a3b8] border-b border-[#1e293b]">
-                  <tr>
-                    <th className="px-6 py-3.5 font-semibold">Khata ID</th>
-                    <th className="px-4 py-3.5 font-semibold">12-Digit UTR</th>
-                    <th className="px-4 py-3.5 font-semibold">Type</th>
-                    <th className="px-4 py-3.5 font-semibold">Rail / Method</th>
-                    <th className="px-4 py-3.5 font-semibold text-right">Amount (₹)</th>
-                    <th className="px-4 py-3.5 font-semibold">Status</th>
-                    <th className="px-6 py-3.5 font-semibold text-right">Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#1e293b]/70">
-                  {filteredTx.map((tx) => {
-                    const positive = isPositiveCredit(tx.type);
-                    return (
-                      <tr key={tx.id} className="hover:bg-[#131c31]/60">
-                        <td className="px-6 py-3.5 font-mono text-[#94a3b8]">{tx.id}</td>
-                        <td className="px-4 py-3.5 font-mono text-[#fbbf24]">
-                          {tx.utr || '412980341920'}
-                        </td>
-                        <td className="px-4 py-3.5 font-bold text-white">
-                          {tx.type.replace('_', ' ')}
-                        </td>
-                        <td className="px-4 py-3.5 text-[#94a3b8] flex items-center gap-1.5">
-                          <Smartphone className="w-3.5 h-3.5 text-[#f59e0b]" />
-                          <span>{tx.method}</span>
-                        </td>
-                        <td
-                          className={`px-4 py-3.5 text-right font-mono font-bold tabular-nums ${
-                            positive ? 'text-[#10b981]' : 'text-white'
-                          }`}
-                        >
-                          {positive ? '+' : '-'}
-                          {formatINR(tx.amount)}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className="inline-flex items-center gap-1 text-[#10b981] font-bold">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            {tx.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3.5 text-right font-mono text-[#94a3b8] tabular-nums">
-                          {new Date(tx.timestamp).toLocaleDateString('en-IN')} ·{' '}
-                          {new Date(tx.timestamp).toLocaleTimeString('en-IN')}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       </div>
-    </Layout>
+
+      <div className="bg-[#111927] rounded-2xl border border-white/10 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[#0b101b] text-xs uppercase text-slate-400">
+              <tr>
+                <th className="py-3.5 px-5">Type</th>
+                <th className="py-3.5 px-5">Method & Reference</th>
+                <th className="py-3.5 px-5">Time</th>
+                <th className="py-3.5 px-5">Status</th>
+                <th className="py-3.5 px-5 text-right">Amount (INR)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {state.transactions.map((tx) => {
+                const isOutflow = tx.type === 'WITHDRAW' || tx.type === 'VAULT_DEPOSIT';
+                return (
+                  <tr key={tx.id} className="hover:bg-white/[0.02]">
+                    <td className="py-3.5 px-5 font-bold text-white flex items-center gap-2">
+                      {tx.type === 'DEPOSIT' && <ArrowDownLeft className="w-4 h-4 text-emerald-400" />}
+                      {tx.type === 'WITHDRAW' && <ArrowUpRight className="w-4 h-4 text-rose-400" />}
+                      {tx.type.includes('VAULT') && <Lock className="w-4 h-4 text-amber-400" />}
+                      {(tx.type === 'BAILOUT' || tx.type === 'BONUS' || tx.type === 'RAKEBACK') && (
+                        <Gift className="w-4 h-4 text-sky-400" />
+                      )}
+                      <span>{tx.type.replace('_', ' ')}</span>
+                    </td>
+                    <td className="py-3.5 px-5">
+                      <div className="text-slate-200 font-medium">{tx.method || 'Instant INR Transfer'}</div>
+                      {tx.utr && (
+                        <div className="text-[11px] font-mono text-slate-500">UTR #{tx.utr}</div>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-5 text-xs font-mono text-slate-400">
+                      {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="py-3.5 px-5">
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        {tx.status}
+                      </span>
+                    </td>
+                    <td
+                      className={`py-3.5 px-5 font-mono font-bold text-right ${
+                        isOutflow ? 'text-rose-400' : 'text-emerald-400'
+                      }`}
+                    >
+                      {isOutflow ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
-}
+};

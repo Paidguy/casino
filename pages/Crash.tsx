@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { engine, formatINR } from '../services/engine';
 import { audio } from '../services/audio';
 import { GameType } from '../types';
-import { ShieldCheck, Users, Plane, RotateCcw } from 'lucide-react';
+import { ShieldCheck, Users, Plane } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface SimPlayer {
@@ -14,11 +14,11 @@ interface SimPlayer {
 }
 
 const BOT_NAMES = [
-  'Vikram_MumbaiVIP',
-  'Raja_SattaKing',
-  'Aarav_DelhiHigh',
-  'KalyanBoss_07',
-  'Kabir_PuneBookie',
+  'Vikram_Mumbai',
+  'Rohan_Bengaluru',
+  'Aarav_Delhi',
+  'Karan_Hyderabad',
+  'Kabir_Pune',
 ];
 
 export default function Crash() {
@@ -138,7 +138,7 @@ export default function Crash() {
 
     if (betAmount <= 0) return;
     if (engine.getSession().balance < betAmount) {
-      engine.resetBalance();
+      engine.reloadBalance(Math.max(25000, betAmount * 4));
     }
     if (!engine.deductStake(betAmount)) {
       setAutoActive(false);
@@ -298,7 +298,7 @@ export default function Crash() {
     const graphW = Math.max(10, w - padLeft - padRight);
     const graphH = Math.max(10, h - padTop - padBottom);
 
-    ctx.strokeStyle = '#1e293b';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
     ctx.lineWidth = 1 * dpr;
     ctx.fillStyle = '#64748b';
     ctx.font = `600 ${10 * dpr}px "JetBrains Mono", monospace`;
@@ -365,10 +365,46 @@ export default function Crash() {
     ctx.closePath();
     ctx.fill();
 
-    ctx.beginPath();
-    ctx.fillStyle = crashed ? '#f43f5e' : hasCashedOutRef.current ? '#10b981' : '#fbbf24';
-    ctx.arc(endX, endY, 6.5 * dpr, 0, Math.PI * 2);
-    ctx.fill();
+    if (crashed) {
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.55)';
+      ctx.lineWidth = 2.5 * dpr;
+      ctx.arc(endX, endY, 15 * dpr, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.fillStyle = '#f43f5e';
+      ctx.arc(endX, endY, 6.5 * dpr, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.save();
+      ctx.translate(endX, endY);
+      const climbAngle = Math.min(-0.22, Math.max(-0.78, -0.25 - Math.min(1, t / 8) * 0.45));
+      ctx.rotate(climbAngle);
+
+      const flameLen = (14 + Math.sin(t * 28) * 4) * dpr;
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.85)';
+      ctx.ellipse(-flameLen * 0.75, 0, flameLen * 0.65, 3.5 * dpr, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(15 * dpr, 0);
+      ctx.lineTo(-9 * dpr, -8 * dpr);
+      ctx.lineTo(-4 * dpr, -1.8 * dpr);
+      ctx.lineTo(-12 * dpr, -4.5 * dpr);
+      ctx.lineTo(-10 * dpr, 0);
+      ctx.lineTo(-12 * dpr, 4.5 * dpr);
+      ctx.lineTo(-4 * dpr, 1.8 * dpr);
+      ctx.lineTo(-9 * dpr, 8 * dpr);
+      ctx.closePath();
+      ctx.fillStyle = hasCashedOutRef.current ? '#10b981' : '#f43f5e';
+      ctx.fill();
+      ctx.lineWidth = 1.2 * dpr;
+      ctx.strokeStyle = '#fef08a';
+      ctx.stroke();
+      ctx.restore();
+    }
   };
 
   const toggleAuto = () => {
@@ -381,19 +417,178 @@ export default function Crash() {
     }
   };
 
-  const expectedProfit = Math.max(0, betAmount * cashOutAt - betAmount);
   const isRoundBusy = gameState === 'RUNNING';
 
   return (
     <Layout>
-      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        {/* flex-col-reverse on mobile puts the Aviator Radar Stage on TOP and Controls immediately below */}
+      <div className="bg-[#0d1322] rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
         <div className="flex flex-col-reverse lg:flex-row min-h-[520px]">
-          {/* Left Bookie Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
-            <div className="space-y-4">
-              {/* Primary CTA Button — Placed at the very top on mobile so it sits directly beneath the plane canvas */}
-              <div className="order-first">
+          {/* Left Control Panel */}
+          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-white/10 shrink-0">
+            <div className="flex flex-col gap-4">
+              {/* Manual / Auto Tabs */}
+              <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setMode('MANUAL')}
+                  disabled={autoActive || isRoundBusy}
+                  className={`py-2 rounded-lg text-xs font-bold ${
+                    mode === 'MANUAL' ? 'bg-[#f59e0b] text-[#070b14]' : 'text-[#94a3b8] hover:text-white'
+                  }`}
+                >
+                  Manual Bet
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('AUTO');
+                    setAutoCashOutEnabled(true);
+                  }}
+                  disabled={autoActive || isRoundBusy}
+                  className={`py-2 rounded-lg text-xs font-bold ${
+                    mode === 'AUTO' ? 'bg-[#f59e0b] text-[#070b14]' : 'text-[#94a3b8] hover:text-white'
+                  }`}
+                >
+                  Auto Bet
+                </button>
+              </div>
+
+              {/* Bet Amount with Quick INR Chips */}
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
+                  <span>Bet Amount (₹)</span>
+                  <span className="font-mono text-[#fbbf24] font-bold tabular-nums">
+                    {formatINR(betAmount)}
+                  </span>
+                </div>
+                <div className="flex h-11 bg-[#070b14] border border-white/10 focus-within:border-[#f59e0b] rounded-xl overflow-hidden">
+                  <input
+                    type="number"
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
+                    disabled={isRoundBusy || autoActive}
+                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(Math.max(10, +(betAmount / 2).toFixed(0)))}
+                    disabled={isRoundBusy || autoActive}
+                    className="px-3 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-white/10"
+                  >
+                    ½
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBetAmount(+(betAmount * 2).toFixed(0))}
+                    disabled={isRoundBusy || autoActive}
+                    className="px-3 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-white/10"
+                  >
+                    2×
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  {[100, 500, 1000, 5000].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setBetAmount(chip)}
+                      disabled={isRoundBusy || autoActive}
+                      className="py-1.5 bg-[#070b14] hover:bg-[#1d2a47] border border-white/10 rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
+                    >
+                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Auto Cashout Toggle + Input */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-medium text-[#94a3b8] mb-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (mode === 'MANUAL') setAutoCashOutEnabled((prev) => !prev);
+                    }}
+                    disabled={isRoundBusy || autoActive || mode === 'AUTO'}
+                    className="flex items-center gap-2 text-left"
+                  >
+                    <span
+                      className={`w-7 h-4 rounded-full p-0.5 transition-colors flex items-center ${
+                        mode === 'AUTO' || autoCashOutEnabled
+                          ? 'bg-[#10b981]'
+                          : 'bg-[#070b14] border border-white/15'
+                      }`}
+                    >
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full bg-white transition-transform ${
+                          mode === 'AUTO' || autoCashOutEnabled ? 'translate-x-3' : 'translate-x-0'
+                        }`}
+                      />
+                    </span>
+                    <span className="text-white font-semibold">Auto Cash Out</span>
+                  </button>
+                  <span className="font-mono text-[#10b981] tabular-nums">
+                    {mode === 'AUTO' || autoCashOutEnabled
+                      ? `Target: ${cashOutAt.toFixed(2)}×`
+                      : 'Manual Mode'}
+                  </span>
+                </div>
+                <div
+                  className={`flex h-11 bg-[#070b14] border border-white/10 focus-within:border-[#f59e0b] rounded-xl overflow-hidden transition-opacity ${
+                    mode === 'MANUAL' && !autoCashOutEnabled ? 'opacity-50' : 'opacity-100'
+                  }`}
+                >
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="1.01"
+                    value={cashOutAt}
+                    onChange={(e) => setCashOutAt(Math.max(1.01, Number(e.target.value)))}
+                    disabled={isRoundBusy || autoActive || (mode === 'MANUAL' && !autoCashOutEnabled)}
+                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAutoCashOutEnabled(true);
+                      setCashOutAt(2.0);
+                    }}
+                    disabled={isRoundBusy || autoActive}
+                    className="px-2.5 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-white/10"
+                  >
+                    2.0×
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAutoCashOutEnabled(true);
+                      setCashOutAt(5.0);
+                    }}
+                    disabled={isRoundBusy || autoActive}
+                    className="px-2.5 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-white/10"
+                  >
+                    5.0×
+                  </button>
+                </div>
+              </div>
+
+              {mode === 'AUTO' && (
+                <div>
+                  <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">
+                    Number of Rounds (0 = Infinite)
+                  </label>
+                  <input
+                    type="number"
+                    value={autoBetCount}
+                    onChange={(e) => setAutoBetCount(Math.max(0, Number(e.target.value)))}
+                    disabled={autoActive}
+                    className="w-full h-11 bg-[#070b14] border border-white/10 rounded-xl px-3 text-sm font-mono font-bold text-white outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Primary Action CTA: order-first on mobile for thumb reach, natural flow on desktop */}
+              <div className="order-first lg:order-none">
                 {mode === 'MANUAL' ? (
                   gameState === 'RUNNING' ? (
                     cashedMultiplier !== null ? (
@@ -431,18 +626,16 @@ export default function Crash() {
                       className="w-full h-14 bg-[#f43f5e]/20 hover:bg-[#f43f5e]/30 border border-[#f43f5e] text-[#f43f5e] font-extrabold text-xs sm:text-sm rounded-xl flex flex-col items-center justify-center leading-tight"
                     >
                       <span>FLEW AWAY @ {displayMultiplier.toFixed(2)}×</span>
-                      <span className="text-[11px] text-white mt-0.5">Tap to Launch Next Flight</span>
+                      <span className="text-[11px] text-white mt-0.5">Click to Launch Next Flight</span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={startRound}
                       disabled={betAmount <= 0}
-                      className="w-full h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
+                      className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center"
                     >
-                      {balance < betAmount
-                        ? `Refill ₹25,000 & Fly (${formatINR(betAmount, 0)})`
-                        : `Place Aviator Bet (${formatINR(betAmount, 0)})`}
+                      Place Bet ({formatINR(betAmount, 0)})
                     </button>
                   )
                 ) : (
@@ -463,183 +656,22 @@ export default function Crash() {
                       className={`w-full h-14 font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center ${
                         autoActive
                           ? 'bg-[#f43f5e] text-white'
-                          : 'bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14]'
+                          : 'bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] text-[#070b14]'
                       }`}
                     >
                       {autoActive
-                        ? `Stop Auto (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
-                        : 'Start Auto Pilot'}
+                        ? `Stop Auto Bet (${autoBetsRemaining === 999999 ? '∞' : autoBetsRemaining})`
+                        : 'Start Auto Bet'}
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Manual / Auto Tabs */}
-              <div className="grid grid-cols-2 gap-1 bg-[#070b14] p-1 rounded-xl border border-[#24324f]">
-                <button
-                  type="button"
-                  onClick={() => setMode('MANUAL')}
-                  disabled={autoActive || isRoundBusy}
-                  className={`py-2 rounded-lg text-xs font-bold ${
-                    mode === 'MANUAL' ? 'bg-[#f59e0b] text-[#070b14]' : 'text-[#94a3b8] hover:text-white'
-                  }`}
-                >
-                  Manual Bet
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('AUTO');
-                    setAutoCashOutEnabled(true);
-                  }}
-                  disabled={autoActive || isRoundBusy}
-                  className={`py-2 rounded-lg text-xs font-bold ${
-                    mode === 'AUTO' ? 'bg-[#f59e0b] text-[#070b14]' : 'text-[#94a3b8] hover:text-white'
-                  }`}
-                >
-                  Auto Pilot
-                </button>
-              </div>
-
-              {/* Bet Amount with Quick INR Chips */}
-              <div>
-                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
-                  <span>Lagaya Stake (INR)</span>
-                  <span className="font-mono text-[#fbbf24] font-bold tabular-nums">
-                    {formatINR(betAmount)}
-                  </span>
-                </div>
-                <div className="flex h-11 bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b] rounded-xl overflow-hidden">
-                  <input
-                    type="number"
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
-                    disabled={isRoundBusy || autoActive}
-                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setBetAmount(Math.max(10, +(betAmount / 2).toFixed(0)))}
-                    disabled={isRoundBusy || autoActive}
-                    className="px-3 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
-                  >
-                    ½
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBetAmount(+(betAmount * 2).toFixed(0))}
-                    disabled={isRoundBusy || autoActive}
-                    className="px-3 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
-                  >
-                    2×
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5 mt-2">
-                  {[100, 500, 1000, 5000].map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => setBetAmount(chip)}
-                      disabled={isRoundBusy || autoActive}
-                      className="py-1.5 bg-[#070b14] hover:bg-[#1d2a47] border border-[#24324f] rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
-                    >
-                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Auto Cashout Toggle + Input */}
-              <div>
-                <div className="flex items-center justify-between text-xs font-medium text-[#94a3b8] mb-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (mode === 'MANUAL') setAutoCashOutEnabled((prev) => !prev);
-                    }}
-                    disabled={isRoundBusy || autoActive || mode === 'AUTO'}
-                    className="flex items-center gap-2 text-left"
-                  >
-                    <span
-                      className={`w-7 h-4 rounded-full p-0.5 transition-colors flex items-center ${
-                        mode === 'AUTO' || autoCashOutEnabled
-                          ? 'bg-[#10b981]'
-                          : 'bg-[#070b14] border border-[#24324f]'
-                      }`}
-                    >
-                      <span
-                        className={`w-2.5 h-2.5 rounded-full bg-white transition-transform ${
-                          mode === 'AUTO' || autoCashOutEnabled ? 'translate-x-3' : 'translate-x-0'
-                        }`}
-                      />
-                    </span>
-                    <span className="text-white font-semibold">Auto Cashout</span>
-                  </button>
-                  <span className="font-mono text-[#10b981] tabular-nums">
-                    {mode === 'AUTO' || autoCashOutEnabled
-                      ? `Target: ${cashOutAt.toFixed(2)}×`
-                      : 'Manual Mode'}
-                  </span>
-                </div>
-                <div
-                  className={`flex h-11 bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b] rounded-xl overflow-hidden transition-opacity ${
-                    mode === 'MANUAL' && !autoCashOutEnabled ? 'opacity-50' : 'opacity-100'
-                  }`}
-                >
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="1.01"
-                    value={cashOutAt}
-                    onChange={(e) => setCashOutAt(Math.max(1.01, Number(e.target.value)))}
-                    disabled={isRoundBusy || autoActive || (mode === 'MANUAL' && !autoCashOutEnabled)}
-                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAutoCashOutEnabled(true);
-                      setCashOutAt(2.0);
-                    }}
-                    disabled={isRoundBusy || autoActive}
-                    className="px-2.5 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
-                  >
-                    2.0×
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAutoCashOutEnabled(true);
-                      setCashOutAt(5.0);
-                    }}
-                    disabled={isRoundBusy || autoActive}
-                    className="px-2.5 bg-[#131c31] hover:bg-[#1d2a47] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
-                  >
-                    5.0×
-                  </button>
-                </div>
-              </div>
-
-              {mode === 'AUTO' && (
-                <div>
-                  <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">
-                    Number of Flights (0 = Infinite)
-                  </label>
-                  <input
-                    type="number"
-                    value={autoBetCount}
-                    onChange={(e) => setAutoBetCount(Math.max(0, Number(e.target.value)))}
-                    disabled={autoActive}
-                    className="w-full h-11 bg-[#070b14] border border-[#24324f] rounded-xl px-3 text-sm font-mono font-bold text-white outline-none"
-                  />
-                </div>
-              )}
-
-              {/* Live Indian Punters in Flight */}
-              <div className="pt-3 border-t border-[#24324f] space-y-2">
+              {/* Live Players in Round */}
+              <div className="pt-3 border-t border-white/10 space-y-2">
                 <div className="flex items-center justify-between text-xs text-[#94a3b8]">
                   <span className="flex items-center gap-1.5 font-bold text-white">
-                    <Users className="w-3.5 h-3.5 text-[#f59e0b]" /> Punters in Flight
+                    <Users className="w-3.5 h-3.5 text-[#f59e0b]" /> Players in Round
                   </span>
                   <span className="font-mono tabular-nums">
                     {simPlayers.length + (gameState === 'RUNNING' ? 1 : 0)}
@@ -649,7 +681,7 @@ export default function Crash() {
                   {simPlayers.map((p) => (
                     <div
                       key={p.name}
-                      className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg bg-[#070b14]"
+                      className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg bg-[#070b14] border border-white/5"
                     >
                       <span className="text-[#94a3b8] truncate pr-2">{p.name}</span>
                       <span
@@ -667,30 +699,30 @@ export default function Crash() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8]">
-              <span>99.0% RTP · Aviator Pro</span>
+            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs text-[#94a3b8] mt-4">
+              <span>99.0% RTP · Aviator Crash</span>
               <Link to="/fairness" className="hover:text-white flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
               </Link>
             </div>
           </div>
 
-          {/* Right Interactive Aviator Stage (Top on Mobile, Right on Desktop) */}
-          <div className="flex-1 flex flex-col justify-between p-3.5 sm:p-6 relative min-h-[270px] sm:min-h-[420px] royal-surface">
+          {/* Right Interactive Aviator Stage */}
+          <div className="flex-1 flex flex-col justify-between p-3.5 sm:p-6 relative min-h-[260px] sm:min-h-[420px] royal-surface">
             {/* Top History Multipliers */}
             <div className="flex items-center justify-between gap-2 z-10">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#fbbf24] shrink-0">
                 <Plane className="w-4 h-4 text-[#f43f5e]" />
-                <span>AVIATOR RADAR</span>
+                <span>RECENT MULTIPLIERS</span>
               </div>
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                 {history.map((h, i) => (
                   <span
                     key={i}
-                    className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-mono font-bold tabular-nums shrink-0 ${
+                    className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-mono font-bold tabular-nums shrink-0 ${
                       h >= 2.0
                         ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40'
-                        : 'bg-[#131c31] text-[#94a3b8] border border-[#24324f]'
+                        : 'bg-[#131c31] text-[#94a3b8] border border-white/10'
                     }`}
                   >
                     {h.toFixed(2)}×
@@ -734,13 +766,13 @@ export default function Crash() {
             </div>
 
             {/* Bottom Stage Bar */}
-            <div className="flex items-center justify-between text-[11px] sm:text-xs text-[#94a3b8] pt-2 border-t border-[#24324f]">
+            <div className="flex items-center justify-between text-[11px] sm:text-xs text-[#94a3b8] pt-2 border-t border-white/10">
               <span>
                 {mode === 'AUTO' || autoCashOutEnabled
-                  ? `Auto Cashout: ${cashOutAt.toFixed(2)}× (${formatINR(betAmount * cashOutAt)})`
-                  : 'Mode: Manual Cashout Anytime'}
+                  ? `Auto Cash Out: ${cashOutAt.toFixed(2)}× (${formatINR(betAmount * cashOutAt)})`
+                  : 'Mode: Manual Cash Out Anytime'}
               </span>
-              <span>Max Bhav: 10,000×</span>
+              <span>Max Multiplier: 10,000×</span>
             </div>
           </div>
         </div>

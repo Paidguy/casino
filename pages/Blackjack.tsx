@@ -1,455 +1,380 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Layout } from '../components/Layout';
-import { engine, formatINR } from '../services/engine';
-import { audio } from '../services/audio';
-import { GameType } from '../types';
-import { ShieldCheck, Crown } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { gameEngine } from '../services/engine';
+import { sound } from '../services/sound';
+import { ShieldCheck, Hand, Plus, ChevronsUp } from 'lucide-react';
 
-type Card = { suit: '♠' | '♥' | '♦' | '♣'; value: string; numeric: number };
+interface Card {
+  rank: string;
+  suit: '♠' | '♥' | '♦' | '♣';
+  value: number;
+}
 
-const CardComponent: React.FC<{ card?: Card; hidden?: boolean }> = ({ card, hidden }) => {
-  if (hidden || !card) {
-    return (
-      <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-xl bg-gradient-to-br from-[#92400e] via-[#451a03] to-[#1e1b4b] border-2 border-[#f59e0b]/70 shadow-xl flex items-center justify-center select-none">
-        <div className="w-14 h-20 sm:w-16 sm:h-28 rounded-lg border border-[#f59e0b]/40 bg-[#0d1322]/90 flex flex-col items-center justify-center">
-          <Crown className="w-4 h-4 text-[#fbbf24] mb-1" />
-          <span className="text-[9px] font-black text-[#fbbf24] tracking-widest">ROYAL</span>
-        </div>
-      </div>
-    );
+const SUITS: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
+const RANKS = [
+  { rank: 'A', value: 11 },
+  { rank: '2', value: 2 },
+  { rank: '3', value: 3 },
+  { rank: '4', value: 4 },
+  { rank: '5', value: 5 },
+  { rank: '6', value: 6 },
+  { rank: '7', value: 7 },
+  { rank: '8', value: 8 },
+  { rank: '9', value: 9 },
+  { rank: '10', value: 10 },
+  { rank: 'J', value: 10 },
+  { rank: 'Q', value: 10 },
+  { rank: 'K', value: 10 },
+];
+
+function handScore(hand: Card[]): number {
+  let total = hand.reduce((s, c) => s + c.value, 0);
+  let aces = hand.filter((c) => c.rank === 'A').length;
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces--;
   }
+  return total;
+}
 
-  const isRed = card.suit === '♥' || card.suit === '♦';
-
-  return (
-    <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-xl bg-white border-2 border-[#f59e0b]/40 shadow-xl flex flex-col justify-between p-2.5 select-none">
-      <div className={`flex flex-col items-start leading-none ${isRed ? 'text-[#f43f5e]' : 'text-[#070b14]'}`}>
-        <span className="text-base sm:text-lg font-extrabold font-mono">{card.value}</span>
-        <span className="text-sm sm:text-base">{card.suit}</span>
-      </div>
-      <div className={`text-3xl sm:text-4xl self-center ${isRed ? 'text-[#f43f5e]' : 'text-[#070b14]'}`}>
-        {card.suit}
-      </div>
-      <div className={`flex flex-col items-end leading-none rotate-180 ${isRed ? 'text-[#f43f5e]' : 'text-[#070b14]'}`}>
-        <span className="text-base sm:text-lg font-extrabold font-mono">{card.value}</span>
-        <span className="text-sm sm:text-base">{card.suit}</span>
-      </div>
-    </div>
-  );
-};
-
-export default function Blackjack() {
-  const [betAmount, setBetAmount] = useState<number>(500);
-  const [activeStake, setActiveStake] = useState<number>(500);
-  const [playerHand, setPlayerHand] = useState<Card[]>([]);
-  const [dealerHand, setDealerHand] = useState<Card[]>([]);
-  const [gameState, setGameState] = useState<'IDLE' | 'PLAYER_TURN' | 'DEALER_TURN' | 'FINISHED'>('IDLE');
-  const [outcomeBanner, setOutcomeBanner] = useState<{ text: string; mult: number } | null>(null);
+export const Blackjack: React.FC = () => {
+  const [bet, setBet] = useState<number>(200);
+  const [status, setStatus] = useState<'IDLE' | 'PLAYING' | 'ENDED'>('IDLE');
   const [deck, setDeck] = useState<Card[]>([]);
-  const mounted = useRef<boolean>(true);
-  const bjTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [playerHand, setPlayerHand] = useState<Card[]>([
+    { rank: 'A', suit: '♠', value: 11 },
+    { rank: 'K', suit: '♦', value: 10 },
+  ]);
+  const [dealerHand, setDealerHand] = useState<Card[]>([
+    { rank: '10', suit: '♥', value: 10 },
+    { rank: '9', suit: '♣', value: 9 },
+  ]);
+  const [message, setMessage] = useState<string>('');
+  const [payout, setPayout] = useState<number>(0);
 
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      if (bjTimerRef.current) clearTimeout(bjTimerRef.current);
-    };
-  }, []);
-
-  const generateDeck = (): Card[] => {
-    const suits: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
-    const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+  const buildShoe = (): Card[] => {
     const d: Card[] = [];
-    for (let shoe = 0; shoe < 4; shoe++) {
-      for (const s of suits) {
-        for (const v of values) {
-          let n = parseInt(v);
-          if (v === 'J' || v === 'Q' || v === 'K') n = 10;
-          if (v === 'A') n = 11;
-          d.push({ suit: s, value: v, numeric: n });
-        }
-      }
+    for (let s = 0; s < 4; s++) {
+      SUITS.forEach((suit) => {
+        RANKS.forEach((rk) => d.push({ ...rk, suit }));
+      });
     }
-    const floats = engine.getNextFloats(64);
+    const rng = gameEngine.getProvablyFairRNG ? gameEngine.getProvablyFairRNG() : Math.random;
     for (let i = d.length - 1; i > 0; i--) {
-      const f = floats[i % floats.length] ?? Math.random();
-      const j = Math.floor(((f + Math.random()) % 1) * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       [d[i], d[j]] = [d[j], d[i]];
     }
     return d;
   };
 
-  const getHandValue = (hand: Card[]) => {
-    let val = hand.reduce((a, b) => a + b.numeric, 0);
-    let aces = hand.filter((c) => c.value === 'A').length;
-    while (val > 21 && aces > 0) {
-      val -= 10;
-      aces--;
-    }
-    return val;
-  };
+  const deal = () => {
+    const state = gameEngine.getState();
+    if (bet <= 0 || bet > state.balance) return;
 
-  const startGame = () => {
-    if (gameState === 'PLAYER_TURN' || gameState === 'DEALER_TURN') return;
-    const validStake = Math.max(10, betAmount || 100);
-    if (betAmount <= 0) setBetAmount(validStake);
+    sound.card();
+    const shoe = buildShoe();
+    const p = [shoe[0], shoe[2]];
+    const d = [shoe[1], shoe[3]];
+    const rest = shoe.slice(4);
 
-    if (engine.getSession().balance < validStake) {
-      engine.reloadBalance(Math.max(10000, validStake * 5));
-    }
-    if (!engine.deductStake(validStake)) return;
-
-    audio.playBet();
-    setActiveStake(validStake);
-    const d = generateDeck();
-    const p = [d.pop()!, d.pop()!];
-    const dealer = [d.pop()!, d.pop()!];
-
-    setDeck(d);
     setPlayerHand(p);
-    setDealerHand(dealer);
-    setGameState('PLAYER_TURN');
-    setOutcomeBanner(null);
+    setDealerHand(d);
+    setDeck(rest);
+    setPayout(0);
+    setMessage('');
 
-    if (getHandValue(p) === 21) {
-      if (bjTimerRef.current) clearTimeout(bjTimerRef.current);
-      bjTimerRef.current = setTimeout(() => {
-        if (!mounted.current) return;
-        if (getHandValue(dealer) === 21) finishGame('PUSH', p, dealer, validStake);
-        else finishGame('BLACKJACK', p, dealer, validStake);
-      }, 450);
+    const pTotal = handScore(p);
+    const dTotal = handScore(d);
+
+    if (pTotal === 21) {
+      setStatus('ENDED');
+      if (dTotal === 21) {
+        gameEngine.placeBet('Blackjack 21', bet, 1.0);
+        setMessage('Push — Both Blackjack (21)');
+        setPayout(bet);
+      } else {
+        sound.win();
+        gameEngine.placeBet('Blackjack 21', bet, 2.5);
+        setMessage('Natural Blackjack! Pays 3:2 (2.5×)');
+        setPayout(Math.floor(bet * 2.5));
+      }
+    } else {
+      setStatus('PLAYING');
     }
   };
 
   const hit = () => {
-    if (gameState !== 'PLAYER_TURN') return;
-    audio.playClick();
-    const nextDeck = [...deck];
-    const drawn = nextDeck.pop()!;
-    const newHand = [...playerHand, drawn];
-    setDeck(nextDeck);
-    setPlayerHand(newHand);
+    if (status !== 'PLAYING' || deck.length === 0) return;
+    sound.card();
+    const nextCard = deck[0];
+    const nextHand = [...playerHand, nextCard];
+    setPlayerHand(nextHand);
+    setDeck(deck.slice(1));
 
-    const val = getHandValue(newHand);
-    if (val > 21) {
-      finishGame('BUST', newHand, dealerHand, activeStake);
-    } else if (val === 21) {
-      stand(newHand, activeStake, nextDeck);
+    const score = handScore(nextHand);
+    if (score > 21) {
+      sound.lose();
+      setStatus('ENDED');
+      setMessage('Bust! Over 21');
+      gameEngine.placeBet('Blackjack 21', bet, 0);
+    } else if (score === 21) {
+      standWithHand(nextHand, deck.slice(1), bet);
+    }
+  };
+
+  const standWithHand = (pHand: Card[], currentDeck: Card[], activeBet: number) => {
+    sound.card();
+    let dHand = [...dealerHand];
+    let idx = 0;
+    while (handScore(dHand) < 17 && idx < currentDeck.length) {
+      dHand.push(currentDeck[idx]);
+      idx++;
+    }
+    setDealerHand(dHand);
+    setStatus('ENDED');
+
+    const pScore = handScore(pHand);
+    const dScore = handScore(dHand);
+
+    if (dScore > 21 || pScore > dScore) {
+      sound.win();
+      const winAmt = activeBet * 2;
+      setPayout(winAmt);
+      setMessage(dScore > 21 ? `Dealer Busts (${dScore}) — You Win!` : `You Win (${pScore} vs ${dScore})!`);
+      gameEngine.placeBet('Blackjack 21', activeBet, 2.0);
+    } else if (pScore === dScore) {
+      setPayout(activeBet);
+      setMessage(`Push (${pScore} Tie) — Bet Returned`);
+      gameEngine.placeBet('Blackjack 21', activeBet, 1.0);
+    } else {
+      sound.lose();
+      setPayout(0);
+      setMessage(`Dealer Wins (${dScore} vs ${pScore})`);
+      gameEngine.placeBet('Blackjack 21', activeBet, 0);
     }
   };
 
   const doubleDown = () => {
-    if (gameState !== 'PLAYER_TURN' || playerHand.length !== 2) return;
-    if (engine.getSession().balance < activeStake) {
-      engine.reloadBalance(Math.max(10000, activeStake * 4));
-    }
-    if (!engine.deductStake(activeStake)) return;
+    if (status !== 'PLAYING' || playerHand.length !== 2) return;
+    const state = gameEngine.getState();
+    const doubledBet = bet * 2;
+    if (doubledBet > state.balance) return;
 
-    audio.playBet();
-    const doubledStake = activeStake * 2;
-    setActiveStake(doubledStake);
+    setBet(doubledBet);
+    const nextCard = deck[0];
+    const nextHand = [...playerHand, nextCard];
+    setPlayerHand(nextHand);
 
-    const nextDeck = [...deck];
-    const newHand = [...playerHand, nextDeck.pop()!];
-    setDeck(nextDeck);
-    setPlayerHand(newHand);
-
-    if (getHandValue(newHand) > 21) {
-      finishGame('BUST', newHand, dealerHand, doubledStake);
+    const score = handScore(nextHand);
+    if (score > 21) {
+      sound.lose();
+      setStatus('ENDED');
+      setMessage('Bust on Double Down!');
+      gameEngine.placeBet('Blackjack 21', doubledBet, 0);
     } else {
-      stand(newHand, doubledStake, nextDeck);
+      standWithHand(nextHand, deck.slice(1), doubledBet);
     }
   };
 
-  const stand = (finalHand = playerHand, finalBet = activeStake, currentDeck = deck) => {
-    if (gameState !== 'PLAYER_TURN') return;
-    audio.playClick();
-    setGameState('DEALER_TURN');
-
-    let dHand = [...dealerHand];
-    const nextDeck = [...currentDeck];
-
-    const playDealer = async () => {
-      const delay = engine.getSession().settings.instantBet ? 150 : 450;
-      await new Promise((r) => setTimeout(r, delay));
-
-      while (getHandValue(dHand) < 17) {
-        if (!mounted.current) return;
-        dHand.push(nextDeck.pop()!);
-        setDealerHand([...dHand]);
-        audio.playSpin();
-        await new Promise((r) => setTimeout(r, delay));
-      }
-
-      if (!mounted.current) return;
-      const pVal = getHandValue(finalHand);
-      const dVal = getHandValue(dHand);
-      if (dVal > 21) finishGame('DEALER_BUST', finalHand, dHand, finalBet);
-      else if (pVal > dVal) finishGame('WIN', finalHand, dHand, finalBet);
-      else if (pVal < dVal) finishGame('LOSE', finalHand, dHand, finalBet);
-      else finishGame('PUSH', finalHand, dHand, finalBet);
-    };
-
-    playDealer();
-  };
-
-  const finishGame = (result: string, p: Card[], d: Card[], finalBet: number) => {
-    setGameState('FINISHED');
-    let mult = 0;
-    let text = '';
-
-    if (result === 'BLACKJACK') {
-      mult = 2.5;
-      text = 'Blackjack! (2.50×)';
-    } else if (result === 'WIN' || result === 'DEALER_BUST') {
-      mult = 2.0;
-      text = result === 'DEALER_BUST' ? 'Dealer Bust · You Win (2.00×)' : 'You Win (2.00×)';
-    } else if (result === 'PUSH') {
-      mult = 1.0;
-      text = 'Push · Stake Returned (1.00×)';
-    } else if (result === 'BUST') {
-      mult = 0;
-      text = 'Player Bust';
-    } else {
-      mult = 0;
-      text = 'Dealer Wins';
+  const renderCard = (c: Card, hidden = false) => {
+    if (hidden) {
+      return (
+        <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-xl bg-gradient-to-br from-slate-800 to-slate-950 border-2 border-amber-500/60 shadow-xl flex items-center justify-center">
+          <span className="text-2xl">♠</span>
+        </div>
+      );
     }
-
-    setOutcomeBanner({ text, mult });
-    if (mult > 1) audio.playWin();
-    else if (mult === 1) audio.playClick();
-    else audio.playLoss();
-
-    engine.settleDeductedBet(
-      GameType.BLACKJACK,
-      finalBet,
-      mult,
-      `Blackjack: ${text} (${getHandValue(p)} vs ${getHandValue(d)})`
+    const isRed = c.suit === '♥' || c.suit === '♦';
+    return (
+      <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-xl bg-white border-2 border-slate-200 shadow-xl p-2.5 flex flex-col justify-between select-none">
+        <div className={`text-sm sm:text-base font-black leading-none ${isRed ? 'text-rose-600' : 'text-slate-900'}`}>
+          <div>{c.rank}</div>
+          <div>{c.suit}</div>
+        </div>
+        <div className={`text-2xl sm:text-3xl self-center ${isRed ? 'text-rose-600' : 'text-slate-900'}`}>
+          {c.suit}
+        </div>
+        <div className={`text-xs font-bold self-end rotate-180 ${isRed ? 'text-rose-600' : 'text-slate-900'}`}>
+          {c.rank}
+        </div>
+      </div>
     );
   };
 
-  const canDouble = gameState === 'PLAYER_TURN' && playerHand.length === 2;
-  const isRoundActive = gameState === 'PLAYER_TURN' || gameState === 'DEALER_TURN';
+  const pTotal = handScore(playerHand);
+  const dTotal = status === 'PLAYING' ? dealerHand[0]?.value || 0 : handScore(dealerHand);
 
   return (
-    <Layout>
-      <div className="bg-[#0d1322] rounded-2xl border border-[#24324f] overflow-hidden shadow-2xl">
-        <div className="flex flex-col-reverse lg:flex-row lg:min-h-[580px]">
-          {/* Left Stake Control Panel */}
-          <div className="w-full lg:w-[340px] bg-[#131c31] p-4 sm:p-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-[#24324f] shrink-0">
-            <div className="space-y-4">
-              {/* Primary Action Controls at Top for Mobile Thumb Reach */}
-              {gameState === 'PLAYER_TURN' ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={hit}
-                    className="h-14 bg-[#10b981] hover:bg-[#059669] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg active:scale-[0.99]"
-                  >
-                    HIT CARD
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => stand()}
-                    className="h-14 bg-[#f59e0b] hover:bg-[#fbbf24] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg active:scale-[0.99]"
-                  >
-                    STAND ({getHandValue(playerHand)})
-                  </button>
-                  {canDouble && (
-                    <button
-                      type="button"
-                      onClick={doubleDown}
-                      className="col-span-2 h-11 bg-[#070b14] hover:bg-[#1e293b] border border-[#f59e0b] text-[#fbbf24] font-extrabold text-xs uppercase rounded-xl"
-                    >
-                      Double Down (2× Stake)
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={startGame}
-                  disabled={gameState === 'DEALER_TURN'}
-                  className="w-full h-14 bg-gradient-to-r from-[#f59e0b] to-[#fbbf24] hover:from-[#d97706] hover:to-[#f59e0b] text-[#070b14] font-extrabold text-sm uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center active:scale-[0.99] transition-transform"
-                >
-                  {gameState === 'DEALER_TURN' ? 'Dealer Drawing...' : `Deal Hand (${formatINR(betAmount, 0)})`}
-                </button>
-              )}
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-[#fbbf24]" />
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-white">
-                    BLACKJACK VIP
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/30 px-2 py-0.5 rounded">
-                  99.5% RTP
-                </span>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs font-semibold text-[#94a3b8] mb-1.5">
-                  <span>Bet Amount (₹)</span>
-                  <span className="font-mono text-[#fbbf24] tabular-nums">{formatINR(activeStake)}</span>
-                </div>
-                <div className="flex h-11 bg-[#070b14] border border-[#24324f] focus-within:border-[#f59e0b]/60 rounded-xl overflow-hidden">
-                  <input
-                    type="number"
-                    value={betAmount}
-                    onChange={(e) => {
-                      const v = Math.max(0, Number(e.target.value));
-                      setBetAmount(v);
-                      if (!isRoundActive) setActiveStake(v);
-                    }}
-                    disabled={isRoundActive}
-                    className="flex-1 bg-transparent px-3 text-sm font-mono font-bold text-white outline-none min-w-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const v = Math.max(10, Math.floor(betAmount / 2));
-                      setBetAmount(v);
-                      if (!isRoundActive) setActiveStake(v);
-                    }}
-                    disabled={isRoundActive}
-                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
-                  >
-                    ½
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const v = betAmount * 2;
-                      setBetAmount(v);
-                      if (!isRoundActive) setActiveStake(v);
-                    }}
-                    disabled={isRoundActive}
-                    className="px-3 bg-[#131c31] hover:bg-[#1e293b] text-xs font-bold text-[#94a3b8] hover:text-white border-l border-[#24324f]"
-                  >
-                    2×
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5 mt-2">
-                  {[100, 500, 1000, 5000].map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => {
-                        setBetAmount(chip);
-                        if (!isRoundActive) setActiveStake(chip);
-                      }}
-                      disabled={isRoundActive}
-                      className="py-1.5 bg-[#070b14] hover:bg-[#1e293b] border border-[#24324f] rounded-lg text-[11px] font-mono font-bold text-[#fbbf24] tabular-nums"
-                    >
-                      ₹{chip >= 1000 ? `${chip / 1000}K` : chip}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-3.5 bg-[#070b14] rounded-xl border border-[#24324f] text-xs text-[#94a3b8] space-y-1.5">
-                <div className="flex justify-between">
-                  <span>Blackjack Pays</span>
-                  <span className="font-mono font-bold text-[#fbbf24]">3 to 2 (2.50×)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Dealer Rule</span>
-                  <span className="font-mono text-white">Stands on all 17</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[#24324f] flex items-center justify-between text-xs text-[#94a3b8] mt-4">
-              <span>4-Deck Provably Fair Shoe</span>
-              <Link to="/fairness" className="hover:text-white flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#10b981]" /> Verify
-              </Link>
+    <div className="max-w-[1400px] mx-auto bg-[#111927] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col-reverse lg:flex-row min-h-[600px]">
+      {/* Left Control Panel */}
+      <div className="w-full lg:w-[340px] bg-[#0b101b] p-5 flex flex-col gap-4 border-t lg:border-t-0 lg:border-r border-white/10 shrink-0">
+        {/* Bet Amount */}
+        <div>
+          <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1.5">
+            <span>Bet Amount (₹)</span>
+            <span className="font-mono text-slate-300">₹{bet.toLocaleString('en-IN')}</span>
+          </div>
+          <div className="flex bg-[#151f30] rounded-xl border border-white/10 focus-within:border-amber-500/60 overflow-hidden">
+            <div className="flex items-center pl-3.5 text-amber-400 font-mono font-bold">₹</div>
+            <input
+              type="number"
+              value={bet}
+              disabled={status === 'PLAYING'}
+              onChange={(e) => setBet(Math.max(10, Number(e.target.value)))}
+              className="w-full bg-transparent px-2.5 py-2.5 text-white font-mono font-bold text-sm focus:outline-none disabled:opacity-50"
+            />
+            <div className="flex items-center gap-1 pr-1.5">
+              <button
+                disabled={status === 'PLAYING'}
+                onClick={() => setBet(Math.max(10, Math.floor(bet / 2)))}
+                className="px-2.5 py-1.5 bg-[#1e2b42] hover:bg-[#2a3b59] rounded-lg text-xs font-bold text-slate-300 disabled:opacity-50"
+              >
+                ½
+              </button>
+              <button
+                disabled={status === 'PLAYING'}
+                onClick={() => setBet(bet * 2)}
+                className="px-2.5 py-1.5 bg-[#1e2b42] hover:bg-[#2a3b59] rounded-lg text-xs font-bold text-slate-300 disabled:opacity-50"
+              >
+                2×
+              </button>
             </div>
           </div>
+          <div className="grid grid-cols-4 gap-1.5 mt-2">
+            {[100, 500, 1000, 5000].map((amt) => (
+              <button
+                key={amt}
+                disabled={status === 'PLAYING'}
+                onClick={() => setBet(amt)}
+                className="py-1.5 bg-[#151f30] hover:bg-[#1e2b42] border border-white/5 rounded-lg text-[11px] font-mono font-bold text-slate-300 disabled:opacity-40"
+              >
+                ₹{amt >= 1000 ? `${amt / 1000}k` : amt}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* Right Blackjack Table Stage */}
-          <div className="flex-1 flex flex-col justify-between items-center p-4 sm:p-10 relative felt-surface">
-            {/* Dealer Zone */}
-            <div className="flex flex-col items-center space-y-2.5">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-white/80">
-                  Maharaja Dealer
-                </span>
-                {dealerHand.length > 0 && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#070b14]/80 border border-[#f59e0b]/40 text-[#fbbf24] font-mono text-xs font-bold tabular-nums">
-                    {gameState === 'PLAYER_TURN'
-                      ? dealerHand[0].numeric
-                      : getHandValue(dealerHand)}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center justify-center -space-x-5 sm:-space-x-8 min-h-[112px] sm:min-h-[144px]">
-                {dealerHand.length > 0
-                  ? dealerHand.map((card, i) => (
-                      <CardComponent
-                        key={i}
-                        card={card}
-                        hidden={i === 1 && gameState === 'PLAYER_TURN'}
-                      />
-                    ))
-                  : [0, 1].map((i) => <CardComponent key={i} hidden />)}
-              </div>
+        {/* Action Buttons */}
+        <div className="order-first lg:order-none space-y-2.5">
+          {status !== 'PLAYING' ? (
+            <button
+              onClick={deal}
+              className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black uppercase tracking-wider rounded-xl transition-all shadow-[0_8px_25px_rgba(16,185,129,0.3)] active:scale-[0.99] text-sm"
+            >
+              Deal Hand (₹{bet.toLocaleString('en-IN')})
+            </button>
+          ) : (
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                onClick={hit}
+                className="py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black uppercase rounded-xl flex items-center justify-center gap-1.5 text-sm shadow-lg"
+              >
+                <Plus className="w-4 h-4" /> Hit
+              </button>
+              <button
+                onClick={() => standWithHand(playerHand, deck, bet)}
+                className="py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black uppercase rounded-xl flex items-center justify-center gap-1.5 text-sm shadow-lg"
+              >
+                <Hand className="w-4 h-4" /> Stand
+              </button>
+              <button
+                onClick={doubleDown}
+                disabled={playerHand.length !== 2}
+                className="col-span-2 py-3 bg-[#1e2b42] hover:bg-[#283956] disabled:opacity-40 text-white font-bold uppercase rounded-xl flex items-center justify-center gap-1.5 text-xs border border-white/10"
+              >
+                <ChevronsUp className="w-4 h-4 text-amber-400" /> Double Down (2× Bet)
+              </button>
             </div>
+          )}
+        </div>
 
-            {/* Center Banner / Rules Ribbon */}
-            <div className="my-3 min-h-[44px] flex items-center justify-center">
-              {outcomeBanner ? (
-                <div
-                  className={`px-5 py-2 rounded-xl font-extrabold text-xs sm:text-sm border shadow-xl text-center ${
-                    outcomeBanner.mult > 1
-                      ? 'bg-[#10b981]/20 border-[#10b981] text-[#10b981]'
-                      : outcomeBanner.mult === 1
-                      ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-[#fbbf24]'
-                      : 'bg-[#f43f5e]/20 border-[#f43f5e] text-[#f43f5e]'
-                  }`}
-                >
-                  {outcomeBanner.text}{' '}
-                  {outcomeBanner.mult > 0 && `· ${formatINR(activeStake * outcomeBanner.mult)}`}
-                </div>
-              ) : (
-                <div className="text-xs font-extrabold text-[#fbbf24]/80 tracking-widest uppercase text-center">
-                  BLACKJACK PAYS 3 TO 2 · DEALER STANDS ON 17
+        {/* Table Rules */}
+        <div className="bg-[#151f30] rounded-xl border border-white/10 p-3.5 text-xs text-slate-300 space-y-1.5">
+          <div className="font-bold text-amber-400 uppercase tracking-wider text-[11px]">
+            VIP Table Rules
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Blackjack Pays</span>
+            <span className="font-mono font-bold text-white">3 to 2 (2.5×)</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Dealer Stands On</span>
+            <span className="font-mono font-bold text-white">All 17s</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-400">Theoretical RTP</span>
+            <span className="font-mono font-bold text-emerald-400">99.5%</span>
+          </div>
+        </div>
+
+        <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 4-Deck Provably Fair Shoe
+          </span>
+        </div>
+      </div>
+
+      {/* Main Blackjack Table Stage */}
+      <div className="flex-1 felt-surface p-6 sm:p-8 flex flex-col items-center justify-between relative">
+        {/* Dealer Area */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              Dealer Hand
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-black/50 border border-white/10 font-mono font-bold text-xs text-white">
+              {dTotal}
+            </span>
+          </div>
+          <div className="flex gap-3">
+            {dealerHand.map((c, idx) => (
+              <div key={idx}>{renderCard(c, status === 'PLAYING' && idx === 1)}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* Center Status Pill */}
+        <div className="my-4 h-16 flex items-center justify-center">
+          {message ? (
+            <div
+              className={`px-6 py-3 rounded-2xl border-2 text-center shadow-xl ${
+                payout > bet
+                  ? 'bg-emerald-950/90 border-emerald-400 text-emerald-300'
+                  : payout === bet
+                  ? 'bg-slate-900/90 border-amber-400 text-amber-300'
+                  : 'bg-rose-950/90 border-rose-500/80 text-rose-200'
+              }`}
+            >
+              <div className="text-xs font-bold uppercase tracking-wider">{message}</div>
+              {payout > 0 && (
+                <div className="text-lg font-mono font-black text-white">
+                  Payout: ₹{payout.toLocaleString('en-IN')}
                 </div>
               )}
             </div>
-
-            {/* Player Zone */}
-            <div className="flex flex-col items-center space-y-2.5">
-              <div className="flex items-center justify-center -space-x-5 sm:-space-x-8 min-h-[112px] sm:min-h-[144px]">
-                {playerHand.length > 0
-                  ? playerHand.map((card, i) => <CardComponent key={i} card={card} />)
-                  : [0, 1].map((i) => <CardComponent key={i} hidden />)}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-white/80">
-                  Your Hand
-                </span>
-                {playerHand.length > 0 && (
-                  <span
-                    className={`px-3 py-0.5 rounded-full font-mono text-xs font-bold tabular-nums ${
-                      getHandValue(playerHand) > 21
-                        ? 'bg-[#f43f5e] text-white'
-                        : getHandValue(playerHand) === 21
-                        ? 'bg-[#10b981] text-[#070b14]'
-                        : 'bg-[#070b14]/80 border border-[#f59e0b]/40 text-white'
-                    }`}
-                  >
-                    {getHandValue(playerHand)}
-                  </span>
-                )}
-              </div>
+          ) : (
+            <div className="px-5 py-2 rounded-full bg-black/35 border border-white/10 text-xs font-semibold text-slate-300">
+              BLACKJACK PAYS 3 TO 2 · DEALER MUST STAND ON 17
             </div>
+          )}
+        </div>
+
+        {/* Player Area */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex gap-3">
+            {playerHand.map((c, idx) => (
+              <div key={idx}>{renderCard(c)}</div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+              Your Hand
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 font-mono font-bold text-xs text-amber-300">
+              {pTotal}
+            </span>
           </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
-}
+};
