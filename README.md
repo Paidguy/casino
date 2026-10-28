@@ -2,7 +2,7 @@
 
 # Casino
 
-### An open-source casino simulator for learning how the games really work
+### An open-source casino for learning how the games really work
 
 *Play every game with virtual credits, inspect the math behind it, and risk no real money.*
 
