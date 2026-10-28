@@ -1,221 +1,163 @@
-<div align="center">
+# Casino
 
-# 👑 MAHARAJA EXCHANGE & ROYAL CASINO
+**Casino** is an open-source, client-side casino simulator and probability
+learning project. It lets people play familiar casino and Indian card games
+with virtual credits, while showing the rules, probabilities, payout tables,
+randomness, and house edge behind each game.
 
-### **The Risk-Free, 100% Client-Side Casino & Probability Lab**
-*Play for the thrill. Study the mathematics. Risk ₹0 of real money.*
+The project is designed for education and risk-free experimentation. It does
+not accept deposits, process withdrawals, connect to payment providers, or
+allow real-money wagering. Every balance and result exists only in the
+browser.
 
-<p align="center">
-  <a href="#-what-is-this-project"><img src="https://img.shields.io/badge/Purpose-Educational_%26_Risk--Free_Gaming-F59E0B?style=for-the-badge" alt="Educational & Risk-Free" /></a>
-  <a href="#-cryptographic-provably-fair-engine"><img src="https://img.shields.io/badge/RNG-RFC_2104_HMAC--SHA256-10B981?style=for-the-badge" alt="HMAC-SHA256" /></a>
-  <a href="#-100-client-side-architecture"><img src="https://img.shields.io/badge/Architecture-100%25_Client--Side_SPA-38BDF8?style=for-the-badge" alt="100% Client-Side" /></a>
-</p>
+## What this project is for
 
-<p align="center">
-  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/React-18.x-61DAFB?style=flat-square&logo=react&logoColor=000000" alt="React" />
-  <img src="https://img.shields.io/badge/Vite-5.x-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Web_Audio_API-Synthesized_SFX-EC4899?style=flat-square" alt="Web Audio API" />
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-FBBF24?style=flat-square" alt="MIT License" /></a>
-</p>
+Casino is useful for:
 
-<p align="center">
-  <a href="#-what-is-this-project">About</a> •
-  <a href="#-why-play-or-study-here">Why It Exists</a> •
-  <a href="#-the-14-games--mathematical-models">14 Games</a> •
-  <a href="#-cryptographic-provably-fair-engine">Provably Fair Math</a> •
-  <a href="#-100-client-side-architecture">Architecture</a> •
-  <a href="#-getting-started">Quick Start</a> •
-  <a href="./CONTRIBUTING.md">Contributing</a>
-</p>
+- Learning how common casino games work by playing them with virtual credits.
+- Exploring probability, expected value, return to player (RTP), and house
+  edge.
+- Studying deterministic random-number generation and provably-fair-style
+  verification.
+- Testing betting strategies without financial risk.
+- Reading a complete React and TypeScript implementation of the game logic and
+  interface.
 
-</div>
+The goal is not to encourage gambling. The simulations make it easier to see
+why short-term outcomes vary and why a mathematical house edge generally
+dominates over many rounds.
 
----
+> **Important:** Credits in Casino have no monetary value. This application
+> cannot be used to deposit, withdraw, or win real money.
 
-## 🎯 What Is This Project?
+## Included games
 
-**Maharaja Exchange** is an open-source, **100% client-side casino and probability simulation platform** built for **educational purposes** and for **people who love the excitement of casino and classic Indian games, but never want the financial risk of losing real money**.
+The application currently includes 14 virtual-credit games:
 
-Major gambling platforms spend millions of dollars engineering high-sensory user interfaces, mathematical house edges, and fast-paced game loops designed to keep players wagering. **Maharaja Exchange** recreates that entire production-level experience—complete with 14 authentic games, live telemetry sparklines, cryptographic seed verification, and instant virtual `₹` INR banking—while keeping every single rupee **100% virtual and local to your browser**.
+| Category | Games |
+| --- | --- |
+| Instant games | Aviator Crash, Gold Mines, Plinko, Dice, Coinflip |
+| Indian classics | Kalyan Matka, Teen Patti, Andar Bahar |
+| Table and number games | European Roulette, Blackjack, Baccarat, Slots, Fortune Wheel, Keno |
 
-> [!IMPORTANT]
-> **Zero Real Money. Zero Deposits. Zero Risk.**
-> This project does **not** accept real money, connect to payment gateways, or run any backend gambling servers. Every player starts with a free **₹25,000 virtual wallet** that can be refilled, reset, or customized at any time with a single click.
+Each game includes its own rules and payout model. The game studio panels
+explain the relevant probabilities, multipliers, RTP, and house edge while a
+round is being played.
 
----
+## How the simulations work
 
-## 💡 Why Play or Study Here?
+### Virtual wallet
 
-| Audience | What You Get Out of Maharaja Exchange |
-| :--- | :--- |
-| 🎮 **Casual Players & Game Enthusiasts** | Enjoy the full excitement of **Aviator Crash**, **Mines**, **Plinko**, **Roulette**, **Blackjack**, **Kalyan Matka**, **Teen Patti**, and **Andar Bahar** with realistic animations and sound effects—**without ever losing a single rupee of real money**. |
-| 🧮 **Math, Probability & CS Students** | Inspect how **Return to Player (RTP)**, **House Edge**, **Combinatorial Multipliers**, and **Expected Value ($EV$)** work in real time using the built-in **Live Session Telemetry Sparkline** and **House Controls**. |
-| 🔐 **Cryptography & Web Developers** | Study a clean, dependency-free TypeScript implementation of **FIPS 180-4 SHA-256**, **RFC 2104 HMAC-SHA256**, 4-byte uniform float extraction, Fisher-Yates deck shuffles, and `BroadcastChannel` multi-tab state synchronization. |
-| 🛡️ **Harm-Reduction & Financial Literacy** | Test betting strategies (Martingale, Kelly Criterion, flat sizing, or auto-cashout targets) over hundreds of simulated rounds to see firsthand how the mathematical house edge behaves over the long run. |
+The application starts with a virtual balance. Bets deduct virtual credits and
+winning payouts return virtual credits. Session data is stored locally in the
+browser, so there is no account, backend wallet, or financial transaction.
 
----
+### Randomness and verification
 
-## 🎰 The 14 Games & Mathematical Models
+Game outcomes are generated in `services/engine.ts` rather than by animation
+alone. The educational fairness flow uses:
 
-Every game on the platform is powered by deterministic cryptographic floats—never placeholder outcomes or arbitrary animations. Every game also includes an integrated **Game Studio Bar** below the stage with live profit graphs, mathematical formulas, and one-click Provably Fair verification.
+1. A secret server seed and its SHA-256 commitment.
+2. A player-controlled client seed.
+3. A round nonce and byte cursor.
+4. HMAC-SHA256 to produce deterministic digest bytes.
+5. Uniform floating-point values derived from four-byte chunks of each digest.
 
-### 1. Originals & Instant Crash Games
-| Game | Route | RTP / Edge | Max Win | Authentic Mechanics & Features |
-| :--- | :--- | :---: | :---: | :--- |
-| **Aviator Crash** | `/crash` | `99.0%` (1.0% Edge) | `10,000×` | 60fps HTML5 Canvas trajectory curve, Manual & Auto-Cashout (`1.01×–1000×`), automated bet sizing on win/loss, and live round passenger feed. |
-| **Gold Mines** | `/mines` | `99.0%` (1.0% Edge) | `24.75×+` | `5×5` grid (`1–24` mines), 25-float Fisher-Yates permutation, combinatorial step ladder, and **Interactive Auto-Pattern Mode**. |
-| **Plinko 1000x** | `/plinko` | `99.0%` (1.0% Edge) | `1,000×` | Multi-ball physics engine across `8 to 16` pin rows with **Low, Medium, and High** volatility payout buckets. |
-| **Classic Dice** | `/dice` | `99.0%` (1.0% Edge) | `49.50×` | Stake-style **Dual-Zone Green/Red Probability Slider** (`2%–98%` win chance), Roll Over / Roll Under toggle, and animated floating roll cube. |
-| **Royal Coinflip** | `/coinflip` | `99.0%` (1.0% Edge) | `31.68×` | **Compounding Streak Cashout** system (`1.98× → 3.96× → 7.92× → 15.84× → 31.68×`) where players can lock in profit after any flip. |
-
-### 2. Indian Classics
-| Game | Route | RTP / Edge | Max Win | Authentic Mechanics & Features |
-| :--- | :--- | :---: | :---: | :--- |
-| **Kalyan Matka** | `/matka` | `95.0%` (5.0% Edge) | `600×` | **5 Official Markets** (*Kalyan*, *Worli Mumbai*, *Milan Night*, *Rajdhani Night*, *Main Mumbai*) + **Multi-Ticket Bet Slip** combining Single Digit (`9.5×`), Double Digit (`95×`), 3-Card Combo (`150×–600×`), and Even/Odd (`1.95×`). |
-| **Teen Patti** | `/teenpatti` | `97.5%` (2.5% Edge) | `40×` | 52-card cryptographic shuffle with official 3-Card Poker hand rankings (*Trail/Three of a Kind*, *Pure Sequence*, *Sequence*, *Color*, *Pair*, *High Card*) + **Pair Plus Bonus Side Bet** paying up to `40×`. |
-| **Andar Bahar** | `/andarbahar` | `97.5%` (2.5% Edge) | `8.0×` | Authentic alternating card deal matching the middle Joker rank (`1.95×` Andar / `1.90×` Bahar) + **Total Cards Dealt Range Side Bets** (`1–5`, `6–15`, `16–25`, `26+` cards). |
-
-### 3. Live Casino Table & Wheel Games
-| Game | Route | RTP / Edge | Max Win | Authentic Mechanics & Features |
-| :--- | :--- | :---: | :---: | :--- |
-| **European Roulette** | `/roulette` | `97.3%` (2.7% Edge) | `36×` | Single-Zero (`0–36`) SVG wheel with counter-orbiting ivory ball, full inside/outside felt grid, and **French Racetrack Call Bets** (*Voisins du Zéro*, *Tiers du Cylindre*, *Orphelins*, *Jeu Zéro*). |
-| **VIP Blackjack 21** | `/blackjack` | `99.5%` (0.5% Edge) | `2.5×` | 52-card Fisher-Yates shoe with **Hit, Stand, Double Down, Split**, and **2:1 Dealer Ace Insurance**. Natural 21 pays `3:2` (`2.5×`). |
-| **Punto Baccarat** | `/baccarat` | `98.9%` (1.1% Edge) | `12×` | Official Macau **Tableau conditional 3rd-card draw rules** for Player (`2×`), Banker (`1.95×`), and Tie (`9×`), plus **12× Player/Banker Pair Side Bets** and Shoe Bead Road. |
-| **Diamond Slots** | `/slots` | `96.5%` (3.5% Edge) | `250×` | **`5×3` 10-Payline Video Slot Machine** with **Royal Crown (`👑`) Wild** substitutions and **Kohinoor (`💎`) Scatters** awarding **5 Free Spins at a `3×` Multiplier**. |
-| **Fortune Wheel** | `/wheel` | `97.0%` (3.0% Edge) | `50×` | Configurable **Low / Medium / High Risk** and **10 / 20 / 30 Pin Segments** with smooth rotational physics. |
-| **Royal Keno** | `/keno` | `98.0%` (2.0% Edge) | `100×` | 40-Number interactive matrix where players pick up to 10 spots against a 10-ball cryptographic draw with dynamic hit-table multipliers. |
-
----
-
-## 🔐 Cryptographic Provably Fair Engine
-
-Unlike basic demo sites that rely on `Math.random()`, **Maharaja Exchange** implements the exact **RFC 2104 HMAC-SHA256** provably fair specification used by major cryptographic casinos, running 100% inside the browser:
-
-### 1. Commitment Scheme
-Before any bet is placed, the engine generates a secret `serverSeed` and displays its **FIPS 180-4 SHA-256** hash (`serverSeedHash`) to the player:
-
-$$\text{Commitment} = \text{SHA256}(\text{serverSeed})$$
-
-### 2. Deterministic Byte Stream Generation
-Every round combines the secret `serverSeed`, the player-controlled `clientSeed`, the round `nonce`, and a byte `cursor` (`0, 1, 2, ...`):
-
-$$\text{Digest} = \text{HMAC\_SHA256}(\text{serverSeed},\; \text{clientSeed} : \text{nonce} : \text{cursor})$$
-
-### 3. 4-Byte Uniform Float Conversion
-Each 32-byte HMAC digest yields up to 8 uniform random floats $r \in [0, 1)$ by reading 4 bytes ($b_0, b_1, b_2, b_3$) at a time:
-
-$$r = \frac{b_0}{256^1} + \frac{b_1}{256^2} + \frac{b_2}{256^3} + \frac{b_3}{256^4} \quad \in [0, 1)$$
-
-### 4. Independent Browser WebCrypto Verification
-At any time, you can rotate your seed pair to reveal the unhashed `serverSeed` and click **"Cross-Verify with Browser WebCrypto API"** on the `/fairness` page to independently verify the round signature using your browser's native `window.crypto.subtle` engine.
-
----
-
-## 🏗️ 100% Client-Side Architecture
+In simplified form:
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        BROWSER RUNTIME (ZERO BACKEND)                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌─────────────────────────┐        ┌────────────────────────────────────┐  │
-│  │  14 Interactive Games   │◄──────►│   Universal GameStudioBar.tsx      │  │
-│  │  (Canvas / SVG / Felt)  │        │  • Inline Provably Fair Verifier   │  │
-│  └───────────┬─────────────┘        │  • Live SVG Profit Sparkline       │  │
-│              │                      │  • Game Math & Probability Specs   │  │
-│              ▼                      └────────────────────────────────────┘  │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                   Cryptographic SimulationEngine                      │  │
-│  │  • Pure TypeScript FIPS 180-4 SHA-256 & RFC 2104 HMAC-SHA256          │  │
-│  │  • Atomic Stake Locking: deductStake() ──► settleDeductedBet()        │  │
-│  │  • Virtual INR Wallet, Royal Vault Safe & VIP Rakeback Calculator     │  │
-│  └───────────┬───────────────────────────────────────────┬───────────────┘  │
-│              │                                           │                  │
-│              ▼                                           ▼                  │
-│  ┌─────────────────────────┐                 ┌───────────────────────────┐  │
-│  │  localStorage Persistence│                 │ BroadcastChannel Sync     │  │
-│  │  (Offline-Ready State)  │                 │ (Real-Time Multi-Tab Sync)│  │
-│  └─────────────────────────┘                 └───────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────┘
+digest = HMAC-SHA256(serverSeed, clientSeed + nonce + cursor)
+random = four digest bytes converted to a value in [0, 1)
 ```
 
-### Repository Structure
+The `/fairness` page can reveal a completed seed and cross-check a result with
+the browser's Web Crypto API. This is an educational implementation for
+understanding commitments and deterministic game outcomes; it is not a
+real-money gambling service.
+
+### Game mathematics
+
+Each game maps random values to outcomes using its rules. For example:
+
+- Roulette maps a draw to one number from 0 through 36.
+- Blackjack deals and evaluates cards using a shuffled shoe.
+- Mines uses a shuffled grid and a changing payout multiplier.
+- Dice converts a probability setting into a win threshold.
+- Slots and Keno use symbol or number selections with payout tables.
+
+The displayed RTP is the long-run expected return implied by the configured
+rules, not a promise about any individual session.
+
+## Architecture
+
+Casino is a static React single-page application:
+
 ```text
-├── components/
-│   ├── GameStudioBar.tsx     # Universal studio bar: inline PF modal, live profit sparkline & math specs
-│   ├── Layout.tsx            # Responsive casino shell, sidebar navigation, virtual cashier & vault modals
-│   ├── Leaderboard.tsx       # All Live Bets, My Bets & High-Roller telemetry table
-│   └── LiveFeed.tsx          # Simulated Indian player chat & live round ticker
-├── pages/
-│   ├── Lobby.tsx             # Categorized game showcase, search & live win feed
-│   ├── Crash.tsx             # Aviator Crash (60fps HTML5 Canvas + Auto-Betting)
-│   ├── Mines.tsx             # 5x5 Gold Mines + Interactive Auto-Pattern Builder
-│   ├── Plinko.tsx            # Multi-ball Galton board physics engine
-│   ├── Roulette.tsx          # Single-Zero European Roulette + French Racetrack Call Bets
-│   ├── Blackjack.tsx         # 52-card shoe Blackjack + 2:1 Ace Insurance
-│   ├── Baccarat.tsx          # Macau Punto Banco + 12x Pair Side Bets + Bead Road
-│   ├── Slots.tsx             # 5x3 10-Payline Video Slots + Wilds & Free Spins
-│   ├── Matka.tsx             # 5-Market Kalyan Matka + Multi-Ticket Bet Slip
-│   ├── TeenPatti.tsx         # 3-Card Indian Poker + 40x Pair Plus Bonus Bet
-│   ├── AndarBahar.tsx        # Alternating Joker match + Card Count Range Side Bets
-│   ├── Coinflip.tsx          # Compounding Streak Cashout Coinflip
-│   ├── Wheel.tsx             # Configurable Risk (Low/Med/High) & Segment Fortune Wheel
-│   ├── Dice.tsx              # Dual-Zone Probability Bar Dice
-│   ├── Keno.tsx              # 40-Ball Royal Keno Matrix
-│   ├── Fairness.tsx          # Interactive HMAC-SHA256 Audit & WebCrypto Cross-Verifier
-│   ├── Statistics.tsx        # Session analytics, win-rate breakdown & profit reset
-│   ├── Transactions.tsx      # Virtual UPI / Paytm / IMPS passbook & 12-digit UTR receipts
-│   └── Admin.tsx             # Educational House Controls, Turbo toggle & RTP matrix
-└── services/
-    ├── engine.ts             # SHA-256, HMAC-SHA256, 4-byte float RNG & atomic wallet state machine
-    ├── audio.ts              # Zero-dependency Web Audio API polyphonic sound synthesizer
-    └── sound.ts              # Game sound trigger bindings
+Browser
+├── React UI and game pages
+├── TypeScript simulation engine
+├── Local virtual wallet and session history
+├── localStorage persistence
+└── BroadcastChannel multi-tab synchronization
 ```
 
----
+There is no required database, API key, payment integration, or backend
+server. The main source directories are:
 
-## 🚀 Getting Started
+```text
+components/   Shared layout, game information, feeds, and visualizations
+pages/        Individual game pages and educational views
+services/     Randomness, wallet state, audio, and game support logic
+types.ts      Shared game and application types
+```
 
-Because the entire platform is **100% client-side**, there are no databases, API keys, or backend servers to configure.
+## Getting started
 
-### Prerequisites
-- **Node.js** `>= 18.0.0` (or **Bun** `>= 1.0`)
+### Requirements
 
-### Installation & Local Development
+- Node.js 18 or newer
+- npm, or Bun
+
+### Run locally
+
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-username/maharaja-club-casino.git
-cd maharaja-club-casino
-
-# 2. Install dependencies
+git clone https://github.com/Paidguy/casino.git
+cd casino
 npm install
-
-# 3. Start the local Vite development server (http://localhost:3000)
 npm run dev
 ```
 
-### Building for Static Hosting (GitHub Pages / Vercel / Netlify)
-```bash
-# Type-check with TypeScript and bundle static assets into /dist
-npm run build
+Open the local URL printed by Vite.
 
-# Preview the production build locally
+### Verify and build
+
+```bash
+npm run typecheck
+npm run build
 npm run preview
 ```
 
----
+The production output is static and can be hosted on GitHub Pages, Vercel,
+Netlify, or another static host.
 
-## 🤝 Contributing & Educational Guidelines
+## Contributing
 
-We welcome contributions from developers, mathematicians, and UI/UX designers! Whether you want to add a new probability game, visualize expected value distributions, or refine animations, please read our [**Contributing Guide**](./CONTRIBUTING.md) and [**Security & Educational Policy**](./SECURITY.md).
+Contributions are welcome, especially improvements to:
 
----
+- Game rules and probability explanations.
+- RTP and expected-value calculations.
+- Fairness verification and tests.
+- Accessibility, responsive layout, and educational presentation.
 
-## ⚖️ License & Disclaimer
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull
+request. New games must remain virtual-credit simulations and should expose
+their rules and mathematical assumptions clearly.
 
-Distributed under the [**MIT License**](./LICENSE).
+## License and disclaimer
 
-> **Educational & Entertainment Disclaimer**:
-> This software is provided strictly for **educational, mathematical, and risk-free entertainment purposes**. It uses 100% virtual, locally stored credits (`localStorage`) with zero monetary value. No real-money deposits, withdrawals, or wagers are possible.
+Casino is distributed under the [MIT License](./LICENSE).
+
+This software is provided for educational and entertainment purposes only. It
+does not provide financial services, real-money gambling, or a way to win or
+recover money. Use it to study game mechanics and probability, not to make
+financial decisions.
