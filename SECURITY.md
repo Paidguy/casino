@@ -2,7 +2,7 @@
 
 ## 🛡️ Scope of This Project
 
-**Maharaja Exchange & Royal Casino** is an open-source, **100% client-side educational simulation**.
+**Casino** is an open-source, **100% client-side educational simulation**.
 
 - **No Real Money**: The application never processes, accepts, or transmits real currency.
 - **No Backend Servers or Databases**: All session state, virtual `₹` INR balances, and cryptographic seeds reside exclusively in the user's own browser (`localStorage`).

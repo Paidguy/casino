@@ -1,6 +1,6 @@
-# Contributing to Maharaja Exchange & Royal Casino
+# Contributing to Casino
 
-Thank you for your interest in contributing to **Maharaja Exchange**! Our mission is to maintain a **100% client-side, risk-free educational casino and probability simulator** where anyone can enjoy casino and Indian games—or study the underlying cryptography and mathematics—without ever risking real money.
+Thank you for your interest in contributing to **Casino**! The project is a **100% client-side, risk-free educational casino and probability simulator** where people can explore casino and Indian games—or study the underlying cryptography and mathematics—without ever risking real money.
 
 ---
 
